@@ -11,6 +11,20 @@ type FinancialHistoryItem = {
   paymentId?: string;
 };
 
+const parseWithdrawalStatus = (value: unknown): FinancialHistoryItem['status'] => {
+  const statusRaw = String(value || 'pending').toLowerCase();
+
+  if (statusRaw === 'approved' || statusRaw === 'aprovado') {
+    return 'aprovado';
+  }
+
+  if (statusRaw === 'rejected' || statusRaw === 'recusado') {
+    return 'recusado';
+  }
+
+  return 'pendente';
+};
+
 const toNumber = (value: unknown) => {
   const amount = Number(value);
   return Number.isFinite(amount) ? amount : 0;
@@ -65,16 +79,10 @@ export async function GET(request: Request) {
   const withdrawals: FinancialHistoryItem[] = withdrawalsRaw
     .map((item) => {
       const entry = (item || {}) as Record<string, unknown>;
-      const statusRaw = String(entry.status || 'pending').toLowerCase();
       return {
         id: String(entry.id || ''),
         tipo: 'saque' as const,
-        status:
-          statusRaw === 'approved' || statusRaw === 'aprovado'
-            ? 'aprovado'
-            : statusRaw === 'rejected' || statusRaw === 'recusado'
-              ? 'recusado'
-              : 'pendente',
+        status: parseWithdrawalStatus(entry.status),
         amount: toNumber(entry.amount),
         createdAt: String(entry.createdAt || ''),
         cpf: String(entry.cpf || ''),
