@@ -11,9 +11,16 @@ type CategoryOption = {
 type CategoryCarouselProps = {
   categories: CategoryOption[];
   selectedCategory: string;
+  onCategoryChange?: (value: string) => void;
+  basePath?: string;
 };
 
-export default function CategoryCarousel({ categories, selectedCategory }: CategoryCarouselProps) {
+export default function CategoryCarousel({
+  categories,
+  selectedCategory,
+  onCategoryChange,
+  basePath = '/',
+}: CategoryCarouselProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
@@ -36,7 +43,12 @@ export default function CategoryCarousel({ categories, selectedCategory }: Categ
         {categories.map((category) => (
           <Link
             key={category.value}
-            href={category.value === 'todos' ? '/' : `/?category=${category.value}`}
+            href={category.value === 'todos' ? basePath : `${basePath}?category=${category.value}`}
+            onClick={(event) => {
+              if (!onCategoryChange) return;
+              event.preventDefault();
+              onCategoryChange(category.value);
+            }}
             className={`group min-w-[148px] shrink-0 rounded-2xl border px-4 py-4 text-left transition sm:min-w-[170px] ${
               selectedCategory === category.value
                 ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100'
