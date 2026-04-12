@@ -7,9 +7,20 @@ type AuthUser = {
 
 type CountsMap = Record<string, Record<string, number>>;
 
+type AdminListUsersClient = {
+  auth: {
+    admin: {
+      listUsers: (params: { page: number; perPage: number }) => Promise<{
+        data: { users: unknown[] };
+        error: { message: string } | null;
+      }>;
+    };
+  };
+};
+
 const normalizeCandidate = (value: string) => value.trim().toLowerCase();
 
-const listAllAuthUsers = async (supabaseAdmin: ReturnType<typeof createClient>) => {
+const listAllAuthUsers = async (supabaseAdmin: AdminListUsersClient) => {
   const users: AuthUser[] = [];
   let page = 1;
   const perPage = 100;
