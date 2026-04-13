@@ -1761,14 +1761,14 @@ function UsuariosPageContent() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex-1 border border-red-300 px-2.5 py-1.5 text-xs text-red-700 transition hover:bg-red-50 sm:px-3 sm:py-2 sm:text-sm rounded-none"
+                      className="flex-1 rounded-xl border border-red-300 px-2.5 py-1.5 text-xs text-red-700 transition hover:bg-red-50 sm:px-3 sm:py-2 sm:text-sm"
                     >
                       Sair
                     </button>
                     <button
                       type="submit"
                       disabled={savingProfile}
-                      className="flex-1 bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:px-3 sm:py-2 sm:text-sm rounded-none"
+                      className="flex-1 rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:px-3 sm:py-2 sm:text-sm"
                     >
                       {savingProfile ? 'Salvando...' : 'Salvar'}
                     </button>
