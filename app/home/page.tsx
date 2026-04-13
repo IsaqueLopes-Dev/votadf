@@ -1544,7 +1544,7 @@ function UsuariosPageContent() {
             )}
             {profileOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-7.25rem)] w-[min(92vw,360px)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
                 style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
               >
                 <div className="bg-blue-600 px-3 py-3 sm:px-5 sm:py-4">
@@ -1566,7 +1566,7 @@ function UsuariosPageContent() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 sm:p-5">
+                <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
 
                 {profileNotice && (
                   <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 sm:mb-4 sm:p-3 sm:text-sm">
@@ -1574,7 +1574,7 @@ function UsuariosPageContent() {
                   </div>
                 )}
 
-                <form onSubmit={handleSaveProfile} className="space-y-3 sm:space-y-4">
+                <form onSubmit={handleSaveProfile} className="space-y-2.5 sm:space-y-4">
                   <div className="flex items-center gap-2.5 rounded-2xl border border-blue-100 bg-blue-50 p-2.5 sm:gap-3 sm:p-3">
                     <div className="relative h-12 w-12 overflow-hidden rounded-full border border-blue-100 bg-blue-100 sm:h-16 sm:w-16">
                       {avatarUrl ? (
@@ -1691,7 +1691,7 @@ function UsuariosPageContent() {
                       onChange={(e) => setUsername(normalizeUsername(e.target.value))}
                       minLength={3}
                       required
-                      placeholder="@seunome"
+                      placeholder="Nome de usuario (@seunome)"
                       className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 sm:py-2"
                     />
                   </div>
@@ -1706,7 +1706,7 @@ function UsuariosPageContent() {
                       inputMode="numeric"
                       value={cpf}
                       onChange={(e) => setCpf(formatCpf(e.target.value))}
-                      placeholder="000.000.000-00"
+                      placeholder="CPF (000.000.000-00)"
                       required
                       disabled={identityLocked}
                       className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 sm:py-2"
@@ -1724,7 +1724,7 @@ function UsuariosPageContent() {
                         inputMode="numeric"
                         value={cpfConfirmation}
                         onChange={(e) => setCpfConfirmation(formatCpf(e.target.value))}
-                        placeholder="000.000.000-00"
+                        placeholder="Confirme seu CPF"
                         required
                         className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2"
                       />
