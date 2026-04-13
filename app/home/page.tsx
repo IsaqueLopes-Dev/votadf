@@ -1388,13 +1388,13 @@ function UsuariosPageContent() {
             </button>
             {betHistoryOpen && (
               <div
-                className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh]"
+                className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh] sm:rounded-3xl"
                 style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
               >
-                <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-6 pb-5 pt-6 text-white">
+                <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-3 pb-3 pt-3 text-white sm:px-6 sm:pb-5 sm:pt-6">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Área do usuário</p>
-                    <h3 className="mt-1 text-lg font-bold">Histórico de apostas</h3>
+                    <h3 className="mt-0.5 text-sm font-bold sm:mt-1 sm:text-lg">Histórico de apostas</h3>
                   </div>
                   <button
                     type="button"
@@ -1408,31 +1408,31 @@ function UsuariosPageContent() {
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+                <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
                   {betHistoryError && (
-                    <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                    <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 sm:mb-4 sm:p-4 sm:text-sm">
                       {betHistoryError}
                     </div>
                   )}
 
                   {betHistory.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {betHistory.map((bet) => (
-                        <div key={bet.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div key={bet.id} className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-4">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <p className="text-sm font-semibold text-slate-900">{bet.votacaoTitulo}</p>
-                              <p className="mt-1 text-sm text-slate-600">Candidato: <span className="font-medium">{bet.candidato}</span></p>
+                              <p className="text-xs font-semibold text-slate-900 sm:text-sm">{bet.votacaoTitulo}</p>
+                              <p className="mt-1 text-xs text-slate-600 sm:text-sm">Candidato: <span className="font-medium">{bet.candidato}</span></p>
                               <p className="mt-1 text-xs text-slate-500">{new Date(bet.createdAt).toLocaleString('pt-BR')}</p>
                             </div>
 
                             <div className="grid gap-1 text-right">
                               <p className="text-xs text-slate-500">Aposta</p>
-                              <p className="text-sm font-semibold text-slate-800">
+                              <p className="text-xs font-semibold text-slate-800 sm:text-sm">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bet.amount)}
                               </p>
                               <p className="text-xs text-slate-500">Retorno potencial</p>
-                              <p className="text-sm font-bold text-cyan-700">
+                              <p className="text-xs font-bold text-cyan-700 sm:text-sm">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bet.potentialReturn)}
                               </p>
                             </div>
@@ -1460,7 +1460,7 @@ function UsuariosPageContent() {
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-600 sm:p-6 sm:text-sm">
                       Você ainda não fez apostas.
                     </div>
                   )}
