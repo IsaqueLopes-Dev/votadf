@@ -1544,14 +1544,14 @@ function UsuariosPageContent() {
             )}
             {profileOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-5.5rem)] w-[min(96vw,420px)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-7.25rem)] w-[min(92vw,360px)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
                 style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
               >
-                <div className="bg-blue-600 px-4 py-4 sm:px-5">
+                <div className="bg-blue-600 px-3 py-3 sm:px-5 sm:py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-base font-semibold text-white">Perfil da conta</h3>
-                      <p className="mt-1 text-xs text-blue-100">Atualize seus dados de exibicao.</p>
+                      <h3 className="text-sm font-semibold text-white sm:text-base">Perfil da conta</h3>
+                      <p className="mt-0.5 text-[11px] text-blue-100 sm:mt-1 sm:text-xs">Atualize seus dados de exibicao.</p>
                     </div>
                     <button
                       type="button"
@@ -1566,17 +1566,17 @@ function UsuariosPageContent() {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-5">
 
                 {profileNotice && (
-                  <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 sm:mb-4 sm:p-3 sm:text-sm">
                     {profileNotice}
                   </div>
                 )}
 
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
-                    <div className="relative h-16 w-16 overflow-hidden rounded-full border border-blue-100 bg-blue-100">
+                <form onSubmit={handleSaveProfile} className="space-y-3 sm:space-y-4">
+                  <div className="flex items-center gap-2.5 rounded-2xl border border-blue-100 bg-blue-50 p-2.5 sm:gap-3 sm:p-3">
+                    <div className="relative h-12 w-12 overflow-hidden rounded-full border border-blue-100 bg-blue-100 sm:h-16 sm:w-16">
                       {avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={avatarUrl} alt="Foto de perfil" className="h-full w-full object-cover" />
@@ -1591,7 +1591,7 @@ function UsuariosPageContent() {
 
 
                       <label
-                        className="absolute bottom-0 right-0 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-white bg-blue-600 text-white shadow transition hover:bg-blue-700"
+                        className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-white bg-blue-600 text-white shadow transition hover:bg-blue-700 sm:h-7 sm:w-7"
                         title="Alterar foto"
                       >
                         {uploadingAvatar ? (
@@ -1613,21 +1613,21 @@ function UsuariosPageContent() {
                         />
                       </label>
                     </div>
-                    <p className="text-sm text-slate-600">Atualize sua foto de perfil.</p>
+                    <p className="text-xs text-slate-600 sm:text-sm">Atualize sua foto de perfil.</p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-100 p-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-100 p-2.5 sm:p-3">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Email</p>
-                    <p className="text-sm font-medium text-slate-800 break-all">{user?.email}</p>
+                    <p className="text-xs font-medium text-slate-800 break-all sm:text-sm">{user?.email}</p>
                   </div>
 
                   {pendingAvatarPreview && (
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3">
-                      <p className="mb-2 text-sm font-medium text-slate-800">Ajuste sua foto</p>
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-2.5 sm:p-3">
+                      <p className="mb-2 text-xs font-medium text-slate-800 sm:text-sm">Ajuste sua foto</p>
                       <div className="mb-3 flex items-center justify-center">
                         <div
                           ref={avatarPreviewRef}
-                          className={`h-28 w-28 overflow-hidden rounded-full border border-blue-100 bg-white touch-none ${
+                          className={`h-24 w-24 overflow-hidden rounded-full border border-blue-100 bg-white touch-none sm:h-28 sm:w-28 ${
                             isDraggingAvatar ? 'cursor-grabbing' : 'cursor-grab'
                           }`}
                           style={{ touchAction: 'none' }}
@@ -1681,7 +1681,7 @@ function UsuariosPageContent() {
                   )}
 
                   <div>
-                    <label htmlFor="profile-username" className="mb-1 block text-sm font-medium text-slate-800">
+                    <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
                       Nome de usuario
                     </label>
                     <input
@@ -1692,12 +1692,12 @@ function UsuariosPageContent() {
                       minLength={3}
                       required
                       placeholder="@seunome"
-                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 sm:py-2"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="profile-cpf" className="mb-1 block text-sm font-medium text-slate-800">
+                    <label htmlFor="profile-cpf" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
                       CPF
                     </label>
                     <input
@@ -1709,13 +1709,13 @@ function UsuariosPageContent() {
                       placeholder="000.000.000-00"
                       required
                       disabled={identityLocked}
-                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500"
+                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 sm:py-2"
                     />
                   </div>
 
                   {!identityLocked && (
                     <div>
-                      <label htmlFor="profile-cpf-confirm" className="mb-1 block text-sm font-medium text-slate-800">
+                      <label htmlFor="profile-cpf-confirm" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
                         Confirme seu CPF
                       </label>
                       <input
@@ -1726,13 +1726,13 @@ function UsuariosPageContent() {
                         onChange={(e) => setCpfConfirmation(formatCpf(e.target.value))}
                         placeholder="000.000.000-00"
                         required
-                        className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2"
                       />
                     </div>
                   )}
 
                   <div>
-                    <label htmlFor="profile-birthDate" className="mb-1 block text-sm font-medium text-slate-800">
+                    <label htmlFor="profile-birthDate" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
                       Data de nascimento
                     </label>
                     <input
@@ -1742,15 +1742,15 @@ function UsuariosPageContent() {
                       onChange={(e) => setBirthDate(e.target.value)}
                       required
                       disabled
-                      className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-slate-500 shadow-sm cursor-not-allowed"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-500 shadow-sm cursor-not-allowed sm:py-2"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-blue-100">
+                  <div className="flex items-center justify-between gap-2 border-t border-blue-100 pt-1.5 sm:pt-2">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="mt-3 rounded-xl border border-red-300 px-3 py-2 text-sm text-red-700 transition hover:bg-red-50"
+                      className="mt-2 rounded-xl border border-red-300 px-2.5 py-1.5 text-xs text-red-700 transition hover:bg-red-50 sm:mt-3 sm:px-3 sm:py-2 sm:text-sm"
                     >
                       Sair
                     </button>
@@ -1759,14 +1759,14 @@ function UsuariosPageContent() {
                     <button
                       type="button"
                       onClick={() => setProfileOpen(false)}
-                      className="mt-3 rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
+                      className="mt-2 rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700 transition hover:bg-slate-50 sm:mt-3 sm:px-3 sm:py-2 sm:text-sm"
                     >
                       Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={savingProfile}
-                      className="mt-3 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                      className="mt-2 rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:mt-3 sm:px-3 sm:py-2 sm:text-sm"
                     >
                       {savingProfile ? 'Salvando...' : 'Salvar'}
                     </button>
