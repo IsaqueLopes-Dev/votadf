@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import CategoryCarousel from '../components/category-carousel';
+import BottomNavigation from '../../components/bottom-navigation';
 
 const META_PREFIX = '__meta__:';
 const CATEGORY_OPTIONS = [
@@ -1782,7 +1783,7 @@ function UsuariosPageContent() {
       </header>
 
       {/* Main Content */}
-      <main className={depositOpen || withdrawOpen ? 'min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 py-6 sm:py-10' : 'w-full px-0 py-6 sm:py-10'}>
+      <main className={depositOpen || withdrawOpen ? 'min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 py-6 pb-24 sm:py-10 sm:pb-28' : 'w-full px-0 py-6 pb-24 sm:py-10 sm:pb-28'}>
         {depositOpen ? (
           <>
           <div
@@ -2345,17 +2346,11 @@ function UsuariosPageContent() {
             </div>
           )}
 
-          <div className="fixed bottom-4 right-4 z-40 md:hidden" style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}>
+          <div className="fixed bottom-24 right-4 z-40 md:hidden" style={{ bottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}>
             <button
               type="button"
               onClick={() => {
-                setChatPanelOpen((prev) => {
-                  const next = !prev;
-                  if (next) {
-                    void loadChatMessages(true);
-                  }
-                  return next;
-                });
+                router.push('/chat');
               }}
               className="rounded-full bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-blue-700 active:scale-95"
               aria-label="Abrir chat ao vivo"
@@ -2368,13 +2363,7 @@ function UsuariosPageContent() {
             <button
               type="button"
               onClick={() => {
-                setChatPanelOpen((prev) => {
-                  const next = !prev;
-                  if (next) {
-                    void loadChatMessages();
-                  }
-                  return next;
-                });
+                router.push('/chat');
               }}
               className="rounded-l-2xl border border-r-0 border-blue-200 bg-blue-600 px-2 py-3 text-[11px] font-bold tracking-[0.12em] text-white shadow-lg transition hover:bg-blue-700 [writing-mode:vertical-rl]"
             >
@@ -2480,6 +2469,7 @@ function UsuariosPageContent() {
           </div>
         )}
       </main>
+      <BottomNavigation />
     </div>
   );
 }
