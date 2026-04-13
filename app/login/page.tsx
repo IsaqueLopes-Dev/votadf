@@ -33,7 +33,9 @@ function AuthPageContent() {
 
   const requestedNext = searchParams.get('next');
   const safeNextPath = requestedNext && requestedNext.startsWith('/') ? requestedNext : '/home';
-  const oauthBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').trim() || window.location.origin;
+  const browserOrigin = typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : '';
+  const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/$/, '');
+  const oauthBaseUrl = browserOrigin || configuredSiteUrl;
 
   const normalizeUsername = (value: string) => {
     const withoutSpaces = value.replace(/\s+/g, '');

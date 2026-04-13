@@ -1544,7 +1544,7 @@ function UsuariosPageContent() {
             )}
             {profileOpen && (
               <div
-                className="fixed left-1/2 top-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(360px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh]"
+                className="fixed inset-x-2 z-50 flex flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl top-[max(0.75rem,env(safe-area-inset-top,0px))] bottom-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:absolute sm:right-0 sm:top-14 sm:bottom-auto sm:left-auto sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
                 style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
               >
                 <div className="bg-blue-600 px-4 py-4 sm:px-5">
