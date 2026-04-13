@@ -33,9 +33,6 @@ function AuthPageContent() {
 
   const requestedNext = searchParams.get('next');
   const safeNextPath = requestedNext && requestedNext.startsWith('/') ? requestedNext : '/home';
-  const browserOrigin = typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : '';
-  const configuredSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/$/, '');
-  const oauthBaseUrl = browserOrigin || configuredSiteUrl;
 
   const normalizeUsername = (value: string) => {
     const withoutSpaces = value.replace(/\s+/g, '');
@@ -95,10 +92,14 @@ function AuthPageContent() {
     setError(null);
 
     try {
+      const callbackBaseUrl = typeof window !== 'undefined'
+        ? window.location.origin.replace(/\/$/, '')
+        : (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/$/, '');
+
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${oauthBaseUrl}/login?next=${encodeURIComponent(safeNextPath)}`,
+          redirectTo: `${callbackBaseUrl}/login?next=${encodeURIComponent(safeNextPath)}`,
           queryParams: {
             prompt: 'select_account',
           },

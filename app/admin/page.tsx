@@ -103,7 +103,7 @@ export default function AdminDashboard() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-          router.push('/login');
+          router.push('/login?next=/admin');
           return;
         }
 
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         setDashboardError(getErrorMessage(error));
-        router.push('/login');
+        router.push('/login?next=/admin');
       } finally {
         setLoading(false);
       }
@@ -162,7 +162,7 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
+    router.push('/login?next=/admin');
   };
 
   if (loading) {
