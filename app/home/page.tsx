@@ -1320,6 +1320,12 @@ function UsuariosPageContent() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (window.matchMedia('(max-width: 639px)').matches) {
+                      setBalanceMenuOpen(false);
+                      router.push('/home/historico-financeiro');
+                      return;
+                    }
+
                     setFinancialHistoryOpen(true);
                     setBalanceMenuOpen(false);
                     setProfileOpen(false);
@@ -1350,6 +1356,11 @@ function UsuariosPageContent() {
             <button
               type="button"
               onClick={() => {
+                if (window.matchMedia('(max-width: 639px)').matches) {
+                  router.push('/home/historico');
+                  return;
+                }
+
                 setBetHistoryOpen((prev) => !prev);
                 setProfileOpen(false);
                 setDepositOpen(false);
@@ -1746,31 +1757,21 @@ function UsuariosPageContent() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 border-t border-blue-100 pt-1.5 sm:pt-2">
+                  <div className="flex items-center gap-2 border-t border-blue-100 pt-1.5 sm:pt-2">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="mt-2 rounded-xl border border-red-300 px-2.5 py-1.5 text-xs text-red-700 transition hover:bg-red-50 sm:mt-3 sm:px-3 sm:py-2 sm:text-sm"
+                      className="flex-1 border border-red-300 px-2.5 py-1.5 text-xs text-red-700 transition hover:bg-red-50 sm:px-3 sm:py-2 sm:text-sm rounded-none"
                     >
                       Sair
-                    </button>
-
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setProfileOpen(false)}
-                      className="mt-2 rounded-xl border border-slate-300 px-2.5 py-1.5 text-xs text-slate-700 transition hover:bg-slate-50 sm:mt-3 sm:px-3 sm:py-2 sm:text-sm"
-                    >
-                      Cancelar
                     </button>
                     <button
                       type="submit"
                       disabled={savingProfile}
-                      className="mt-2 rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:mt-3 sm:px-3 sm:py-2 sm:text-sm"
+                      className="flex-1 bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:px-3 sm:py-2 sm:text-sm rounded-none"
                     >
                       {savingProfile ? 'Salvando...' : 'Salvar'}
                     </button>
-                    </div>
                   </div>
                 </form>
                 </div>
