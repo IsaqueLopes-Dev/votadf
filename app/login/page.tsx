@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 
 function AuthPageContent() {
+  const CANONICAL_SITE_URL = 'https://votaaiprevisao.com';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -92,9 +93,7 @@ function AuthPageContent() {
     setError(null);
 
     try {
-      const callbackBaseUrl = typeof window !== 'undefined'
-        ? window.location.origin.replace(/\/$/, '')
-        : (process.env.NEXT_PUBLIC_SITE_URL || '').trim().replace(/\/$/, '');
+      const callbackBaseUrl = CANONICAL_SITE_URL;
 
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
