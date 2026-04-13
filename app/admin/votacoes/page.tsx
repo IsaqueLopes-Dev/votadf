@@ -192,11 +192,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'isaquelopespires@gmail.com')
-  .split(',')
-  .map((e) => e.trim())
-  .filter((e) => e);
-
 const getErrorMessage = (error: unknown) => {
   return error instanceof Error ? error.message : 'Erro inesperado.';
 };
@@ -229,8 +224,8 @@ export default function VotacoesPage() {
           data: { user },
         } = await supabase.auth.getUser();
 
-        if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
-          router.push('/auth');
+        if (!user) {
+          router.push('/login');
           return;
         }
 
@@ -249,7 +244,7 @@ export default function VotacoesPage() {
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         showToast(getErrorMessage(error), 'error');
-        router.push('/auth');
+        router.push('/login');
       } finally {
         setLoading(false);
       }
@@ -489,7 +484,7 @@ export default function VotacoesPage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
       {/* Header */}
       <header className="bg-blue-600 shadow-md">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 sm:px-6">
+        <div className="flex w-full items-center gap-4 py-4">
           <Link href="/admin" className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -504,7 +499,7 @@ export default function VotacoesPage() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+      <main className="w-full px-0 py-6 sm:py-10">
         <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm mb-8">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-xl font-semibold text-slate-900">Votações</h2>

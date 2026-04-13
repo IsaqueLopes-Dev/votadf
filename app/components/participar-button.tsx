@@ -30,20 +30,20 @@ export default function ParticiparButton({ votacaoId }: ParticiparButtonProps) {
       );
 
       if (!user) {
-        const nextPath = `/usuarios?participar=${encodeURIComponent(votacaoId)}`;
-        router.push(`/auth?next=${encodeURIComponent(nextPath)}`);
+        const nextPath = `/home?participar=${encodeURIComponent(votacaoId)}`;
+        router.push(`/login?next=${encodeURIComponent(nextPath)}`);
         return;
       }
 
       if (!hasRequiredProfileData) {
-        router.push(`/usuarios?completeProfile=1&participar=${encodeURIComponent(votacaoId)}`);
+        router.push(`/home?completeProfile=1&participar=${encodeURIComponent(votacaoId)}`);
         return;
       }
 
-      router.push(`/usuarios?participar=${encodeURIComponent(votacaoId)}`);
+      router.push(`/home?participar=${encodeURIComponent(votacaoId)}`);
     } catch (error) {
       console.error('Erro ao validar usuário:', error);
-      router.push('/auth');
+      router.push('/login');
     } finally {
       setLoading(false);
     }

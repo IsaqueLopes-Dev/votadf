@@ -45,11 +45,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || 'isaquelopespires@gmail.com')
-  .split(',')
-  .map((e) => e.trim())
-  .filter((e) => e);
-
 const getErrorMessage = (error: unknown) => {
   return error instanceof Error ? error.message : 'Erro inesperado.';
 };
@@ -108,37 +103,33 @@ export default function AdminDashboard() {
         } = await supabase.auth.getUser();
 
         if (!user) {
-          router.push('/auth');
+          router.push('/login');
           return;
         }
 
         setUser(user);
 
-        if (user.email && ADMIN_EMAILS.includes(user.email)) {
-          setIsAuthorized(true);
+        setIsAuthorized(true);
 
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-          if (!session?.access_token) {
-            throw new Error('Sessão administrativa não encontrada.');
-          }
-
-          const [data, totals] = await Promise.all([
-            fetchDashboardData(session.access_token),
-            fetchBetTotals(session.access_token),
-          ]);
-          setDashboardData(data);
-          setBetTotals(totals);
-          setDashboardError('');
-        } else {
-          setIsAuthorized(false);
+        if (!session?.access_token) {
+          throw new Error('Sessão administrativa não encontrada.');
         }
+
+        const [data, totals] = await Promise.all([
+          fetchDashboardData(session.access_token),
+          fetchBetTotals(session.access_token),
+        ]);
+        setDashboardData(data);
+        setBetTotals(totals);
+        setDashboardError('');
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         setDashboardError(getErrorMessage(error));
-        router.push('/auth');
+        router.push('/login');
       } finally {
         setLoading(false);
       }
@@ -171,7 +162,7 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/auth');
+    router.push('/login');
   };
 
   if (loading) {
@@ -206,7 +197,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
       {/* Header */}
       <header className="bg-blue-600 shadow-md">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+        <div className="flex w-full items-center justify-between gap-3 py-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Administracao</p>
             <h1 className="text-2xl font-bold text-white">Painel Admin - VotaDF</h1>
@@ -223,7 +214,7 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10">
+      <main className="w-full px-0 py-6 sm:py-10">
         <section className="mb-8 rounded-3xl border border-blue-100 bg-white/95 p-6 shadow-sm backdrop-blur">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <p className="text-sm font-medium text-blue-700">Gerencie votações, usuários e transações em um único lugar.</p>

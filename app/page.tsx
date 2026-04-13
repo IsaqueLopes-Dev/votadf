@@ -256,20 +256,20 @@ export default async function Home({
       <div className="pointer-events-none absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-cyan-200/25 blur-3xl" />
 
       <header className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex w-full items-center justify-between gap-3 py-3 sm:py-4">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl bg-white/20 ring-1 ring-white/30" />
             <h1 className="shrink-0 text-xl font-bold tracking-tight text-white sm:text-2xl">VotaDF</h1>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
-              href="/auth?next=%2Fusuarios%3Fdeposit%3D1"
+              href="/login?next=%2Fhome%3Fdeposit%3D1"
               className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-blue-600 shadow-[0_6px_16px_-8px_rgba(30,64,175,0.65)] transition hover:-translate-y-0.5 hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
             >
               Depositar
             </Link>
             <Link
-              href="/auth"
+              href="/login"
               className="rounded-full border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20 sm:px-4 sm:py-2 sm:text-sm"
             >
               Criar conta ou fazer login
@@ -278,7 +278,7 @@ export default async function Home({
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
+      <div className="w-full py-6 sm:py-10">
         <div className="rounded-3xl border border-blue-100 bg-white/95 p-6 shadow-[0_20px_50px_-24px_rgba(30,64,175,0.35)] backdrop-blur sm:p-10">
           <section className="mb-10 grid gap-6 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-600 to-blue-500 p-6 text-white shadow-lg sm:grid-cols-[1.2fr_0.8fr] sm:p-8">
             <div>
@@ -375,7 +375,7 @@ export default async function Home({
                                   return (
                                     <Link
                                       key={idx}
-                                      href={`/usuarios?participar=${encodeURIComponent(votacao.id)}`}
+                                      href={`/home?participar=${encodeURIComponent(votacao.id)}`}
                                       className="block rounded-2xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-blue-300 hover:bg-blue-50/30"
                                     >
                                       <div className="flex items-center justify-between">

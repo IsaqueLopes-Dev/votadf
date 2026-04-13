@@ -14,7 +14,7 @@ const getSupabaseUrl = () => process.env.SUPABASE_URL || process.env.NEXT_PUBLIC
 const getServiceRoleKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export const getAdminEmails = () => {
-  return (process.env.NEXT_PUBLIC_ADMIN_EMAILS || process.env.ADMIN_EMAILS || 'isaquelopespires@gmail.com')
+  return (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((email) => email.trim())
     .filter(Boolean);
