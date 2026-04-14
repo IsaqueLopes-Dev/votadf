@@ -201,6 +201,9 @@ export default function AdminDashboard() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100">Administracao</p>
             <h1 className="text-2xl font-bold text-white">Painel Admin - VotaDF</h1>
+            {user?.email && (
+              <p className="mt-1 text-xs text-blue-100">Admin logado: <span className="font-semibold">{user.email}</span></p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button
