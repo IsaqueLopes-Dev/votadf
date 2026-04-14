@@ -541,11 +541,7 @@ function UsuariosPageContent() {
   };
 
   const openBetModal = (votacao: VotingRecord, option: PollOption) => {
-    if (!hasRequiredBetProfile(user)) {
-      setProfileNotice('Preencha CPF e data de nascimento antes de apostar.');
-      setProfileOpen(true);
-      return;
-    }
+    // Não exige mais CPF/data de nascimento para apostar
 
     const metadata = parsePollMetadata(votacao.descricao);
     const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
