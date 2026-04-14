@@ -109,9 +109,9 @@ export default function AdminDashboard() {
 
         setUser(user);
 
-        // Validação de admin
-        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
-        if (!adminEmails.includes(user.email!)) {
+        // Validação de admin via endpoint seguro
+        const checkRes = await fetch('/api/admin/check', { credentials: 'include' });
+        if (!checkRes.ok) {
           setIsAuthorized(false);
           setLoading(false);
           return;
