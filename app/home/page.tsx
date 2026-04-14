@@ -523,10 +523,7 @@ function UsuariosPageContent() {
           resetPixState();
         }
 
-        if ((searchParams.get('completeProfile') === '1' || searchParams.get('participar')) && !hasRequiredBetProfile(user)) {
-          setProfileNotice('Preencha CPF e data de nascimento antes de participar.');
-          setProfileOpen(true);
-        }
+        // Não obriga mais preencher perfil após login
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         router.push('/login');
