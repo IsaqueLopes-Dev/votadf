@@ -18,9 +18,9 @@ export async function GET(req: NextRequest) {
     .eq('id', user.id)
     .single();
 
-  // Defina aqui o email do admin permitido
-  const ADMIN_EMAIL = 'isaquelopes@admin.com';
 
+  // Usa variável de ambiente para o email do admin
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
   if (profile?.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
   }
