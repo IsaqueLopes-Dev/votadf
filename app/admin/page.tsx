@@ -109,6 +109,13 @@ export default function AdminDashboard() {
 
         setUser(user);
 
+        // Validação de admin
+        const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+        if (!adminEmails.includes(user.email!)) {
+          setIsAuthorized(false);
+          setLoading(false);
+          return;
+        }
         setIsAuthorized(true);
 
         const {
