@@ -485,7 +485,8 @@ function UsuariosPageContent() {
     }
   };
 
-  const identityLocked = Boolean(user?.user_metadata?.cpf || user?.user_metadata?.birth_date);
+  // Só bloqueia se birth_date já estiver preenchido
+  const identityLocked = Boolean(user?.user_metadata?.birth_date);
 
   const hasRequiredBetProfile = (currentUser: any) => {
     return Boolean(currentUser?.user_metadata?.cpf && currentUser?.user_metadata?.birth_date);
@@ -1186,14 +1187,23 @@ function UsuariosPageContent() {
         return;
       }
 
-      if (identityLocked) {
-        const currentCpf = user?.user_metadata?.cpf || '';
-        const currentBirthDate = user?.user_metadata?.birth_date || '';
 
-        if (cpf !== currentCpf || birthDate !== currentBirthDate) {
-          alert('CPF e data de nascimento já foram definidos. Somente o admin pode alterar esses dados.');
-          return;
-        }
+      if (identityLocked) {
+        // Se a data de nascimento já foi preenchida, não permite alteração
+        alert('A data de nascimento já foi definida. Somente o admin pode alterar esse dado.');
+        return;
+      }
+
+      // Salva a data de nascimento via endpoint seguro
+      const res = await fetch('/api/profile/birthdate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ birth_date: birthDate }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Erro ao salvar data de nascimento.');
+        return;
       }
 
       const isAvailable = await checkUsernameAvailability(normalizedUsername);
