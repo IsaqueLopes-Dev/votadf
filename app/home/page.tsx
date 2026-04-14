@@ -1260,7 +1260,15 @@ function UsuariosPageContent() {
   });
 
   if (loading) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-100 via-blue-50 to-white animate-pulse">
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-blue-200 mb-4 animate-pulse" />
+          <div className="h-4 w-40 bg-blue-100 rounded mb-2 animate-pulse" />
+          <div className="h-4 w-24 bg-blue-100 rounded animate-pulse" />
+        </div>
+      </div>
+    );
   }
 
   return (
