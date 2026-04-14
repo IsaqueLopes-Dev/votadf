@@ -120,6 +120,7 @@ function AuthPageContent() {
   };
 
   useEffect(() => {
+    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
     const checkUser = async () => {
       try {
         const {
@@ -128,7 +129,12 @@ function AuthPageContent() {
 
         if (user && user.email) {
           setUser(user);
-          router.push(safeNextPath);
+          const isAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
+          if (isAdmin) {
+            router.push('/admin');
+          } else {
+            router.push(safeNextPath);
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar usuário:', error);
