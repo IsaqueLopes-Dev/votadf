@@ -11,13 +11,17 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
 
+  // Busca o email do usuário pelo id
   const { data: profile } = await supabase
     .from('users')
-    .select('role')
+    .select('email')
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  // Defina aqui o email do admin permitido
+  const ADMIN_EMAIL = 'isaquelopes@admin.com';
+
+  if (profile?.email !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
   }
 
