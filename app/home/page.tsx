@@ -187,6 +187,7 @@ function UsuariosPageContent() {
   };
 
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
   const [cpf, setCpf] = useState('');
@@ -257,19 +258,37 @@ function UsuariosPageContent() {
   const MAX_PIX_DEPOSIT = 200;
 
   useEffect(() => {
+    // Cleanup
     return () => {
       if (pendingAvatarPreview) {
         URL.revokeObjectURL(pendingAvatarPreview);
       }
-
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
-
       if (wheelUnlockTimeoutRef.current) {
         window.clearTimeout(wheelUnlockTimeoutRef.current);
       }
     };
   }, [pendingAvatarPreview]);
+
+  // Carrega user e role após login
+  useEffect(() => {
+    const fetchUserAndRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        setUserRole(profile?.role || null);
+      } else {
+        setUserRole(null);
+      }
+    };
+    fetchUserAndRole();
+  }, []);
 
   const lockPageScroll = () => {
     document.body.style.overflow = 'hidden';
@@ -1642,7 +1661,8 @@ function UsuariosPageContent() {
                   <div className="rounded-2xl border border-slate-200 bg-slate-100 p-2.5 sm:p-3">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Email</p>
                     <p className="text-xs font-medium text-slate-800 break-all sm:text-sm">{user?.email}</p>
-                    {user?.email === 'isaquelopespires@gmail.com' && (
+                    {/* Exibe botão admin se for admin */}
+                    {userRole === 'admin' && (
                       <button
                         type="button"
                         onClick={() => router.push('/admin')}
@@ -1650,6 +1670,11 @@ function UsuariosPageContent() {
                       >
                         Ir para o Painel Admin
                       </button>
+                    )}
+
+                    {/* Exibe o id do usuário logado para depuração */}
+                    {user?.id && (
+                      <div className="mt-2 text-xs text-gray-400">Seu ID: {user.id}</div>
                     )}
                   </div>
 
