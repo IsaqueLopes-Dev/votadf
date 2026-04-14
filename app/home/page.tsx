@@ -1642,6 +1642,15 @@ function UsuariosPageContent() {
                   <div className="rounded-2xl border border-slate-200 bg-slate-100 p-2.5 sm:p-3">
                     <p className="text-[11px] uppercase tracking-wide text-slate-500">Email</p>
                     <p className="text-xs font-medium text-slate-800 break-all sm:text-sm">{user?.email}</p>
+                    {user?.email === 'isaquelopespires@gmail.com' && (
+                      <button
+                        type="button"
+                        onClick={() => router.push('/admin')}
+                        className="mt-2 w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-2 text-xs font-bold text-white shadow transition hover:from-blue-700 hover:to-cyan-600"
+                      >
+                        Ir para o Painel Admin
+                      </button>
+                    )}
                   </div>
 
                   {pendingAvatarPreview && (
