@@ -2367,17 +2367,6 @@ function UsuariosPageContent() {
             </button>
           </div>
 
-          <div className="fixed right-0 top-1/2 z-40 hidden -translate-y-1/2 md:block">
-            <button
-              type="button"
-              onClick={() => {
-                router.push('/chat');
-              }}
-              className="rounded-l-2xl border border-r-0 border-blue-200 bg-blue-600 px-2 py-3 text-[11px] font-bold tracking-[0.12em] text-white shadow-lg transition hover:bg-blue-700 [writing-mode:vertical-rl]"
-            >
-              CHAT AO VIVO
-            </button>
-          </div>
 
           {chatPanelOpen && (
             <div
