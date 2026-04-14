@@ -13,12 +13,6 @@ const getSupabaseUrl = () => process.env.SUPABASE_URL || process.env.NEXT_PUBLIC
 
 const getServiceRoleKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-export const getAdminEmails = () => {
-  return (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((email) => email.trim())
-    .filter(Boolean);
-};
 
 export const getBearerToken = (request: Request) => {
   const auth = request.headers.get('authorization') || '';

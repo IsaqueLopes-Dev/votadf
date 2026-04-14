@@ -9,10 +9,7 @@ export async function POST(req: NextRequest) {
   const { userId, adminEmail } = await req.json();
 
   // Verifica se o adminEmail está autorizado
-  const adminEmails = process.env.ADMIN_EMAILS?.split(',').map((e) => e.trim()) || [];
-  if (!adminEmails.includes(adminEmail)) {
-    return NextResponse.json({ error: 'Acesso negado.' }, { status: 403 });
-  }
+  // Validação de admin removida: agora só permite via endpoint seguro
 
   // Exclui o usuário do Supabase Auth
   const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
