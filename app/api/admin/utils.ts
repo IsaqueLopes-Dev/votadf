@@ -83,7 +83,7 @@ export const ensureAdminRequest = async (request: Request) => {
   } = await anonSupabase
     .from('users')
     .select('role')
-    .eq('email', email)
+    .eq('id', user.id)
     .maybeSingle();
 
   console.log('EMAIL:', email);
