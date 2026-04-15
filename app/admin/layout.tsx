@@ -10,5 +10,9 @@ export default function AdminLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return children;
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--background, #e5e7eb)' }}>
+      {children}
+    </div>
+  );
 }

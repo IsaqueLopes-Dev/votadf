@@ -34,7 +34,7 @@ export default function BottomNavigation() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/8 bg-[#0f0f0f]/95 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-[1000] border-t border-blue-200 bg-[#18181b] bg-opacity-98 backdrop-blur-xl shadow-xl"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Navegação principal"
     >
