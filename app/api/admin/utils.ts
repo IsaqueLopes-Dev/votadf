@@ -65,8 +65,7 @@ if (error || !user?.email) {
 const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
-  .eq('email', user.email.toLowerCase().trim())  .single();
-
+  .eq('email', user.email.toLowerCase().trim())
 // 🔴 valida admin
 if (profile?.role !== 'admin') {
   return {
