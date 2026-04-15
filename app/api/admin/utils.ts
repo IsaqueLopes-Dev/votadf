@@ -44,7 +44,6 @@ export const ensureAdminRequest = async (request: Request) => {
 
   const anonSupabase = getAnonSupabase();
   const {
-  const {
   data: { user },
   error,
 } = await anonSupabase.auth.getUser(token);
