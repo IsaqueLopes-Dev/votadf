@@ -87,9 +87,10 @@ const fetchBetTotals = async (accessToken: string) => {
 };
 
 export default function AdminDashboard() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+const [user, setUser] = useState<User | null>(null);
+const [loading, setLoading] = useState(true);
+const [isAuthorized, setIsAuthorized] = useState(false);
+const [error, setError] = useState<string | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [betTotals, setBetTotals] = useState<BetTotalsData | null>(null);
   const [dashboardError, setDashboardError] = useState('');
