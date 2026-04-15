@@ -2,16 +2,29 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+
+  if (!authHeader?.startsWith('Bearer ')) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
-  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+  // 🔥 PASSA O TOKEN AQUI (ESSENCIAL)
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser(token);
 
+  if (error || !user) {
+    return NextResponse.json({ error: 'Sessão inválida' }, { status: 401 });
+  }
 
-  // Usa variável de ambiente para o email do admin
   const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
   const userEmail = (user.email || '').trim().toLowerCase();
 
