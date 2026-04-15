@@ -18,10 +18,12 @@ export async function GET(req: NextRequest) {
     .eq('id', user.id)
     .single();
 
-
   // Usa variável de ambiente para o email do admin
-  const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-  if (profile?.email !== ADMIN_EMAIL) {
+  const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const userEmail = (user.email || '').trim().toLowerCase();
+  const profileEmail = (profile?.email || '').trim().toLowerCase();
+
+  if (userEmail !== ADMIN_EMAIL && profileEmail !== ADMIN_EMAIL) {
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
   }
 
