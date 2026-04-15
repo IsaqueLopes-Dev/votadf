@@ -2093,7 +2093,8 @@ function UsuariosPageContent() {
               </p>
               <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Bem-vindo, {displayName}!</h2>
               <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">
-                Explore as votações ativas e clique no candidato para apostar.
+                Explore os destaques<br />
+                Entre em entretenimento, esportes, política ou futebol e participe das interações ao vivo.
               </p>
             </div>
           </section>
@@ -2101,7 +2102,7 @@ function UsuariosPageContent() {
           <section className="rounded-3xl border border-blue-100/80 bg-gradient-to-b from-white to-blue-50/40 p-5 shadow-sm sm:p-6">
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-2xl font-semibold text-slate-900">Votações Ativas</h2>
+                <h2 className="text-2xl font-semibold text-slate-900">Explore os destaques</h2>
                 <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-slate-400 sm:block">Categorias</p>
               </div>
 
