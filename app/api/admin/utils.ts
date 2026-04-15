@@ -63,7 +63,7 @@ const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
   .eq('email', email)
-  .maybesingle();
+  .maybeSingle();
 
 console.log('EMAIL:', email);
 console.log('PROFILE:', profile);
