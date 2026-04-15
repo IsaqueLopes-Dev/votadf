@@ -18,9 +18,7 @@ const getServiceRoleKey = () =>
 export const getBearerToken = (request: Request) => {
   const auth = request.headers.get('authorization') || '';
 
-  if (!auth.toLowerCase().startsWith('bearer ')) {
-    return null;
-  }
+  if (!auth.toLowerCase().startsWith('bearer ')) return null;
 
   return auth.slice(7).trim();
 };
@@ -50,23 +48,14 @@ export const ensureAdminRequest = async (request: Request) => {
     };
   }
 
-  if (!getServiceRoleKey()) {
-    return {
-      errorResponse: NextResponse.json(
-        { error: 'Servidor sem service role configurada.' },
-        { status: 500 }
-      ),
-    };
-  }
-
-  const anonSupabase = getAnonSupabase();
+  const supabase = getAnonSupabase();
 
   const {
     data: { user },
     error,
-  } = await anonSupabase.auth.getUser(token);
+  } = await supabase.auth.getUser(token);
 
-  if (error || !user?.email) {
+  if (error || !user) {
     return {
       errorResponse: NextResponse.json(
         { error: 'Usuário não autenticado.' },
@@ -75,22 +64,39 @@ export const ensureAdminRequest = async (request: Request) => {
     };
   }
 
-  const email = user.email.toLowerCase().trim();
+  console.log('AUTH USER ID:', user.id);
+  console.log('AUTH EMAIL:', user.email);
 
-  const {
-    data: profile,
-    error: profileError,
-  } = await anonSupabase
+  // 🔥 BUSCA POR ID (CORRETO E SEGURO)
+  const { data: profile, error: profileError } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
 
-  console.log('EMAIL:', email);
   console.log('PROFILE:', profile);
   console.log('PROFILE ERROR:', profileError);
 
-  if (profileError || profile?.role !== 'admin') {
+  // 🔥 CHECAGEM ROBUSTA
+  if (profileError) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: 'Erro ao validar permissões.' },
+        { status: 500 }
+      ),
+    };
+  }
+
+  if (!profile) {
+    return {
+      errorResponse: NextResponse.json(
+        { error: 'Usuário não encontrado na base de permissões.' },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (profile.role !== 'admin') {
     return {
       errorResponse: NextResponse.json(
         { error: 'Acesso negado.' },
@@ -117,16 +123,14 @@ export const listAllAuthUsers = async (
     const { data, error } =
       await supabaseAdmin.auth.admin.listUsers({ page, perPage });
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
 
     const batch = (data.users || []) as AdminApiUser[];
     users.push(...batch);
 
     if (batch.length < perPage) break;
 
-    page += 1;
+    page++;
   }
 
   return users;
