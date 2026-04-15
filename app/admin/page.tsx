@@ -110,23 +110,48 @@ const [error, setError] = useState<string | null>(null);
 
         setUser(user);
 
-        // Validação de admin via endpoint seguro
-        const checkRes = await fetch('/api/admin/check', { credentials: 'include' });
-        if (!checkRes.ok) {
-          setIsAuthorized(false);
-          setLoading(false);
-          return;
-        }
-        setIsAuthorized(true);
+       useEffect(() => {
+  const checkAuth = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+      if (!user) {
+        router.push('/login?next=/admin');
+        return;
+      }
 
-        if (!session?.access_token) {
-          throw new Error('Sessão administrativa não encontrada.');
-        }
+      setUser(user);
 
+      // 🔥 AQUI ENTRA O CHECK DE ADMIN
+      const session = await supabase.auth.getSession();
+
+      if (!session.data.session?.access_token) {
+        router.push('/login?next=/admin');
+        return;
+      }
+
+      const checkRes = await fetch('/api/admin/check', {
+        headers: {
+          Authorization: `Bearer ${session.data.session.access_token}`,
+        },
+      });
+
+      if (!checkRes.ok) {
+        setIsAuthorized(false);
+        return;
+      }
+
+      setIsAuthorized(true);
+    } catch (error) {
+      console.error('Erro auth admin:', error);
+      setIsAuthorized(false);
+    }
+  };
+
+  checkAuth();
+}, []);
         const [data, totals] = await Promise.all([
           fetchDashboardData(session.access_token),
           fetchBetTotals(session.access_token),
