@@ -44,21 +44,40 @@ export const ensureAdminRequest = async (request: Request) => {
 
   const anonSupabase = getAnonSupabase();
   const {
-    data: { user },
-    error,
-  } = await anonSupabase.auth.getUser(token);
-  
-  console.log('EMAIL LOGADO:', user?.email);
-  
+  const {
+  data: { user },
+  error,
+} = await anonSupabase.auth.getUser(token);
+
+// DEBUG (opcional)
+console.log('EMAIL LOGADO:', user?.email);
+
+// 🔴 PRIMEIRO: valida usuário
+if (error || !user?.email) {
+  return {
+    errorResponse: NextResponse.json(
+      { error: 'Usuário não autenticado.' },
+      { status: 401 }
+    ),
+  };
+}
+
+// 🟢 AGORA pode usar user.email sem erro
 const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
-  .eq('email', user?.email)
+  .eq('email', user.email.toLowerCase().trim())
   .single();
-  
-  if (error || !user?.email || profile?.role !== 'admin') {
-    return { errorResponse: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) };
-  }
+
+// 🔴 valida admin
+if (profile?.role !== 'admin') {
+  return {
+    errorResponse: NextResponse.json(
+      { error: 'Acesso negado.' },
+      { status: 403 }
+    ),
+  };
+}
 
   return {
     user,
