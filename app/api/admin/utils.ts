@@ -48,10 +48,6 @@ export const ensureAdminRequest = async (request: Request) => {
   error,
 } = await anonSupabase.auth.getUser(token);
 
-// DEBUG (opcional)
-console.log('EMAIL LOGADO:', user?.email);
-
-// 🔴 PRIMEIRO: valida usuário
 if (error || !user?.email) {
   return {
     errorResponse: NextResponse.json(
@@ -61,12 +57,17 @@ if (error || !user?.email) {
   };
 }
 
-// 🟢 AGORA pode usar user.email sem erro
+const email = user.email.toLowerCase().trim();
+
 const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
-  .eq('email', user.email.toLowerCase().trim())
-// 🔴 valida admin
+  .eq('email', email)
+  .single();
+
+console.log('EMAIL:', email);
+console.log('PROFILE:', profile);
+
 if (profile?.role !== 'admin') {
   return {
     errorResponse: NextResponse.json(
