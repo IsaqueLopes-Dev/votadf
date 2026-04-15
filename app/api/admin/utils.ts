@@ -48,7 +48,8 @@ export const ensureAdminRequest = async (request: Request) => {
     error,
   } = await anonSupabase.auth.getUser(token);
 
-  if (error || !user?.email || !getAdminEmails().includes(user.email)) {
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+  if (error || !user?.email || user.email !== ADMIN_EMAIL) {
     return { errorResponse: NextResponse.json({ error: 'Acesso negado.' }, { status: 403 }) };
   }
 
