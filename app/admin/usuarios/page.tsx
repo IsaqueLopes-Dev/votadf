@@ -1,6 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+// Função para editar senha do usuário
+function handleEditPassword(userId: string, userEmail: string) {
+  const novaSenha = prompt(`Digite a nova senha para o usuário ${userEmail}:`);
+  if (!novaSenha) return;
+  fetch(`/api/admin/users/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, novaSenha }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.success) {
+        alert('Senha alterada com sucesso!');
+      } else {
+        alert('Erro ao alterar senha: ' + (data.error || 'Erro desconhecido'));
+      }
+    })
+    .catch(() => alert('Erro ao alterar senha.'));
+}
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -70,22 +89,31 @@ export default function UsuariosPage() {
 
       <div className="overflow-auto rounded-lg border bg-white">
         <table className="w-full text-left">
-          <thead className="bg-gray-100">
+          <thead className="bg-blue-100">
             <tr>
-              <th className="p-3">ID</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Role</th>
-              <th className="p-3">Saldo</th>
+              <th className="p-3 text-blue-900">ID</th>
+              <th className="p-3 text-blue-900">Email</th>
+              <th className="p-3 text-blue-900">Role</th>
+              <th className="p-3 text-blue-900">Saldo</th>
+              <th className="p-3 text-blue-900">Ações</th>
             </tr>
           </thead>
 
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-t">
-                <td className="p-3 text-sm">{u.id}</td>
-                <td className="p-3">{u.email}</td>
-                <td className="p-3">{u.role}</td>
-                <td className="p-3">R$ {u.saldo}</td>
+              <tr key={u.id} className="border-t hover:bg-blue-50 transition">
+                <td className="p-3 text-sm text-blue-700 font-semibold">{u.id}</td>
+                <td className="p-3 text-blue-800 font-bold">{u.email}</td>
+                <td className="p-3 text-blue-600">{u.role}</td>
+                <td className="p-3 text-blue-600">R$ {u.saldo}</td>
+                <td className="p-3">
+                  <button
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold shadow"
+                    onClick={() => handleEditPassword(u.id, u.email)}
+                  >
+                    Editar Senha
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

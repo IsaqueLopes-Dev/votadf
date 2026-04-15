@@ -522,18 +522,14 @@ function UsuariosPageContent() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-
-        if (!user) {
-          router.push('/login');
-          return;
-        }
-
         setUser(user);
-        setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
-        setCpf(user.user_metadata?.cpf || '');
-        setCpfConfirmation(user.user_metadata?.cpf || '');
-        setBirthDate(user.user_metadata?.birth_date || '');
-        setAvatarUrl(user.user_metadata?.avatar_url || '');
+        if (user) {
+          setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
+          setCpf(user.user_metadata?.cpf || '');
+          setCpfConfirmation(user.user_metadata?.cpf || '');
+          setBirthDate(user.user_metadata?.birth_date || '');
+          setAvatarUrl(user.user_metadata?.avatar_url || '');
+        }
         await Promise.all([loadVotacoesAtivas(), loadBetHistory(), loadBetCounts(), loadChatMessages(true)]);
 
         if (searchParams.get('deposit') === '1') {
@@ -541,16 +537,12 @@ function UsuariosPageContent() {
           setProfileOpen(false);
           resetPixState();
         }
-
-        // Não obriga mais preencher perfil após login
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
-        router.push('/login');
       } finally {
         setLoading(false);
       }
     };
-
     checkAuth();
   }, [searchParams]);
 

@@ -68,19 +68,12 @@ export default function ChatPage() {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-
-        if (!user) {
-          router.push('/login?next=/chat');
-          return;
-        }
-
         setUser(user);
         await loadMessages();
       } finally {
         setLoading(false);
       }
     };
-
     void run();
   }, [router]);
 
@@ -239,24 +232,30 @@ export default function ChatPage() {
             value={chatInput}
             onChange={(event) => setChatInput(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
+              if (event.key === 'Enter' && !event.shiftKey && user) {
                 event.preventDefault();
                 void handleSendMessage();
               }
             }}
             maxLength={280}
-            placeholder="Digite sua mensagem"
+            placeholder={user ? 'Digite sua mensagem' : 'Faça login para conversar'}
             className="h-12 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500/50 focus:bg-white/[0.08]"
+            disabled={!user}
           />
           <button
             type="button"
-            onClick={() => void handleSendMessage()}
-            disabled={sending || !chatInput.trim()}
+            onClick={() => user && void handleSendMessage()}
+            disabled={sending || !chatInput.trim() || !user}
             className="h-12 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {sending ? '...' : 'Enviar'}
+            {user ? (sending ? '...' : 'Enviar') : 'Login'}
           </button>
         </div>
+        {!user && (
+          <div className="mx-auto max-w-4xl px-3 pt-2 text-center text-blue-300 text-xs">
+            Faça login para enviar mensagens no chat.
+          </div>
+        )}
       </div>
 
       <BottomNavigation />
