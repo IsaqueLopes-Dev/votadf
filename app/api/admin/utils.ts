@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -138,7 +137,8 @@ export const listAllAuthUsers = async (
 };
 
 export const toNumber = (value: unknown) => {
-  const amount = Number(value
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
 };
 
 export const toStringArray = (value: unknown) => {
