@@ -68,7 +68,7 @@ const { data: profile } = await anonSupabase
 console.log('EMAIL:', email);
 console.log('PROFILE:', profile);
 
-if (profileError || !profile || profile.role !== 'admin') {
+if (profileError || profile?.role !== 'admin') {
   console.log('PROFILE ERROR:', profileError);
   console.log('PROFILE DATA:', profile);
 
