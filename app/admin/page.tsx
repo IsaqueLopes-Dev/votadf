@@ -35,9 +35,6 @@ export default function AdminPage() {
         const { data } = await supabase.auth.getSession();
         const session = data.session;
 
-        console.log('SESSION:', session);
-        console.log('TOKEN:', session?.access_token);
-
         if (!session?.access_token) {
           setIsAuthorized(false);
           setLoading(false);
@@ -81,8 +78,8 @@ export default function AdminPage() {
   // 🔥 LOADING
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 flex items-center justify-center">
-        <div className="text-slate-600">Carregando...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500 flex items-center justify-center">
+        <div className="text-white/80 text-lg">Carregando...</div>
       </div>
     );
   }
@@ -90,25 +87,29 @@ export default function AdminPage() {
   // 🔥 NEGADO
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 flex flex-col items-center justify-center p-4">
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-10 max-w-md text-center">
-          <h1 className="text-2xl font-bold text-red-900 mb-4">Acesso Negado</h1>
+      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500 flex flex-col items-center justify-center p-4">
+        <div className="rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 p-10 max-w-md text-center shadow-xl">
+          <h1 className="text-2xl font-bold text-red-300 mb-4">
+            Acesso Negado
+          </h1>
 
-          <p className="text-red-700 mb-6">
+          <p className="text-white/80 mb-6">
             Você não tem permissão para acessar o painel de administrador.
             {user?.email && (
               <>
                 <br />
-                Email: {user.email}
+                <span className="text-white/60">Email: {user.email}</span>
               </>
             )}
           </p>
 
-          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+          {error && (
+            <p className="text-red-300 text-sm mb-4">{error}</p>
+          )}
 
           <button
             onClick={handleLogout}
-            className="rounded-full bg-red-600 px-6 py-2 text-white w-full"
+            className="rounded-full bg-red-500 hover:bg-red-600 transition px-6 py-2 text-white w-full"
           >
             Sair
           </button>
@@ -119,21 +120,26 @@ export default function AdminPage() {
 
   // 🔥 DASHBOARD LIBERADO
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500">
 
       {/* HEADER */}
-      <header className="bg-blue-600 shadow-md">
-        <div className="flex justify-between items-center px-6 py-4">
+      <header className="bg-blue-950/40 backdrop-blur-md border-b border-white/10 shadow-lg">
+        <div className="flex justify-between items-center px-6 py-5">
           <div>
-            <h1 className="text-2xl font-bold text-white">Painel Admin - VotaDF</h1>
+            <h1 className="text-2xl font-bold text-white">
+              Painel Admin - VotaDF
+            </h1>
+
             {user?.email && (
-              <p className="text-blue-100 text-sm">Admin: {user.email}</p>
+              <p className="text-blue-100 text-sm">
+                Admin: {user.email}
+              </p>
             )}
           </div>
 
           <button
             onClick={handleLogout}
-            className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-white"
+            className="rounded-full bg-white/10 hover:bg-white/20 transition px-5 py-2 text-white border border-white/20"
           >
             Sair
           </button>
@@ -141,35 +147,46 @@ export default function AdminPage() {
       </header>
 
       {/* MAIN */}
-      <main className="p-6">
+      <main className="p-8">
 
-        <section className="mb-8 rounded-3xl border bg-white p-6 shadow-sm">
-          <p className="text-sm text-blue-700">
+        {/* INFO */}
+        <section className="mb-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-6 shadow-lg">
+          <p className="text-white/80 text-sm">
             Gerencie votações, usuários e transações.
           </p>
         </section>
 
-        {/* CARDS (mantidos do seu projeto) */}
+        {/* CARDS */}
         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-5">
 
-          <Link href="/admin/votacoes" className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="font-bold">Votações</h2>
+          <Link href="/admin/votacoes">
+            <div className="rounded-2xl bg-white p-6 shadow-lg hover:scale-[1.03] transition">
+              <h2 className="font-bold text-blue-900">Votações</h2>
+            </div>
           </Link>
 
-          <Link href="/admin/usuarios" className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="font-bold">Usuários</h2>
+          <Link href="/admin/usuarios">
+            <div className="rounded-2xl bg-white p-6 shadow-lg hover:scale-[1.03] transition">
+              <h2 className="font-bold text-blue-900">Usuários</h2>
+            </div>
           </Link>
 
-          <Link href="/admin/transacoes" className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="font-bold">Transações</h2>
+          <Link href="/admin/transacoes">
+            <div className="rounded-2xl bg-white p-6 shadow-lg hover:scale-[1.03] transition">
+              <h2 className="font-bold text-blue-900">Transações</h2>
+            </div>
           </Link>
 
-          <Link href="/admin/apostas" className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="font-bold">Apostas</h2>
+          <Link href="/admin/apostas">
+            <div className="rounded-2xl bg-white p-6 shadow-lg hover:scale-[1.03] transition">
+              <h2 className="font-bold text-blue-900">Apostas</h2>
+            </div>
           </Link>
 
-          <Link href="/admin/saques" className="rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="font-bold">Saques</h2>
+          <Link href="/admin/saques">
+            <div className="rounded-2xl bg-white p-6 shadow-lg hover:scale-[1.03] transition">
+              <h2 className="font-bold text-blue-900">Saques</h2>
+            </div>
           </Link>
 
         </div>
