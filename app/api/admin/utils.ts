@@ -47,7 +47,9 @@ export const ensureAdminRequest = async (request: Request) => {
     data: { user },
     error,
   } = await anonSupabase.auth.getUser(token);
-
+  
+  console.log('EMAIL LOGADO:', user?.email);
+  
 const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
