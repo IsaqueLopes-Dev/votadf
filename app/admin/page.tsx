@@ -3,102 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient, type User } from '@supabase/supabase-js';
-import Link from 'next/link';
-
-type DashboardData = {
-  stats: {
-    totalVotacoes: number;
-    activeVotacoes: number;
-    totalUsuarios: number;
-    usersWithBalance: number;
-    totalTransactions: number;
-    totalBalance: number;
-  };
-  recentActivity: Array<{
-    id: string;
-    type: 'votacao' | 'deposito';
-    title: string;
-    description: string;
-    createdAt: string;
-  }>;
-};
-
-type BetTotalsData = {
-  totalWonValue: number;
-  totalLostValue: number;
-};
-
-const formatCurrency = (value: number) => {
-  return value.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  });
-};
-
-const formatDateTime = (value: string) => {
-  if (!value) return 'Sem data';
-  return new Date(value).toLocaleString('pt-BR');
-};
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const getErrorMessage = (error: unknown) => {
-  return error instanceof Error ? error.message : 'Erro inesperado.';
-};
-
-const fetchDashboardData = async (accessToken: string) => {
-  const response = await fetch('/api/admin/dashboard', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Não foi possível carregar o dashboard.');
-  }
-
-  return data as DashboardData;
-};
-
-const fetchBetTotals = async (accessToken: string) => {
-  const response = await fetch('/api/admin/bets', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: 'no-store',
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Não foi possível carregar os totais de apostas.');
-  }
-
-  const totals = (data?.totals || {}) as Record<string, unknown>;
-  return {
-    totalWonValue: Number(totals.totalWonValue || 0),
-    totalLostValue: Number(totals.totalLostValue || 0),
-  } as BetTotalsData;
-};
-
-export default function AdminDashboard() {
-const [user, setUser] = useState<User | null>(null);
-const [loading, setLoading] = useState(true);
-const [isAuthorized, setIsAuthorized] = useState(false);
-const [error, setError] = useState<string | null>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [betTotals, setBetTotals] = useState<BetTotalsData | null>(null);
-  const [dashboardError, setDashboardError] = useState('');
+export default function AdminPage() {
   const router = useRouter();
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // 🔥 1. pega usuário
         const {
           data: { user },
         } = await supabase.auth.getUser();
@@ -110,93 +32,79 @@ const [error, setError] = useState<string | null>(null);
 
         setUser(user);
 
-       useEffect(() => {
-  const checkAuth = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+        // 🔥 2. pega sessão (TOKEN)
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
 
-      if (!user) {
-        router.push('/login?next=/admin');
-        return;
-      }
+        // 🔥 DEBUG IMPORTANTE
+        console.log('SESSION:', session);
+        console.log('TOKEN:', session?.access_token);
 
-      setUser(user);
+        if (!session?.access_token) {
+          console.log('SEM TOKEN');
+          setIsAuthorized(false);
+          setLoading(false);
+          return;
+        }
 
-      // 🔥 AQUI ENTRA O CHECK DE ADMIN
-      const session = await supabase.auth.getSession();
+        // 🔥 3. chama backend admin check
+        const checkRes = await fetch('/api/admin/check', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
 
-      if (!session.data.session?.access_token) {
-        router.push('/login?next=/admin');
-        return;
-      }
+        const result = await checkRes.json();
+        console.log('ADMIN CHECK RESULT:', result);
 
-      const checkRes = await fetch('/api/admin/check', {
-        headers: {
-          Authorization: `Bearer ${session.data.session.access_token}`,
-        },
-      });
+        if (!checkRes.ok) {
+          setIsAuthorized(false);
+          setLoading(false);
+          return;
+        }
 
-      if (!checkRes.ok) {
+        setIsAuthorized(true);
+      } catch (err) {
+        console.error('Erro no admin:', err);
+        setError(err instanceof Error ? err.message : 'Erro inesperado');
         setIsAuthorized(false);
-        return;
-      }
-
-      setIsAuthorized(true);
-    } catch (error) {
-      console.error('Erro auth admin:', error);
-      setIsAuthorized(false);
-    }
-  };
-
-  checkAuth();
-}, []);
-        const [data, totals] = await Promise.all([
-          fetchDashboardData(session.access_token),
-          fetchBetTotals(session.access_token),
-        ]);
-        setDashboardData(data);
-        setBetTotals(totals);
-        setDashboardError('');
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        setDashboardError(getErrorMessage(error));
-        router.push('/login?next=/admin');
       } finally {
         setLoading(false);
       }
     };
 
-    void checkAuth();
+    checkAuth();
   }, [router]);
 
-  const loadDashboard = async () => {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  // 🔥 LOADING
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Carregando...
+      </div>
+    );
+  }
 
-      if (!session?.access_token) {
-        throw new Error('Sessão administrativa não encontrada.');
-      }
+  // 🔥 BLOQUEADO
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-600">
+        ❌ Acesso Negado<br />
+        {error && <p>{error}</p>}
+      </div>
+    );
+  }
 
-      const [data, totals] = await Promise.all([
-        fetchDashboardData(session.access_token),
-        fetchBetTotals(session.access_token),
-      ]);
-      setDashboardData(data);
-      setBetTotals(totals);
-      setDashboardError('');
-    } catch (error) {
-      setDashboardError(getErrorMessage(error));
-    }
-  };
+  // 🔥 ADMIN LIBERADO
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold">🔥 Painel Admin</h1>
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login?next=/admin');
-  };
+      <p>Bem-vindo, {user?.email}</p>
+    </div>
+  );
+}
 
   if (loading) {
     return (
