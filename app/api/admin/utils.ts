@@ -63,12 +63,15 @@ const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
   .eq('email', email)
-  .single();
+  .maybesingle();
 
 console.log('EMAIL:', email);
 console.log('PROFILE:', profile);
 
-if (profile?.role !== 'admin') {
+if (profileError || !profile || profile.role !== 'admin') {
+  console.log('PROFILE ERROR:', profileError);
+  console.log('PROFILE DATA:', profile);
+
   return {
     errorResponse: NextResponse.json(
       { error: 'Acesso negado.' },
