@@ -53,7 +53,7 @@ export const ensureAdminRequest = async (request: Request) => {
 const { data: profile } = await anonSupabase
   .from('users')
   .select('role')
-  .eq('email', user.email)
+  .eq('email', user?.email)
   .single();
   
   if (error || !user?.email || profile?.role !== 'admin') {
