@@ -105,7 +105,8 @@ export default function AdminPage() {
     </div>
   );
 }
-
+console.log("SESSION TEST:", session);
+console.log("TOKEN TEST:", session?.access_token);
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 flex items-center justify-center" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
