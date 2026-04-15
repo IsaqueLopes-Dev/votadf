@@ -34,7 +34,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#e5e7eb] [font-family:var(--font-poppins),sans-serif]">{children}</body>
+      <body className="min-h-full flex flex-col [font-family:var(--font-poppins),sans-serif]" style={{ background: '#e5e7eb' }}>{children}</body>
     </html>
   );
 }

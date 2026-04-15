@@ -105,7 +105,9 @@ export default function UsuariosPage() {
                 <td className="p-3 text-sm text-blue-700 font-semibold">{u.id}</td>
                 <td className="p-3 text-blue-800 font-bold">{u.email}</td>
                 <td className="p-3 text-blue-600">{u.role}</td>
-                <td className="p-3 text-blue-600">R$ {u.saldo}</td>
+                <td className="p-3 text-blue-600">
+                  {typeof u.saldo === 'number' && !isNaN(u.saldo) ? `R$ ${u.saldo}` : '---'}
+                </td>
                 <td className="p-3">
                   <button
                     className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-semibold shadow"

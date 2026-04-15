@@ -78,7 +78,7 @@ export default function AdminPage() {
   // 🔥 LOADING
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500 flex items-center justify-center">
+      <div className="min-h-screen bg-[#e5e7eb] flex items-center justify-center">
         <div className="text-white/80 text-lg">Carregando...</div>
       </div>
     );
@@ -87,7 +87,7 @@ export default function AdminPage() {
   // 🔥 NEGADO
   if (!isAuthorized) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#e5e7eb] flex flex-col items-center justify-center p-4">
         <div className="rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 p-10 max-w-md text-center shadow-xl">
           <h1 className="text-2xl font-bold text-red-300 mb-4">
             Acesso Negado
@@ -120,7 +120,7 @@ export default function AdminPage() {
 
   // 🔥 DASHBOARD LIBERADO
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-500">
+    <div className="min-h-screen bg-[#e5e7eb]">
 
       {/* HEADER */}
       <header className="bg-blue-950/40 backdrop-blur-md border-b border-white/10 shadow-lg">

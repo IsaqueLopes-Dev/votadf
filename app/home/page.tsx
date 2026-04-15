@@ -1275,7 +1275,7 @@ function UsuariosPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-100 via-blue-50 to-white animate-pulse">
+      <div className="min-h-screen flex items-center justify-center bg-[#e5e7eb] animate-pulse">
         <div className="flex flex-col items-center">
           <div className="w-16 h-16 rounded-full bg-blue-200 mb-4 animate-pulse" />
           <div className="h-4 w-40 bg-blue-100 rounded mb-2 animate-pulse" />
@@ -1287,7 +1287,7 @@ function UsuariosPageContent() {
 
   return (
     <div
-      className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#dbeafe_0%,_#f8fafc_42%,_#f8fafc_100%)]"
+      className="relative min-h-screen overflow-hidden bg-[#e5e7eb]"
       style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
     >
       <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-blue-300/30 blur-3xl" />
