@@ -59,7 +59,7 @@ if (error || !user?.email) {
 
 const email = user.email.toLowerCase().trim();
 
-const { data: profile } = await anonSupabase
+const { data: profile, error: profileError } = await anonSupabase
   .from('users')
   .select('role')
   .eq('email', email)
@@ -67,11 +67,9 @@ const { data: profile } = await anonSupabase
 
 console.log('EMAIL:', email);
 console.log('PROFILE:', profile);
+console.log('PROFILE ERROR:', profileError);
 
 if (profileError || profile?.role !== 'admin') {
-  console.log('PROFILE ERROR:', profileError);
-  console.log('PROFILE DATA:', profile);
-
   return {
     errorResponse: NextResponse.json(
       { error: 'Acesso negado.' },
