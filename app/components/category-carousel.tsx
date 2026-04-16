@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import CategoryCarousel from '../../components/category-carousel';
-import BottomNavigation from '../../components/bottom-navigation';
+import CategoryCarousel from '@/app/components/category-carousel';
+import BottomNavigation from '@/app/components/bottom-navigation';
 
 // --- CONFIGURAÇÕES E TIPOS ---
 const META_PREFIX = '__meta__:';
