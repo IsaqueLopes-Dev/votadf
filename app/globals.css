@@ -1,32 +1,35 @@
 @import "tailwindcss";
 
+/* Tema padrão do site (dark) */
 :root {
-  --background: #e5e7eb;
-  --foreground: #171717;
+  --background: #18181b;
+  --foreground: #ffffff;
 }
 
+/* Mantém suporte caso queira usar no futuro */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #18181b;
+    --foreground: #ffffff;
   }
 }
 
+/* Base do site */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), Arial, Helvetica, sans-serif;
 }
 
+/* Estrutura global (SEM forçar cor) */
 html,
 body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  background: #e5e7eb !important;
-  background-color: #e5e7eb !important;
 }
 
+/* Elementos ocupando largura total */
 main,
 header,
 section,
