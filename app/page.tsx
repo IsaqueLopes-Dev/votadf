@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import CandidatoLink from './components/candidato-link';
 import { createClient } from '@supabase/supabase-js';
 import CategoryCarousel from './components/category-carousel';
 import ParticiparButton from './components/participar-button';
@@ -249,11 +250,11 @@ export default async function Home({
 
   return (
     <main
-      className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,_#dbeafe_0%,_#f8fafc_42%,_#f8fafc_100%)]"
+      className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900"
       style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
     >
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-blue-300/25 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-cyan-200/25 blur-3xl" />
+      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
+      <div className="pointer-events-none absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-blue-400/20 blur-3xl" />
 
       <header className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur">
         <div className="flex w-full items-center justify-between gap-3 py-3 sm:py-4">
@@ -279,40 +280,40 @@ export default async function Home({
       </header>
 
       <div className="w-full py-6 sm:py-10">
-        <div className="rounded-3xl border border-blue-100 bg-white/95 p-6 shadow-[0_20px_50px_-24px_rgba(30,64,175,0.35)] backdrop-blur sm:p-10">
-          <section className="mb-10 grid gap-6 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-600 to-blue-500 p-6 text-white shadow-lg sm:grid-cols-[1.2fr_0.8fr] sm:p-8">
+        <div className="rounded-3xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 p-6 shadow-2xl sm:p-10">
+          <section className="mb-10 grid gap-6 rounded-3xl border border-cyan-400 bg-gradient-to-br from-blue-800 via-blue-900 to-cyan-900 p-6 text-cyan-100 shadow-lg sm:grid-cols-[1.2fr_0.8fr] sm:p-8">
             <div>
               <p className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-100">
                 Mercado de previsão
               </p>
-              <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Acompanhe as votações e aposte no candidato que você acredita.</h2>
-              <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">Odds definidas e atualizadas em tempo real.</p>
+              <h2 className="text-3xl font-bold leading-tight text-cyan-100 sm:text-4xl">Acompanhe as votações e aposte no candidato que você acredita.</h2>
+              <p className="mt-4 text-sm leading-7 text-cyan-200 sm:text-base">Odds definidas e atualizadas em tempo real.</p>
             </div>
             <div className="grid gap-3 text-sm">
-              <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3">
-                <p className="text-blue-100">Votações ativas</p>
-                <p className="mt-1 text-2xl font-bold text-white">{filteredVotacoes.length}</p>
+              <div className="rounded-2xl border border-cyan-400 bg-cyan-900/30 px-4 py-3">
+                <p className="text-cyan-200">Votações ativas</p>
+                <p className="mt-1 text-2xl font-bold text-cyan-100">{filteredVotacoes.length}</p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3">
-                <p className="text-blue-100">Categorias</p>
-                <p className="mt-1 text-2xl font-bold text-white">3</p>
+              <div className="rounded-2xl border border-cyan-400 bg-cyan-900/30 px-4 py-3">
+                <p className="text-cyan-200">Categorias</p>
+                <p className="mt-1 text-2xl font-bold text-cyan-100">3</p>
               </div>
             </div>
           </section>
 
           <div className="mb-10">
-            <h2 className="text-2xl font-bold text-slate-900 sm:text-3xl">Votações em destaque</h2>
-            <p className="mt-3 text-base leading-8 text-slate-600 sm:text-lg">
+            <h2 className="text-2xl font-bold text-cyan-100 sm:text-3xl">Votações em destaque</h2>
+            <p className="mt-3 text-base leading-8 text-cyan-200 sm:text-lg">
               Clique no candidato para entrar no fluxo de aposta.
             </p>
           </div>
 
           {/* Votações Ativas */}
-          <section className="mb-12 rounded-3xl border border-blue-100/80 bg-gradient-to-b from-white to-blue-50/40 p-5 shadow-sm sm:p-6">
+          <section className="mb-12 rounded-3xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 p-5 shadow-lg sm:p-6">
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-2xl font-semibold text-slate-900">Votações Ativas</h2>
-                <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-slate-400 sm:block">
+                <h2 className="text-2xl font-semibold text-cyan-100">Votações Ativas</h2>
+                <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-cyan-400 sm:block">
                   Categorias
                 </p>
               </div>
@@ -324,7 +325,7 @@ export default async function Home({
                 {filteredVotacoes.map((votacao: any) => (
                   <div
                     key={votacao.id}
-                    className="rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm ring-1 ring-white/60 transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                    className="rounded-3xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 p-6 shadow-lg ring-1 ring-cyan-700/40 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-xl"
                   >
                     {(() => {
                       const metadata = parsePollMetadata(votacao.descricao);
@@ -334,25 +335,25 @@ export default async function Home({
                       return (
                         <>
                           <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{votacao.titulo}</h3>
-                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                            <h3 className="text-base font-semibold text-cyan-100 sm:text-lg">{votacao.titulo}</h3>
+                            <span className="rounded-full bg-amber-700/20 px-2.5 py-1 text-[11px] font-semibold text-amber-200 border border-amber-400">
                               {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
                             </span>
-                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
                               metadata.tipo === 'enquete-candidatos'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-slate-200 text-slate-700'
+                                ? 'bg-blue-800/30 text-blue-200 border-blue-400'
+                                : 'bg-slate-800/30 text-slate-200 border-slate-500'
                             }`}>
                               {metadata.tipo === 'enquete-candidatos' ? 'Enquete por candidato' : 'Opções livres'}
                             </span>
-                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              isBetClosed ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
+                            <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold border ${
+                              isBetClosed ? 'bg-rose-900/30 text-rose-200 border-rose-400' : 'bg-emerald-900/30 text-emerald-200 border-emerald-400'
                             }`}>
                               {isBetClosed ? 'Aposta encerrada' : 'Aposta aberta'}
                             </span>
                           </div>
-                          <p className="mb-4 line-clamp-3 text-sm leading-6 text-slate-600">{metadata.descricaoLimpa}</p>
-                          <p className="mb-4 text-xs text-slate-500">
+                          <p className="mb-4 line-clamp-3 text-sm leading-6 text-cyan-200">{metadata.descricaoLimpa}</p>
+                          <p className="mb-4 text-xs text-cyan-400">
                             Encerra em:{' '}
                             {metadata.encerramentoAposta
                               ? new Date(metadata.encerramentoAposta).toLocaleString('pt-BR')
@@ -373,40 +374,40 @@ export default async function Home({
                                   const percent = totalVotes > 0 ? Math.max(1, Math.round((votes[idx] / totalVotes) * 100)) : 0;
 
                                   return (
-                                    <Link
+                                    <CandidatoLink
                                       key={idx}
-                                      href={`/home?participar=${encodeURIComponent(votacao.id)}`}
-                                      className="block rounded-2xl border border-slate-200 bg-white px-3 py-2.5 transition hover:border-blue-300 hover:bg-blue-50/30"
+                                      votacaoId={votacao.id}
+                                      className="block rounded-2xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 px-3 py-2.5 transition hover:border-cyan-300 hover:bg-cyan-900/30"
                                     >
                                       <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                                          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-cyan-400 bg-cyan-900">
                                             {parsedOption.imageUrl ? (
                                               // eslint-disable-next-line @next/next/no-img-element
                                               <img src={parsedOption.imageUrl} alt={parsedOption.label} className="h-full w-full object-cover" />
                                             ) : (
-                                              <span className="text-xs font-semibold text-slate-400">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
+                                              <span className="text-xs font-semibold text-cyan-300">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
                                             )}
                                           </div>
-                                          <span className="text-sm font-semibold text-slate-800">{parsedOption.label}</span>
+                                          <span className="text-sm font-semibold text-cyan-100">{parsedOption.label}</span>
                                         </div>
                                         <div className="flex gap-2">
-                                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                                          <span className="rounded-full bg-emerald-700/20 px-3 py-1 text-xs font-bold text-emerald-200 border border-emerald-400">
                                             {parsedOption.odds || '-'}
                                           </span>
-                                          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700 ring-1 ring-blue-200">
+                                          <span className="rounded-full bg-cyan-700/20 px-3 py-1 text-xs font-bold text-cyan-200 border border-cyan-400">
                                             {percent}%
                                           </span>
                                         </div>
                                       </div>
-                                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-cyan-900">
                                         <div
-                                          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                                          className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400"
                                           style={{ width: `${percent}%` }}
                                         />
                                       </div>
-                                      <p className="mt-1 text-[11px] font-medium text-slate-500">{votes[idx]} apostas</p>
-                                    </Link>
+                                      <p className="mt-1 text-[11px] font-medium text-cyan-300">{votes[idx]} apostas</p>
+                                    </CandidatoLink>
                                   );
                                 });
                               })()}
@@ -417,7 +418,7 @@ export default async function Home({
                                 const parsedOption = parsePollOption(opcao);
 
                                 return (
-                                  <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs text-blue-700">
+                                  <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-cyan-900/30 border border-cyan-400 px-3 py-1 text-xs text-cyan-200">
                                     {parsedOption.imageUrl && (
                                       // eslint-disable-next-line @next/next/no-img-element
                                       <img src={parsedOption.imageUrl} alt={parsedOption.label} className="h-5 w-5 rounded-full object-cover" />
@@ -428,18 +429,18 @@ export default async function Home({
                               })}
                             </div>
                           )}
-                          <p className="mb-4 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Toque em um candidato para participar</p>
+                          <p className="mb-4 text-xs font-medium uppercase tracking-[0.14em] text-cyan-400">Toque em um candidato para participar</p>
                         </>
                       );
                     })()}
                     <ParticiparButton votacaoId={votacao.id} />
-                    <p className="mt-2 text-xs text-slate-500">Login necessário para participar.</p>
+                    <p className="mt-2 text-xs text-cyan-400">Login necessário para participar.</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-8 text-center">
-                <p className="text-slate-600">
+              <div className="rounded-2xl border border-cyan-900 bg-gradient-to-br from-slate-900 to-blue-900 p-8 text-center">
+                <p className="text-cyan-200">
                   {selectedCategory === 'todos'
                     ? 'Nenhuma votação ativa no momento. Volte em breve!'
                     : `Nenhuma votação ativa na categoria ${getCategoryLabel(selectedCategory)}.`}

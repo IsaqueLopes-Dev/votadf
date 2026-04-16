@@ -1320,46 +1320,49 @@ function UsuariosPageContent() {
               </span>
             </button>
             {balanceMenuOpen && (
-              <div className="absolute right-0 top-12 z-40 w-72 rounded-2xl border border-blue-100 bg-white p-4 shadow-xl">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Saldo disponível</p>
-                <p className="mt-1 text-lg font-bold text-slate-900">{formattedUserBalance}</p>
-                <p className="mt-2 text-xs text-slate-500">Saque será pago para o CPF cadastrado: <span className="font-semibold text-slate-700">{user?.user_metadata?.cpf || 'não definido'}</span></p>
+              <div className="absolute right-0 top-12 z-40 w-72">
+                <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-950 via-blue-950 to-blue-900 p-5 shadow-2xl">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Saldo disponível</span>
+                  <span className="text-2xl font-extrabold text-cyan-100 tracking-tight drop-shadow-lg block">{formattedUserBalance}</span>
+                  <span className="inline-block rounded-full bg-cyan-900/60 px-3 py-1 text-[11px] font-bold text-cyan-200 shadow mb-1">{user?.user_metadata?.cpf || 'não definido'}</span>
+                  <span className="text-xs text-cyan-500">Saque será pago para o CPF acima</span>
+                  <div className="flex flex-col gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWithdrawOpen(true);
+                        setBalanceMenuOpen(false);
+                        setProfileOpen(false);
+                        setBetHistoryOpen(false);
+                        setDepositOpen(false);
+                        resetPixState();
+                      }}
+                      className="w-full rounded-xl bg-emerald-700 px-5 py-2 text-sm font-bold text-emerald-100 shadow-lg hover:bg-emerald-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    >
+                      Solicitar saque
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.matchMedia('(max-width: 639px)').matches) {
+                          setBalanceMenuOpen(false);
+                          router.push('/home/historico-financeiro');
+                          return;
+                        }
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWithdrawOpen(true);
-                    setBalanceMenuOpen(false);
-                    setProfileOpen(false);
-                    setBetHistoryOpen(false);
-                    setDepositOpen(false);
-                    resetPixState();
-                  }}
-                  className="mt-3 w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                >
-                  Solicitar saque
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.matchMedia('(max-width: 639px)').matches) {
-                      setBalanceMenuOpen(false);
-                      router.push('/home/historico-financeiro');
-                      return;
-                    }
-
-                    setFinancialHistoryOpen(true);
-                    setBalanceMenuOpen(false);
-                    setProfileOpen(false);
-                    setBetHistoryOpen(false);
-                    setDepositOpen(false);
-                    void loadFinancialHistory();
-                  }}
-                  className="mt-2 w-full rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
-                >
-                  Ver histórico financeiro
-                </button>
+                        setFinancialHistoryOpen(true);
+                        setBalanceMenuOpen(false);
+                        setProfileOpen(false);
+                        setBetHistoryOpen(false);
+                        setDepositOpen(false);
+                        void loadFinancialHistory();
+                      }}
+                      className="w-full rounded-xl bg-cyan-900 px-5 py-2 text-sm font-bold text-cyan-100 shadow-lg hover:bg-cyan-950 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                    >
+                      Ver histórico financeiro
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             {/* Botão Depositar */}
@@ -1422,8 +1425,8 @@ function UsuariosPageContent() {
             </button>
             {betHistoryOpen && (
               <div
-                className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh] sm:rounded-3xl"
-                style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
+                className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh] sm:rounded-3xl"
+                style={{ fontFamily: 'var(--font-poppins), sans-serif', boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.15)' }}
               >
                 <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-3 pb-3 pt-3 text-white sm:px-6 sm:pb-5 sm:pt-6">
                   <div>
@@ -1452,49 +1455,55 @@ function UsuariosPageContent() {
                   {betHistory.length > 0 ? (
                     <div className="space-y-2 sm:space-y-3">
                       {betHistory.map((bet) => (
-                        <div key={bet.id} className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-4">
+                        <div key={bet.id} className="rounded-2xl bg-gradient-to-br from-slate-950 via-blue-950 to-blue-900 p-5 shadow-2xl sm:p-7 flex flex-col gap-4">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                              <p className="text-xs font-semibold text-slate-900 sm:text-sm">{bet.votacaoTitulo}</p>
-                              <p className="mt-1 text-xs text-slate-600 sm:text-sm">Candidato: <span className="font-medium">{bet.candidato}</span></p>
-                              <p className="mt-1 text-xs text-slate-500">{new Date(bet.createdAt).toLocaleString('pt-BR')}</p>
+                              <p className="text-base font-bold text-cyan-100 sm:text-lg mb-1">{bet.votacaoTitulo}</p>
+                              <p className="text-sm text-cyan-300">Candidato: <span className="font-semibold text-white">{bet.candidato}</span></p>
+                              <p className="mt-1 text-xs text-cyan-500">{new Date(bet.createdAt).toLocaleString('pt-BR')}</p>
                             </div>
 
                             <div className="grid gap-1 text-right">
-                              <p className="text-xs text-slate-500">Aposta</p>
-                              <p className="text-xs font-semibold text-slate-800 sm:text-sm">
+                              <span className="text-xs text-cyan-400">Aposta</span>
+                              <span className="text-lg font-extrabold text-cyan-100">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bet.amount)}
-                              </p>
-                              <p className="text-xs text-slate-500">Retorno potencial</p>
-                              <p className="text-xs font-bold text-cyan-700 sm:text-sm">
+                              </span>
+                              <span className="text-xs text-cyan-400">Retorno potencial</span>
+                              <span className="text-lg font-extrabold text-cyan-200">
                                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(bet.potentialReturn)}
-                              </p>
+                              </span>
                             </div>
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                            <span className="text-xs text-slate-500">Cotação {bet.odd.toFixed(2)}</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-cyan-900 pt-4 mt-2">
+                            <span className="text-xs text-cyan-400">Cotação <span className="font-bold text-cyan-200">{bet.odd.toFixed(2)}</span></span>
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold shadow-lg tracking-tight ${
                                 bet.status === 'ganhou'
-                                  ? 'bg-emerald-100 text-emerald-700'
+                                  ? 'bg-emerald-700/40 text-emerald-200 animate-pulse'
                                   : bet.status === 'perdeu'
-                                    ? 'bg-rose-100 text-rose-700'
-                                    : 'bg-amber-100 text-amber-700'
+                                    ? 'bg-rose-900/50 text-rose-200'
+                                    : 'bg-amber-900/50 text-amber-200'
                               }`}
                             >
+                              {bet.status === 'ganhou' && (
+                                <svg className="h-5 w-5 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              )}
+                              {bet.status === 'perdeu' && (
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                              )}
                               {bet.status === 'ganhou'
                                 ? 'Você ganhou'
                                 : bet.status === 'perdeu'
                                   ? 'Você perdeu'
-                                  : 'Aguardando resultado'}
+                                  : (<><span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-200" />Aguardando resultado</>)}
                             </span>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-600 sm:p-6 sm:text-sm">
+                    <div className="rounded-2xl border border-cyan-900 bg-gradient-to-br from-slate-900 to-blue-900 p-4 text-center text-xs text-cyan-200 sm:p-6 sm:text-sm">
                       Você ainda não fez apostas.
                     </div>
                   )}
@@ -1503,8 +1512,8 @@ function UsuariosPageContent() {
             )}
             {financialHistoryOpen && (
               <div
-                className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-blue-100 bg-white shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh]"
-                style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
+                className="fixed left-1/2 top-1/2 z-50 flex max-h-[90vh] w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh]"
+                style={{ fontFamily: 'var(--font-poppins), sans-serif', boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.15)' }}
               >
                 <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-6 pb-5 pt-6 text-white">
                   <div>
@@ -1533,43 +1542,49 @@ function UsuariosPageContent() {
                   {financialHistory.length > 0 ? (
                     <div className="space-y-3">
                       {financialHistory.map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div key={item.id} className="rounded-2xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 p-4 shadow-lg">
                           <div className="flex items-center justify-between gap-2">
                             <div>
-                              <p className="text-sm font-semibold text-slate-900">
+                              <p className="text-sm font-semibold text-cyan-200">
                                 {item.tipo === 'deposito' ? 'Depósito PIX' : 'Solicitação de saque'}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">{new Date(item.createdAt).toLocaleString('pt-BR')}</p>
+                              <p className="mt-1 text-xs text-blue-200">{new Date(item.createdAt).toLocaleString('pt-BR')}</p>
                             </div>
-                            <p className={`text-base font-bold ${item.tipo === 'deposito' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            <p className={`text-base font-bold ${item.tipo === 'deposito' ? 'text-emerald-300' : 'text-rose-300'}`}>
                               {item.tipo === 'deposito' ? '+' : '-'}
                               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.amount)}
                             </p>
                           </div>
 
-                          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-cyan-800 pt-3">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold shadow-md ${
                               item.status === 'aprovado'
-                                ? 'bg-emerald-100 text-emerald-700'
+                                ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-400'
                                 : item.status === 'recusado'
-                                  ? 'bg-rose-100 text-rose-700'
-                                  : 'bg-amber-100 text-amber-700'
+                                  ? 'bg-rose-700/20 text-rose-300 border border-rose-400'
+                                  : 'bg-amber-600/20 text-amber-200 border border-amber-400'
                             }`}>
+                              {item.status === 'aprovado' && (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              )}
+                              {item.status === 'recusado' && (
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                              )}
                               {item.status === 'aprovado'
                                 ? 'Aprovado'
                                 : item.status === 'recusado'
                                   ? 'Recusado'
-                                  : 'Pendente'}
+                                  : (<><span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-300" />Pendente</>)}
                             </span>
                             {item.tipo === 'saque' && item.cpf && (
-                              <span className="text-xs text-slate-500">CPF: {item.cpf}</span>
+                              <span className="text-xs text-cyan-200">CPF: {item.cpf}</span>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-600">
+                    <div className="rounded-2xl border border-cyan-900 bg-gradient-to-br from-slate-900 to-blue-900 p-6 text-center text-sm text-cyan-200">
                       Você ainda não possui histórico de depósitos ou saques.
                     </div>
                   )}
@@ -1578,14 +1593,14 @@ function UsuariosPageContent() {
             )}
             {profileOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] flex-col overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
-                style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
+                style={{ fontFamily: 'var(--font-poppins), sans-serif', boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.15)' }}
               >
-                <div className="bg-blue-600 px-3 py-3 sm:px-5 sm:py-4">
+                <div className="bg-gradient-to-r from-blue-700 via-cyan-700 to-blue-900 px-3 py-3 sm:px-5 sm:py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-white sm:text-base">Perfil da conta</h3>
-                      <p className="mt-0.5 text-[11px] text-blue-100 sm:mt-1 sm:text-xs">Atualize seus dados de exibicao.</p>
+                      <h3 className="text-sm font-semibold text-cyan-100 sm:text-base">Perfil da conta</h3>
+                      <p className="mt-0.5 text-[11px] text-cyan-200 sm:mt-1 sm:text-xs">Atualize seus dados de exibição.</p>
                     </div>
                     <button
                       type="button"
@@ -1609,13 +1624,13 @@ function UsuariosPageContent() {
                 )}
 
                 <form onSubmit={handleSaveProfile} className="space-y-2.5 sm:space-y-4">
-                  <div className="flex items-center gap-2.5 rounded-2xl border border-blue-100 bg-blue-50 p-2.5 sm:gap-3 sm:p-3">
-                    <div className="relative h-12 w-12 overflow-hidden rounded-full border border-blue-100 bg-blue-100 sm:h-16 sm:w-16">
+                  <div className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-blue-900 via-slate-900 to-blue-950 p-2.5 sm:gap-3 sm:p-3">
+                    <div className="relative h-12 w-12 overflow-hidden rounded-full bg-blue-950 shadow-lg sm:h-16 sm:w-16 group">
                       {avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={avatarUrl} alt="Foto de perfil" className="h-full w-full object-cover" />
+                        <img src={avatarUrl} alt="Foto de perfil" className="h-full w-full object-cover group-hover:ring-4 group-hover:ring-cyan-400/60 transition" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-slate-500">
+                        <div className="flex h-full w-full items-center justify-center text-cyan-300">
                           <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                             <circle cx="12" cy="8" r="4" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" />
@@ -1625,7 +1640,7 @@ function UsuariosPageContent() {
 
 
                       <label
-                        className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-white bg-blue-600 text-white shadow transition hover:bg-blue-700 sm:h-7 sm:w-7"
+                        className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-cyan-700 to-blue-700 text-white shadow-lg transition hover:bg-cyan-600 sm:h-7 sm:w-7"
                         title="Alterar foto"
                       >
                         {uploadingAvatar ? (
@@ -1647,12 +1662,12 @@ function UsuariosPageContent() {
                         />
                       </label>
                     </div>
-                    <p className="text-xs text-slate-600 sm:text-sm">Atualize sua foto de perfil.</p>
+                    <p className="text-xs text-cyan-200 sm:text-sm">Atualize sua foto de perfil.</p>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-100 p-2.5 sm:p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Email</p>
-                    <p className="text-xs font-medium text-slate-800 break-all sm:text-sm">{user?.email}</p>
+                  <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 p-2.5 sm:p-3">
+                    <p className="text-[11px] uppercase tracking-wide text-cyan-400">Email</p>
+                    <p className="text-xs font-medium text-cyan-100 break-all sm:text-sm">{user?.email}</p>
                     {/* Botão admin removido */}
 
                     {/* Exibição do id removida */}
@@ -1718,8 +1733,8 @@ function UsuariosPageContent() {
                   )}
 
                   <div>
-                    <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
-                      Nome de usuario
+                    <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
+                      Nome de usuário
                     </label>
                     <input
                       id="profile-username"
@@ -1728,13 +1743,13 @@ function UsuariosPageContent() {
                       onChange={(e) => setUsername(normalizeUsername(e.target.value))}
                       minLength={3}
                       required
-                      placeholder="Nome de usuario (@seunome)"
-                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 sm:py-2"
+                      placeholder="Nome de usuário (@seunome)"
+                      className="w-full rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-cyan-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-cyan-400 sm:py-2"
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="profile-cpf" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
+                    <label htmlFor="profile-cpf" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
                       CPF
                     </label>
                     <input
@@ -1746,13 +1761,13 @@ function UsuariosPageContent() {
                       placeholder="CPF (000.000.000-00)"
                       required
                       disabled={identityLocked}
-                      className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-500 sm:py-2"
+                      className="w-full rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-cyan-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-cyan-400 sm:py-2"
                     />
                   </div>
 
                   {!identityLocked && (
                     <div>
-                      <label htmlFor="profile-cpf-confirm" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
+                      <label htmlFor="profile-cpf-confirm" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
                         Confirme seu CPF
                       </label>
                       <input
@@ -1763,13 +1778,13 @@ function UsuariosPageContent() {
                         onChange={(e) => setCpfConfirmation(formatCpf(e.target.value))}
                         placeholder="Confirme seu CPF"
                         required
-                        className="w-full rounded-xl border border-blue-200 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 sm:py-2"
+                        className="w-full rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-cyan-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 sm:py-2"
                       />
                     </div>
                   )}
 
                   <div>
-                    <label htmlFor="profile-birthDate" className="mb-1 block text-xs font-medium text-slate-800 sm:text-sm">
+                    <label htmlFor="profile-birthDate" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
                       Data de nascimento
                     </label>
                     <input
@@ -1779,22 +1794,22 @@ function UsuariosPageContent() {
                       onChange={(e) => setBirthDate(e.target.value)}
                       required
                       disabled
-                      className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-500 shadow-sm cursor-not-allowed sm:py-2"
+                      className="w-full rounded-xl bg-slate-800 px-3 py-1.5 text-sm text-cyan-400 shadow-sm cursor-not-allowed sm:py-2"
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 border-t border-blue-100 pt-1.5 sm:pt-2">
+                  <div className="flex items-center gap-2 pt-1.5 sm:pt-2">
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex-1 rounded-xl border border-red-300 px-2.5 py-1.5 text-xs text-red-700 transition hover:bg-red-50 sm:px-3 sm:py-2 sm:text-sm"
+                      className="flex-1 rounded-xl border border-red-400 bg-gradient-to-r from-red-900 to-red-700 px-2.5 py-1.5 text-xs text-red-200 transition hover:bg-red-800 hover:text-white sm:px-3 sm:py-2 sm:text-sm shadow"
                     >
                       Sair
                     </button>
                     <button
                       type="submit"
                       disabled={savingProfile}
-                      className="flex-1 rounded-xl bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50 sm:px-3 sm:py-2 sm:text-sm"
+                      className="flex-1 rounded-xl bg-gradient-to-r from-cyan-700 to-blue-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg transition hover:from-cyan-600 hover:to-blue-800 disabled:opacity-50 sm:px-3 sm:py-2 sm:text-sm"
                     >
                       {savingProfile ? 'Salvando...' : 'Salvar'}
                     </button>
@@ -1812,16 +1827,16 @@ function UsuariosPageContent() {
         {depositOpen ? (
           <>
           <div
-            className="mx-auto max-w-md overflow-hidden rounded-3xl bg-white shadow-xl"
+            className="mx-auto max-w-md overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 shadow-2xl"
             style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
           >
-            {/* Cabeçalho azul */}
-            <div className="bg-blue-600 px-6 pt-6 pb-10 text-center">
+            {/* Cabeçalho escuro */}
+            <div className="bg-gradient-to-r from-blue-800 via-cyan-800 to-blue-900 px-6 pt-6 pb-10 text-center">
               <div className="mb-1 flex items-center justify-start">
                 <button
                   type="button"
                   onClick={() => setDepositOpen(false)}
-                  className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-blue-100 transition hover:bg-blue-500 hover:text-white"
+                  className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-700 hover:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -1829,44 +1844,44 @@ function UsuariosPageContent() {
                   Voltar
                 </button>
               </div>
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10">
+                <svg className="h-8 w-8 text-cyan-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-white">Depositar</h2>
-              <p className="mt-1 text-sm text-blue-100">Adicione saldo via PIX de forma instantânea</p>
+              <h2 className="text-2xl font-bold text-cyan-100">Depositar</h2>
+              <p className="mt-1 text-sm text-cyan-200">Adicione saldo via PIX de forma instantânea</p>
             </div>
 
             {/* Conteúdo */}
-            <div className="-mt-6 rounded-t-3xl bg-blue-50 px-5 pt-6 pb-6 sm:px-7 sm:pb-8">
+            <div className="-mt-6 rounded-t-3xl bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 px-5 pt-6 pb-6 sm:px-7 sm:pb-8">
 
               {/* Card valor */}
-              <div className="mb-5 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-                <div className="border-b border-blue-100 px-4 py-3 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Valor do depósito</p>
+              <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 shadow-lg">
+                <div className="px-4 py-3 flex items-center justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">Valor do depósito</p>
                   <button
                     type="button"
                     onClick={() => setDepositAmount(MAX_PIX_DEPOSIT)}
-                    className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold text-blue-600 transition hover:bg-blue-100"
+                    className="rounded-full bg-cyan-900 px-3 py-1 text-[11px] font-bold text-cyan-200 transition hover:bg-cyan-800"
                   >
                     USAR MÁXIMO
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2 px-4 py-4">
-                  <span className="text-xl font-semibold text-slate-400">R$</span>
+                  <span className="text-xl font-semibold text-cyan-400">R$</span>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={formattedDepositAmount}
                     onChange={(e) => setDepositAmount(parseCurrencyToNumber(e.target.value))}
-                    className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-slate-900 outline-none"
+                    className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-cyan-100 outline-none"
                     aria-label="Valor do deposito"
                   />
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 border-t border-slate-100 px-4 py-3">
+                <div className="grid grid-cols-4 gap-2 px-4 py-3">
                   {[10, 50, 100, 200].map((amount) => (
                     <button
                       key={amount}
@@ -1874,8 +1889,8 @@ function UsuariosPageContent() {
                       onClick={() => setDepositAmount(amount)}
                       className={`rounded-xl py-2 text-sm font-semibold transition active:scale-95 ${
                         depositAmount === amount
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600'
+                          ? 'bg-cyan-700 text-white shadow-sm'
+                          : 'border border-cyan-900 bg-slate-900 text-cyan-200 hover:border-cyan-700 hover:text-cyan-100'
                       }`}
                     >
                       {`R$\u00a0${amount}`}
@@ -1886,19 +1901,19 @@ function UsuariosPageContent() {
 
               {/* Avisos */}
               {depositAmount < MIN_PIX_DEPOSIT && (
-                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                  <svg className="h-4 w-4 shrink-0 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                <div className="mb-4 flex items-center gap-2 rounded-2xl bg-amber-900/30 px-4 py-3">
+                  <svg className="h-4 w-4 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                   </svg>
-                  <p className="text-sm text-amber-700">Valor mínimo para depósito: <strong>R$ 10</strong></p>
+                  <p className="text-sm text-amber-200">Valor mínimo para depósito: <strong>R$ 10</strong></p>
                 </div>
               )}
               {depositAmount > MAX_PIX_DEPOSIT && (
-                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                  <svg className="h-4 w-4 shrink-0 text-amber-500" viewBox="0 0 20 20" fill="currentColor">
+                <div className="mb-4 flex items-center gap-2 rounded-2xl bg-amber-900/30 px-4 py-3">
+                  <svg className="h-4 w-4 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                   </svg>
-                  <p className="text-sm text-amber-700">Valor máximo por depósito: <strong>R$ 200</strong></p>
+                  <p className="text-sm text-amber-200">Valor máximo por depósito: <strong>R$ 200</strong></p>
                 </div>
               )}
 
@@ -1907,7 +1922,7 @@ function UsuariosPageContent() {
                 type="button"
                 onClick={handleCreatePixDeposit}
                 disabled={depositAmount < MIN_PIX_DEPOSIT || depositAmount > MAX_PIX_DEPOSIT || creatingPix}
-                className="w-full rounded-2xl bg-blue-600 py-4 text-base font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                className="w-full rounded-2xl bg-gradient-to-r from-cyan-700 to-blue-700 py-4 text-base font-bold text-white shadow-lg transition hover:from-cyan-600 hover:to-blue-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
               >
                 {creatingPix ? (
                   <span className="flex items-center justify-center gap-2">
@@ -1921,10 +1936,10 @@ function UsuariosPageContent() {
               </button>
 
               {pixStatusMessage && !(pixQrBase64 || pixQrCode) && (
-                <p className="mt-3 text-center text-sm text-slate-500">{pixStatusMessage}</p>
+                <p className="mt-3 text-center text-sm text-cyan-300">{pixStatusMessage}</p>
               )}
 
-              <p className="mt-5 text-center text-xs text-slate-400">
+              <p className="mt-5 text-center text-xs text-cyan-400">
                 O depósito é instantâneo e estará disponível assim que confirmado pelo banco.
               </p>
             </div>
