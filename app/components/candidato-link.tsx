@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { createClient } from "@/app/lib/supabase"; // Adjust path as needed
+import { createClient } from "@/lib/supabase"; // ✅ corrigido aqui
 
 export default function CandidatoLink({ 
   votacaoId, 
@@ -18,9 +18,9 @@ export default function CandidatoLink({
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    
-    if (loading) return; // Prevent double clicks
-    
+
+    if (loading) return;
+
     setLoading(true);
 
     try {
