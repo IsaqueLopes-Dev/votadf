@@ -3,7 +3,7 @@ import CandidatoLink from '@/app/components/candidato-link';
 import { createClient } from '@supabase/supabase-js';
 import CandidatoLink from './components/candidato-link';
 import CategoryCarousel from './components/category-carousel';
-import ParticiparButton from './components/participar-button';
+import ParticiparButton from './components/participar-button'
 
 const META_PREFIX = '__meta__:';
 const CATEGORY_OPTIONS = [
