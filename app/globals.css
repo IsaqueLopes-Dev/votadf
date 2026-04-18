@@ -29,6 +29,9 @@
 :root {
   --background: #18181b;
   --foreground: #ffffff;
+  --font-geist-sans: "Segoe UI", Arial, sans-serif;
+  --font-geist-mono: "Consolas", "Courier New", monospace;
+  --font-poppins: "Segoe UI", Arial, sans-serif;
 }
 
 /* Mantém suporte caso queira usar no futuro */

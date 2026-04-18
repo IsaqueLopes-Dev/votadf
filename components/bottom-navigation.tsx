@@ -7,7 +7,7 @@ const navItems = [
   {
     href: '/mercados',
     label: 'Mercados',
-    matches: (pathname: string) => pathname === '/mercados' || pathname.startsWith('/home'),
+    matches: (pathname: string) => pathname === '/' || pathname === '/mercados' || pathname.startsWith('/home'),
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 19h18" />

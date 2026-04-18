@@ -13,6 +13,7 @@ type CategoryCarouselProps = {
   selectedCategory: string;
   onCategoryChange?: (value: string) => void;
   basePath?: string;
+  variant?: 'light' | 'dark';
 };
 
 export default function CategoryCarousel({
@@ -20,6 +21,7 @@ export default function CategoryCarousel({
   selectedCategory,
   onCategoryChange,
   basePath = '/',
+  variant = 'light',
 }: CategoryCarouselProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -50,17 +52,33 @@ export default function CategoryCarousel({
               onCategoryChange(category.value);
             }}
             className={`group min-w-[148px] shrink-0 rounded-2xl border px-4 py-4 text-left transition sm:min-w-[170px] ${
-              selectedCategory === category.value
-                ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
+              variant === 'dark'
+                ? selectedCategory === category.value
+                  ? 'border-cyan-400 bg-blue-600 text-white shadow-lg shadow-blue-950/40'
+                  : 'border-cyan-900/80 bg-slate-950/75 text-cyan-100 hover:border-cyan-500 hover:bg-slate-900/90'
+                : selectedCategory === category.value
+                  ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
             }`}
           >
-            <p className={`text-sm font-semibold ${selectedCategory === category.value ? 'text-white' : 'text-slate-900'}`}>
+            <p
+              className={`text-sm font-semibold ${
+                selectedCategory === category.value
+                  ? 'text-white'
+                  : variant === 'dark'
+                    ? 'text-cyan-100'
+                    : 'text-slate-900'
+              }`}
+            >
               {category.label}
             </p>
             <p
               className={`mt-1 text-xs leading-5 ${
-                selectedCategory === category.value ? 'text-blue-100' : 'text-slate-500'
+                selectedCategory === category.value
+                  ? 'text-blue-100'
+                  : variant === 'dark'
+                    ? 'text-cyan-300/80'
+                    : 'text-slate-500'
               }`}
             >
               {category.value === 'todos'

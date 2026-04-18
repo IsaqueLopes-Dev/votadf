@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import BottomNavigation from '@/app/components/bottom-navigation';
-import CategoryCarousel from '@/app/components/category-carousel';
+import BottomNavigation from '../../../components/bottom-navigation';
+import CategoryCarousel from '../../components/category-carousel';
 // --- CONFIGURAÇÕES E TIPOS ---
 const META_PREFIX = '__meta__:';
 
@@ -65,7 +65,6 @@ function UsuariosPageContent() {
   const [betFeedback, setBetFeedback] = useState<string | null>(null);
 
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [username, setUsername] = useState('');
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -79,7 +78,6 @@ function UsuariosPageContent() {
 
       if (user?.user_metadata) {
         setAvatarUrl(user.user_metadata.avatar_url);
-        setUsername(user.user_metadata.username);
       }
 
       const resp = await fetch('/api/votacoes/public');
@@ -125,7 +123,7 @@ function UsuariosPageContent() {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 overflow-hidden">
             {avatarUrl ? (
-              <img src={avatarUrl} className="w-full h-full object-cover" />
+              <img src={avatarUrl} alt="Avatar do usuário" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center font-bold text-slate-400">
                 {displayName?.charAt(0).toUpperCase()}
@@ -151,8 +149,9 @@ function UsuariosPageContent() {
         {/* CATEGORIAS */}
         <CategoryCarousel
           categories={CATEGORY_OPTIONS}
-          selected={selectedCategory}
-          onSelect={(val: any) => setSelectedCategory(val)}
+          selectedCategory={selectedCategory}
+          onCategoryChange={(val: any) => setSelectedCategory(val)}
+          basePath="/admin/votacoes"
         />
 
         {/* VOTAÇÕES */}
@@ -186,6 +185,7 @@ function UsuariosPageContent() {
                   {meta.banner && (
                     <img
                       src={meta.banner}
+                      alt=""
                       className="w-full h-40 object-cover rounded-xl mb-3"
                     />
                   )}
@@ -222,6 +222,7 @@ function UsuariosPageContent() {
                             {option.imageUrl && (
                               <img
                                 src={option.imageUrl}
+                                alt=""
                                 className="w-6 h-6 rounded-full object-cover"
                               />
                             )}
@@ -241,11 +242,7 @@ function UsuariosPageContent() {
         </section>
       </main>
 
-      <BottomNavigation
-        onChatOpen={() => {}}
-        onHistoryOpen={() => {}}
-        onProfileOpen={() => {}}
-      />
+      <BottomNavigation />
 
       {/* MODAL */}
       {betModal && (

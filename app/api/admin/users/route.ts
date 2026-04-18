@@ -16,6 +16,19 @@ export async function GET(request: Request) {
 
   try {
     const users = await listAllAuthUsers(supabaseAdmin);
+    const userIds = users.map((user) => user.id);
+    const { data: roles, error: rolesError } = userIds.length
+      ? await supabaseAdmin.from('users').select('id, role').in('id', userIds)
+      : { data: [], error: null };
+
+    if (rolesError) {
+      throw new Error(rolesError.message);
+    }
+
+    const roleByUserId = new Map(
+      (roles || []).map((row) => [String(row.id), String(row.role || 'user')])
+    );
+
     const mappedUsers = users
       .map((user) => {
         const metadata = (user.user_metadata || {}) as Record<string, unknown>;
@@ -25,6 +38,7 @@ export async function GET(request: Request) {
           email: user.email || '',
           displayName: getUserDisplayName(metadata, user.email),
           username: String(metadata.username || ''),
+          role: roleByUserId.get(user.id) || 'user',
           cpf: String(metadata.cpf || ''),
           birthDate: String(metadata.birth_date || ''),
           avatarUrl: String(metadata.avatar_url || ''),

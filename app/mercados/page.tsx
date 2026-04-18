@@ -1,3 +1,3 @@
-import HomePage from '../home/page';
+import PublicMarketsPage from '../components/public-markets-page';
 
-export default HomePage;
+export default PublicMarketsPage;
