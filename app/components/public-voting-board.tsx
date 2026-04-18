@@ -203,16 +203,27 @@ export default function PublicVotingBoard({
     const loadUser = async () => {
       try {
         const {
-          data: { user: currentUser },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        setUser(currentUser);
+        setUser(session?.user ?? null);
       } finally {
         setLoadingUser(false);
       }
     };
 
     void loadUser();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoadingUser(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [supabase]);
 
   useEffect(() => {
@@ -263,6 +274,24 @@ export default function PublicVotingBoard({
     return currentQuery ? `${pathname}?${currentQuery}` : pathname;
   };
 
+  const requireAuthenticatedSession = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token || !session.user) {
+      setUser(null);
+      router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
+      return null;
+    }
+
+    if (!user || user.id !== session.user.id) {
+      setUser(session.user);
+    }
+
+    return session;
+  };
+
   const loadComments = async (votacaoId: string) => {
     setLoadingCommentsByVotingId((current) => ({ ...current, [votacaoId]: true }));
 
@@ -308,10 +337,8 @@ export default function PublicVotingBoard({
   const submitComment = async (votacaoId: string) => {
     const message = String(commentDraftByVotingId[votacaoId] || '').trim();
 
-    if (!user) {
-      router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
-      return;
-    }
+    const session = await requireAuthenticatedSession();
+    if (!session) return;
 
     if (!message) {
       setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Digite um comentário.' }));
@@ -319,10 +346,6 @@ export default function PublicVotingBoard({
     }
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
       if (!session?.access_token) {
         setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Sessão inválida. Faça login novamente.' }));
         return;
@@ -366,10 +389,9 @@ export default function PublicVotingBoard({
   };
 
   const openBetModal = (votacao: VotingRecord, option: PollOption) => {
-    if (!user) {
-      router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
-      return;
-    }
+    void (async () => {
+      const session = await requireAuthenticatedSession();
+      if (!session) return;
 
     const metadata = parsePollMetadata(votacao.descricao);
     const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
@@ -385,6 +407,7 @@ export default function PublicVotingBoard({
       return;
     }
 
+    setUser(session.user);
     setBetModal({
       votacaoId: votacao.id,
       votacaoTitulo: votacao.titulo,
@@ -394,6 +417,7 @@ export default function PublicVotingBoard({
     });
     setBetAmount('');
     setBetFeedback(null);
+    })();
   };
 
   const handlePlaceBet = async () => {
@@ -677,8 +701,14 @@ export default function PublicVotingBoard({
                           </span>
                           <button
                             type="button"
-                            onClick={() => void submitComment(votacao.id)}
-                            disabled={!user}
+                            onClick={() => {
+                              if (user) {
+                                void submitComment(votacao.id);
+                                return;
+                              }
+
+                              router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
+                            }}
                             className="rounded-full bg-green-500 px-3 py-1.5 text-xs font-semibold text-[#0f1115] transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {user ? 'Comentar' : 'Entrar'}

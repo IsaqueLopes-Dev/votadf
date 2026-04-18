@@ -3,8 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import PublicVotingBoard from './public-voting-board';
 import BottomNavigation from '../../components/bottom-navigation';
 
-const META_PREFIX = '__meta__:';
-
 const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
   { value: 'politica', label: 'Politica' },
@@ -29,44 +27,6 @@ type Votacao = {
 type SearchParams = Promise<{
   category?: string | string[] | undefined;
 }>;
-
-function parsePollMetadata(descricao: string | null | undefined) {
-  const rawDescription = descricao || '';
-
-  if (rawDescription.startsWith(META_PREFIX)) {
-    const lineBreakIndex = rawDescription.indexOf('\n');
-    const metaLine = lineBreakIndex === -1 ? rawDescription : rawDescription.slice(0, lineBreakIndex);
-    const cleanDescription = lineBreakIndex === -1 ? '' : rawDescription.slice(lineBreakIndex + 1);
-
-    try {
-      const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as {
-        categoria?: string;
-      };
-
-      const categoria =
-        parsed.categoria === 'futebol'
-          ? 'esportes'
-          : CATEGORY_OPTIONS.some((option) => option.value === parsed.categoria)
-            ? (parsed.categoria as CategoryValue)
-            : 'todos';
-
-      return {
-        categoria,
-        descricaoLimpa: cleanDescription || rawDescription,
-      };
-    } catch {
-      return {
-        categoria: 'todos' as CategoryValue,
-        descricaoLimpa: cleanDescription || rawDescription,
-      };
-    }
-  }
-
-  return {
-    categoria: 'todos' as CategoryValue,
-    descricaoLimpa: rawDescription,
-  };
-}
 
 async function getVotacoesAtivas() {
   try {
@@ -108,11 +68,6 @@ export default async function PublicMarketsPage({
   const selectedCategory = CATEGORY_OPTIONS.some((option) => option.value === normalizedCategoryParam)
     ? (normalizedCategoryParam as CategoryValue)
     : 'todos';
-
-  const filteredVotacoes = votacoes.filter((votacao) => {
-    if (selectedCategory === 'todos') return true;
-    return parsePollMetadata(votacao.descricao).categoria === selectedCategory;
-  });
 
   return (
     <div
@@ -175,7 +130,7 @@ export default async function PublicMarketsPage({
           <PublicVotingBoard
             categories={[...CATEGORY_OPTIONS]}
             initialSelectedCategory={selectedCategory}
-            votacoes={filteredVotacoes}
+            votacoes={votacoes}
           />
         </div>
       </main>
