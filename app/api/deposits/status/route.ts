@@ -13,6 +13,14 @@ const getBearerToken = (request: Request) => {
   return auth.slice(7).trim();
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 export async function GET(request: Request) {
   const token = getBearerToken(request);
 
@@ -118,10 +126,7 @@ export async function GET(request: Request) {
       transactionAmount: payment.transaction_amount,
       creditedNow,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || 'Falha ao consultar pagamento.' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return NextResponse.json({ error: getErrorMessage(error, 'Falha ao consultar pagamento.') }, { status: 500 });
   }
 }

@@ -1,9 +1,18 @@
 "use client";
 
 import Link from 'next/link';
-import { Suspense, useState } from 'react';
+import Image from 'next/image';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient } from '../utils/supabaseClient';
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 function LoginPageContent() {
   const [email, setEmail] = useState('');
@@ -14,18 +23,49 @@ function LoginPageContent() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [cpf, setCpf] = useState('');
-  const [cpfConfirmation, setCpfConfirmation] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = getSupabaseClient();
+  const next = searchParams?.get('next') || '/home';
+
+  useEffect(() => {
+    let mounted = true;
+
+    const redirectIfAuthenticated = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (mounted && session) {
+        router.replace(next);
+      }
+    };
+
+    void redirectIfAuthenticated();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+
+      if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+        router.replace(next);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [next, router, supabase.auth]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -33,10 +73,9 @@ function LoginPageContent() {
         setError(signInError.message);
         return;
       }
-      const next = searchParams?.get('next') || '/home';
       router.push(next);
-    } catch (err: any) {
-      setError(err.message || 'Erro desconhecido');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }
@@ -46,19 +85,21 @@ function LoginPageContent() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    const normalizedUsername = username.startsWith('@') ? username : `@${username.replace(/^@+/, '')}`;
+
     if (password !== confirmPassword) {
       setError('As senhas não coincidem.');
       setLoading(false);
       return;
     }
-    if (!username.startsWith('@')) {
+    if (!normalizedUsername.startsWith('@') || normalizedUsername.length < 4) {
       setError('O nome de usuário deve começar com @');
       setLoading(false);
       return;
     }
     try {
-      // Verifica se já existe usuário com o mesmo e-mail
-      let { data: userEmail, error: emailError } = await supabase
+      const { data: userEmail } = await supabase
         .from('users')
         .select('id')
         .eq('email', email)
@@ -68,19 +109,19 @@ function LoginPageContent() {
         setLoading(false);
         return;
       }
-      // Verifica se já existe usuário com o mesmo nome de usuário
-      let { data: userName, error: userNameError } = await supabase
+
+      const { data: userName } = await supabase
         .from('users')
         .select('id')
-        .eq('username', username)
+        .eq('username', normalizedUsername)
         .maybeSingle();
       if (userName) {
         setError('Já existe um usuário com este nome de usuário.');
         setLoading(false);
         return;
       }
-      // Cria o usuário no auth
-      const { data, error: signUpError } = await supabase.auth.signUp({
+
+      const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
@@ -89,15 +130,16 @@ function LoginPageContent() {
         setLoading(false);
         return;
       }
-      // Cria o usuário na tabela users
+
       await supabase.from('users').insert([
         {
           email,
-          username,
+          username: normalizedUsername,
           cpf,
           birth_date: birthDate,
         },
       ]);
+
       setIsSignUp(false);
       setEmail('');
       setPassword('');
@@ -106,8 +148,8 @@ function LoginPageContent() {
       setCpf('');
       setBirthDate('');
       alert('Cadastro realizado! Verifique seu e-mail.');
-    } catch (err: any) {
-      setError(err.message || 'Erro desconhecido');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }
@@ -117,10 +159,19 @@ function LoginPageContent() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: googleError } = await supabase.auth.signInWithOAuth({ provider: 'google' });
+      const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(next)}`;
+      const { error: googleError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: 'select_account',
+          },
+        },
+      });
       if (googleError) setError(googleError.message);
-    } catch (err: any) {
-      setError(err.message || 'Erro desconhecido');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }
@@ -130,9 +181,11 @@ function LoginPageContent() {
     <div style={styles.container}>
       <div style={styles.card}>
         <div style={{ ...styles.logo, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <img
+          <Image
             src="/logo.png"
             alt="Logo VP"
+            width={44}
+            height={44}
             style={{ height: 44, width: 44, objectFit: 'contain', marginBottom: 2 }}
           />
           <span style={{ color: '#00c3ff', fontWeight: 700, fontSize: 22, fontFamily: 'Poppins, Segoe UI, Arial, sans-serif', letterSpacing: 0 }}>Votaai</span>
@@ -142,42 +195,44 @@ function LoginPageContent() {
           Antecipe resultados. Tome decisões com confiança.
         </div>
         <h2 style={styles.title}>{isSignUp ? 'Criar conta' : 'Acesse sua conta para continuar'}</h2>
-            {error && (
-              <div style={{ color: '#f87171', background: '#2a1515', borderRadius: 10, padding: 10, marginBottom: 16, fontSize: 13 }}>
-                {error}
-              </div>
-            )}
+        {error && (
+          <div style={{ color: '#f87171', background: '#2a1515', borderRadius: 10, padding: 10, marginBottom: 16, fontSize: 13 }}>
+            {error}
+          </div>
+        )}
         <form style={styles.form} onSubmit={isSignUp ? handleSignUp : handleLogin} autoComplete="on">
           {isSignUp && (
             <>
-              {/* Label removido conforme solicitado */}
               <div style={{ position: 'relative', width: '100%' }}>
-                <span style={{
-                  position: 'absolute',
-                  left: 10,
-                  top: 10,
-                  color: '#00c3ff',
-                  fontSize: 22,
-                  fontWeight: 700,
-                  fontFamily: '"Poppins", "Segoe UI", Arial, sans-serif',
-                  textShadow: '0 2px 8px #00334444',
-                  pointerEvents: 'none',
-                  zIndex: 2,
-                  lineHeight: '1',
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  letterSpacing: '0.5px',
-                  userSelect: 'none',
-                }}>@</span>
+                <span
+                  style={{
+                    position: 'absolute',
+                    left: 10,
+                    top: 10,
+                    color: '#00c3ff',
+                    fontSize: 22,
+                    fontWeight: 700,
+                    fontFamily: '"Poppins", "Segoe UI", Arial, sans-serif',
+                    textShadow: '0 2px 8px #00334444',
+                    pointerEvents: 'none',
+                    zIndex: 2,
+                    lineHeight: '1',
+                    height: 28,
+                    display: 'flex',
+                    alignItems: 'center',
+                    letterSpacing: '0.5px',
+                    userSelect: 'none',
+                  }}
+                >
+                  @
+                </span>
                 <input
                   id="username-input"
                   type="text"
                   placeholder="nome de usuário"
                   style={{ ...styles.input, paddingLeft: 44 }}
                   value={username.replace(/^@+/, '')}
-                  onChange={e => {
-                    // Sempre mantém o valor sem o @, mas adiciona ao salvar
+                  onChange={(e) => {
                     setUsername(e.target.value.replace(/@/g, ''));
                   }}
                   autoComplete="username"
@@ -190,19 +245,18 @@ function LoginPageContent() {
                 placeholder="CPF"
                 style={styles.input}
                 value={cpf}
-                onChange={e => setCpf(e.target.value)}
+                onChange={(e) => setCpf(e.target.value)}
                 autoComplete="off"
                 required
                 disabled={loading}
                 maxLength={14}
               />
-              {/* Campo 'Confirme o CPF' removido conforme solicitado */}
               <input
                 type="date"
                 placeholder="Data de nascimento"
                 style={styles.input}
                 value={birthDate}
-                onChange={e => setBirthDate(e.target.value)}
+                onChange={(e) => setBirthDate(e.target.value)}
                 autoComplete="bday"
                 required
                 disabled={loading}
@@ -214,7 +268,7 @@ function LoginPageContent() {
             placeholder="E-mail"
             style={styles.input}
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             autoComplete="username"
             required
             disabled={loading}
@@ -224,8 +278,8 @@ function LoginPageContent() {
             placeholder="Senha"
             style={styles.input}
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete={isSignUp ? "new-password" : "current-password"}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={isSignUp ? 'new-password' : 'current-password'}
             required
             disabled={loading}
           />
@@ -235,7 +289,7 @@ function LoginPageContent() {
               placeholder="Confirme a senha"
               style={styles.input}
               value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               autoComplete="new-password"
               required
               disabled={loading}
@@ -250,6 +304,7 @@ function LoginPageContent() {
             onClick={handleGoogle}
             disabled={loading}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png"
               style={{ width: 18 }}
@@ -276,10 +331,10 @@ function LoginPageContent() {
                   outline: 'none',
                   transition: 'color 0.2s',
                 }}
-                onFocus={e => (e.currentTarget.style.color = '#0099cc')}
-                onBlur={e => (e.currentTarget.style.color = '#00c3ff')}
-                onMouseOver={e => (e.currentTarget.style.color = '#0099cc')}
-                onMouseOut={e => (e.currentTarget.style.color = '#00c3ff')}
+                onFocus={(e) => (e.currentTarget.style.color = '#0099cc')}
+                onBlur={(e) => (e.currentTarget.style.color = '#00c3ff')}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#0099cc')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#00c3ff')}
                 tabIndex={0}
               >
                 Fazer login
@@ -302,10 +357,10 @@ function LoginPageContent() {
                   outline: 'none',
                   transition: 'color 0.2s',
                 }}
-                onFocus={e => (e.currentTarget.style.color = '#0099cc')}
-                onBlur={e => (e.currentTarget.style.color = '#00c3ff')}
-                onMouseOver={e => (e.currentTarget.style.color = '#0099cc')}
-                onMouseOut={e => (e.currentTarget.style.color = '#00c3ff')}
+                onFocus={(e) => (e.currentTarget.style.color = '#0099cc')}
+                onBlur={(e) => (e.currentTarget.style.color = '#00c3ff')}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#0099cc')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#00c3ff')}
                 tabIndex={0}
               >
                 Criar conta
@@ -334,96 +389,96 @@ export default function LoginPage() {
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
     margin: 0,
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#111111",
+    height: '100vh',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111111',
     backgroundImage:
-      "linear-gradient(32deg, rgba(8,8,8,0.74) 30px, transparent)",
-    backgroundSize: "60px 60px",
-    backgroundPosition: "-5px -5px",
-    fontFamily: "Inter, Segoe UI, Arial, sans-serif",
+      'linear-gradient(32deg, rgba(8,8,8,0.74) 30px, transparent)',
+    backgroundSize: '60px 60px',
+    backgroundPosition: '-5px -5px',
+    fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
   },
   card: {
     width: 360,
     padding: 35,
     borderRadius: 18,
-    background: "rgba(17,17,17,0.85)",
-    backdropFilter: "blur(6px)",
-    border: "1px solid rgba(255,255,255,0.05)",
-    boxShadow: "0 15px 40px rgba(0,0,0,0.7)",
-    color: "white",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
+    background: 'rgba(17,17,17,0.85)',
+    backdropFilter: 'blur(6px)',
+    border: '1px solid rgba(255,255,255,0.05)',
+    boxShadow: '0 15px 40px rgba(0,0,0,0.7)',
+    color: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
   },
   logo: {
     fontSize: 24,
     fontWeight: 600,
     marginBottom: 4,
-    color: "#00c3ff",
+    color: '#00c3ff',
   },
   subtitle: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: '#9ca3af',
     marginBottom: 25,
-    textAlign: "center",
+    textAlign: 'center',
   },
   title: {
     fontSize: 18,
     fontWeight: 500,
     marginBottom: 20,
-    color: "#e5e7eb",
+    color: '#e5e7eb',
   },
   form: {
-    width: "100%",
+    width: '100%',
     maxWidth: 280,
-    display: "flex",
-    flexDirection: "column",
+    display: 'flex',
+    flexDirection: 'column',
   },
   input: {
-    width: "100%",
+    width: '100%',
     padding: 12,
     marginBottom: 14,
     borderRadius: 10,
-    border: "1px solid #2a2a2a",
-    background: "#1a1a1a",
-    color: "white",
-    outline: "none",
+    border: '1px solid #2a2a2a',
+    background: '#1a1a1a',
+    color: 'white',
+    outline: 'none',
   },
   loginButton: {
-    width: "100%",
+    width: '100%',
     padding: 12,
     borderRadius: 10,
-    border: "none",
+    border: 'none',
     fontSize: 14,
     fontWeight: 600,
-    cursor: "pointer",
-    background: "linear-gradient(135deg, #00c3ff, #0099cc)",
-    color: "#000",
+    cursor: 'pointer',
+    background: 'linear-gradient(135deg, #00c3ff, #0099cc)',
+    color: '#000',
     marginTop: 5,
   },
   googleButton: {
-    width: "100%",
+    width: '100%',
     padding: 12,
     borderRadius: 10,
-    border: "1px solid #e5e7eb",
+    border: '1px solid #e5e7eb',
     fontSize: 14,
     fontWeight: 500,
-    cursor: "pointer",
-    background: "#fff",
-    color: "#111",
+    cursor: 'pointer',
+    background: '#fff',
+    color: '#111',
     marginTop: 10,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 10,
   },
   link: {
     marginTop: 14,
     fontSize: 13,
-    color: "#9ca3af",
-    textAlign: "center",
+    color: '#9ca3af',
+    textAlign: 'center',
   },
 };

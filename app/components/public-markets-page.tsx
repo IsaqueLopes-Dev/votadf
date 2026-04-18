@@ -9,7 +9,10 @@ const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
   { value: 'politica', label: 'Politica' },
   { value: 'entretenimento', label: 'Entretenimento' },
-  { value: 'futebol', label: 'Futebol' },
+  { value: 'esportes', label: 'Esportes' },
+  { value: 'financeiro', label: 'Financeiro' },
+  { value: 'celebridades', label: 'Celebridades' },
+  { value: 'criptomoedas', label: 'Criptomoedas' },
 ] as const;
 
 type CategoryValue = (typeof CATEGORY_OPTIONS)[number]['value'];
@@ -37,11 +40,18 @@ function parsePollMetadata(descricao: string | null | undefined) {
 
     try {
       const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as {
-        categoria?: CategoryValue;
+        categoria?: string;
       };
 
+      const categoria =
+        parsed.categoria === 'futebol'
+          ? 'esportes'
+          : CATEGORY_OPTIONS.some((option) => option.value === parsed.categoria)
+            ? (parsed.categoria as CategoryValue)
+            : 'todos';
+
       return {
-        categoria: parsed.categoria || 'todos',
+        categoria,
         descricaoLimpa: cleanDescription || rawDescription,
       };
     } catch {
@@ -94,8 +104,9 @@ export default async function PublicMarketsPage({
   const categoryParam = Array.isArray(resolvedSearchParams.category)
     ? resolvedSearchParams.category[0]
     : resolvedSearchParams.category;
-  const selectedCategory = CATEGORY_OPTIONS.some((option) => option.value === categoryParam)
-    ? (categoryParam as CategoryValue)
+  const normalizedCategoryParam = categoryParam === 'futebol' ? 'esportes' : categoryParam;
+  const selectedCategory = CATEGORY_OPTIONS.some((option) => option.value === normalizedCategoryParam)
+    ? (normalizedCategoryParam as CategoryValue)
     : 'todos';
 
   const filteredVotacoes = votacoes.filter((votacao) => {
@@ -118,8 +129,9 @@ export default async function PublicMarketsPage({
         className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur"
         style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
       >
-        <div className="flex w-full items-center justify-between gap-2 py-3 sm:py-4 px-4 sm:px-10" style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div className="flex w-full items-center justify-between gap-2 px-4 py-3 sm:px-10 sm:py-4">
           <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
               alt="Logo VP"
@@ -151,15 +163,15 @@ export default async function PublicMarketsPage({
         </div>
       </header>
 
-      <main className="flex flex-col items-center flex-1 w-full py-10 px-2 pb-28">
-        <h1 className="text-3xl font-bold text-white mb-2">Mercado de previsao</h1>
-        <p className="text-cyan-200 mb-6 text-center">
-          Acompanhe as votacoes e aposte no candidato que voce acredita.
+      <main className="flex flex-1 flex-col items-center w-full px-2 py-10 pb-28">
+        <h1 className="mb-2 text-3xl font-bold text-white">Mercado de previsão</h1>
+        <p className="mb-6 text-center text-cyan-200">
+          Acompanhe as votações e aposte no candidato que você acredita.
           <br />
           Odds definidas e atualizadas em tempo real.
         </p>
 
-        <div className="w-full max-w-2xl">
+        <div className="w-full">
           <PublicVotingBoard
             categories={[...CATEGORY_OPTIONS]}
             initialSelectedCategory={selectedCategory}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
 import BottomNavigation from '../../components/bottom-navigation';
 
 type ChatMessageItem = {
@@ -20,7 +20,7 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -154,7 +154,14 @@ export default function ChatPage() {
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0f0f0f]/95 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-4 py-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-400/80">Conversa ao vivo</p>
+            <div className="flex items-center gap-2">
+              <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
+                <span className="absolute inline-flex h-3.5 w-3.5 animate-ping rounded-full bg-green-400/35" />
+                <span className="absolute inline-flex h-5 w-5 animate-pulse rounded-full border border-green-400/35" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.8)]" />
+              </span>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-green-400">Conversa ao vivo</p>
+            </div>
             <h1 className="mt-1 text-xl font-bold text-white">Chat</h1>
           </div>
           <button

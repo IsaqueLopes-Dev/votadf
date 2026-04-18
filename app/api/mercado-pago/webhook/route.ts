@@ -13,6 +13,21 @@ const normalizePaymentId = (value: unknown) => {
   return parsed;
 };
 
+type WebhookBody = {
+  id?: unknown;
+  data?: {
+    id?: unknown;
+  };
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 export async function POST(request: Request) {
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
   const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -25,7 +40,7 @@ export async function POST(request: Request) {
   const url = new URL(request.url);
   const queryPaymentId = normalizePaymentId(url.searchParams.get('data.id') || url.searchParams.get('id'));
 
-  let body: any = null;
+  let body: WebhookBody | null = null;
   try {
     body = await request.json();
   } catch {
@@ -110,10 +125,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, credited: true, paymentId: payment.id, newBalance });
-  } catch (error: any) {
-    return NextResponse.json(
-      { ok: false, error: error?.message || 'webhook-processing-failed' },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    return NextResponse.json({ ok: false, error: getErrorMessage(error, 'webhook-processing-failed') }, { status: 500 });
   }
 }

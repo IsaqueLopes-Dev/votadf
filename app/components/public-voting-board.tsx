@@ -7,9 +7,9 @@ import CategoryCarousel from './category-carousel';
 
 const META_PREFIX = '__meta__:';
 
-type CategoryValue = 'todos' | 'politica' | 'entretenimento' | 'futebol';
+type CategoryValue = 'todos' | 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas';
 type PollType = 'opcoes-livres' | 'enquete-candidatos';
-type PollCategory = 'politica' | 'entretenimento' | 'futebol' | '';
+type PollCategory = 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas' | '';
 
 type CategoryOption = {
   value: CategoryValue;
@@ -42,10 +42,29 @@ type BetModalState = {
   imageUrl: string;
 };
 
+type BetCommentItem = {
+  id: string;
+  votacao_id: string;
+  user_id: string;
+  username: string;
+  message: string;
+  avatar_url?: string;
+  created_at: string;
+};
+
 type PublicVotingBoardProps = {
   initialSelectedCategory: CategoryValue;
   votacoes: VotingRecord[];
   categories: CategoryOption[];
+};
+
+const normalizePollCategory = (value: unknown): PollCategory => {
+  if (value === 'futebol' || value === 'esportes') return 'esportes';
+  if (value === 'politica' || value === 'entretenimento' || value === 'financeiro' || value === 'celebridades' || value === 'criptomoedas') {
+    return value;
+  }
+
+  return '';
 };
 
 const parsePollMetadata = (descricao: string | null | undefined) => {
@@ -66,10 +85,7 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
 
       return {
         tipo: parsed.tipo === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres',
-        categoria:
-          parsed.categoria === 'politica' || parsed.categoria === 'entretenimento' || parsed.categoria === 'futebol'
-            ? parsed.categoria
-            : '',
+        categoria: normalizePollCategory(parsed.categoria),
         encerramentoAposta: String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim(),
         descricaoLimpa: cleanDescription,
       };
@@ -149,6 +165,8 @@ const getRealBetCount = (counts: BetCountsMap, votacaoId: string, candidateLabel
   return counts[votacaoId]?.[normalizeCandidate(candidateLabel)] || 0;
 };
 
+const getDisplayedOdd = (value: string) => (value === '' ? '-' : value);
+
 export default function PublicVotingBoard({
   initialSelectedCategory,
   votacoes,
@@ -162,6 +180,11 @@ export default function PublicVotingBoard({
   const [betFeedback, setBetFeedback] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [expandedCommentsId, setExpandedCommentsId] = useState<string | null>(null);
+  const [commentsByVotingId, setCommentsByVotingId] = useState<Record<string, BetCommentItem[]>>({});
+  const [commentDraftByVotingId, setCommentDraftByVotingId] = useState<Record<string, string>>({});
+  const [commentStatusByVotingId, setCommentStatusByVotingId] = useState<Record<string, string | null>>({});
+  const [loadingCommentsByVotingId, setLoadingCommentsByVotingId] = useState<Record<string, boolean>>({});
 
   const router = useRouter();
   const pathname = usePathname();
@@ -240,7 +263,114 @@ export default function PublicVotingBoard({
     return currentQuery ? `${pathname}?${currentQuery}` : pathname;
   };
 
+  const loadComments = async (votacaoId: string) => {
+    setLoadingCommentsByVotingId((current) => ({ ...current, [votacaoId]: true }));
+
+    try {
+      const response = await fetch(`/api/votacoes/comments?votacaoId=${encodeURIComponent(votacaoId)}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as { comments?: BetCommentItem[]; error?: string };
+
+      if (!response.ok) {
+        setCommentStatusByVotingId((current) => ({
+          ...current,
+          [votacaoId]: payload.error || 'Não foi possível carregar os comentários.',
+        }));
+        return;
+      }
+
+      setCommentsByVotingId((current) => ({
+        ...current,
+        [votacaoId]: Array.isArray(payload.comments) ? payload.comments : [],
+      }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: null }));
+    } catch {
+      setCommentStatusByVotingId((current) => ({
+        ...current,
+        [votacaoId]: 'Não foi possível carregar os comentários.',
+      }));
+    } finally {
+      setLoadingCommentsByVotingId((current) => ({ ...current, [votacaoId]: false }));
+    }
+  };
+
+  const toggleComments = async (votacaoId: string) => {
+    const shouldOpen = expandedCommentsId !== votacaoId;
+    setExpandedCommentsId(shouldOpen ? votacaoId : null);
+
+    if (shouldOpen && commentsByVotingId[votacaoId] === undefined) {
+      await loadComments(votacaoId);
+    }
+  };
+
+  const submitComment = async (votacaoId: string) => {
+    const message = String(commentDraftByVotingId[votacaoId] || '').trim();
+
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
+      return;
+    }
+
+    if (!message) {
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Digite um comentário.' }));
+      return;
+    }
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Sessão inválida. Faça login novamente.' }));
+        return;
+      }
+
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Enviando comentário...' }));
+
+      const response = await fetch('/api/votacoes/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ votacaoId, message }),
+      });
+
+      const payload = (await response.json()) as { comment?: BetCommentItem; error?: string };
+
+      const nextComment = payload.comment;
+
+      if (!response.ok || !nextComment) {
+        setCommentStatusByVotingId((current) => ({
+          ...current,
+          [votacaoId]: payload.error || 'Não foi possível publicar o comentário.',
+        }));
+        return;
+      }
+
+      setCommentsByVotingId((current) => ({
+        ...current,
+        [votacaoId]: [...(current[votacaoId] || []), nextComment],
+      }));
+      setCommentDraftByVotingId((current) => ({ ...current, [votacaoId]: '' }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Comentário publicado.' }));
+    } catch {
+      setCommentStatusByVotingId((current) => ({
+        ...current,
+        [votacaoId]: 'Não foi possível publicar o comentário.',
+      }));
+    }
+  };
+
   const openBetModal = (votacao: VotingRecord, option: PollOption) => {
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
+      return;
+    }
+
     const metadata = parsePollMetadata(votacao.descricao);
     const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
     const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= Date.now();
@@ -249,8 +379,8 @@ export default function PublicVotingBoard({
       return;
     }
 
-    const odd = Number(option.odds || 0);
-    if (!Number.isFinite(odd) || odd <= 0) {
+    const odd = Number(option.odds);
+    if (option.odds === '' || !Number.isFinite(odd) || odd <= 0) {
       alert('Esta opção ainda não possui odd configurada.');
       return;
     }
@@ -359,18 +489,16 @@ export default function PublicVotingBoard({
         />
       </div>
 
-      <h2 className="text-xl font-bold text-white mb-4">Votacoes em destaque</h2>
-
       {filteredVotacoes.length === 0 ? (
         <div className="text-cyan-200 text-center py-8 rounded-xl bg-cyan-900/30 border border-cyan-700">
           <p>
             {selectedCategory === 'todos'
               ? 'Nenhuma votacao ativa no momento. Volte em breve!'
-              : `Nenhuma votacao ativa na categoria ${selectedCategory}.`}
+              : `Nenhuma votacao ativa na categoria ${getCategoryLabel(selectedCategory)}.`}
           </p>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filteredVotacoes.map((votacao) => {
             const metadata = parsePollMetadata(votacao.descricao);
             const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
@@ -379,35 +507,32 @@ export default function PublicVotingBoard({
             return (
               <div
                 key={votacao.id}
-                className="rounded-3xl border border-cyan-700/60 bg-slate-950/75 p-6 shadow-[0_18px_40px_-24px_rgba(34,211,238,0.45)] transition duration-200 hover:-translate-y-0.5 hover:border-cyan-400"
+                className="min-h-[180px] rounded-2xl border border-white/10 bg-[#171b22] p-4 shadow-md transition-all duration-200 hover:-translate-y-1 hover:border-green-500/30 hover:shadow-[0_0_25px_rgba(34,197,94,0.08)]"
               >
-                <div className="mb-3 flex flex-wrap justify-center gap-2">
-                  <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                  <span className="text-xs text-zinc-400">
                     {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
                   </span>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      metadata.tipo === 'enquete-candidatos'
-                        ? 'bg-blue-500/15 text-blue-200'
-                        : 'bg-slate-700/70 text-slate-200'
+                    className={`inline-flex items-center gap-2 text-xs font-semibold ${
+                      isBetClosed ? 'text-zinc-500' : 'text-yellow-400'
                     }`}
                   >
-                    {metadata.tipo === 'enquete-candidatos' ? 'Enquete por candidato' : 'Opcoes livres'}
-                  </span>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                      isBetClosed ? 'bg-rose-500/15 text-rose-200' : 'bg-emerald-500/15 text-emerald-200'
-                    }`}
-                  >
-                    {isBetClosed ? 'Aposta encerrada' : 'Aposta aberta'}
+                    {!isBetClosed && (
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400/80" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-yellow-300" />
+                      </span>
+                    )}
+                    {isBetClosed ? 'ENCERRADA' : 'AO VIVO'}
                   </span>
                 </div>
 
-                <h3 className="mb-2 text-center text-lg font-bold text-white">{votacao.titulo}</h3>
-                <p className="mb-4 line-clamp-3 text-center text-sm leading-6 text-cyan-100/85">
+                <h3 className="mb-2 text-sm font-semibold text-white">{votacao.titulo}</h3>
+                <p className="mb-4 line-clamp-3 text-sm leading-6 text-zinc-400">
                   {metadata.descricaoLimpa}
                 </p>
-                <p className="mb-4 text-center text-xs text-cyan-300/80">
+                <p className="mb-4 text-xs text-zinc-400">
                   Encerra em:{' '}
                   {metadata.encerramentoAposta
                     ? new Date(metadata.encerramentoAposta).toLocaleString('pt-BR')
@@ -435,16 +560,16 @@ export default function PublicVotingBoard({
                               type="button"
                               onClick={() => openBetModal(votacao, parsedOption)}
                               disabled={isBetClosed}
-                              className="w-full rounded-2xl border border-cyan-800/80 bg-slate-900/90 px-3 py-2.5 text-left transition hover:border-cyan-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-55"
+                              className="w-full rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-left transition-all duration-200 hover:border-green-500/20 hover:bg-[#151a22] disabled:cursor-not-allowed disabled:opacity-55"
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-3">
-                                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-cyan-900 bg-slate-800">
+                                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
                                     {parsedOption.imageUrl ? (
                                       // eslint-disable-next-line @next/next/no-img-element
                                       <img src={parsedOption.imageUrl} alt={parsedOption.label} className="h-full w-full object-cover" />
                                     ) : (
-                                      <span className="text-xs font-semibold text-cyan-200">
+                                      <span className="text-xs font-semibold text-white">
                                         {parsedOption.label.slice(0, 1).toUpperCase()}
                                       </span>
                                     )}
@@ -452,35 +577,35 @@ export default function PublicVotingBoard({
                                   <span className="text-sm font-semibold text-white">{parsedOption.label}</span>
                                 </div>
                                 <div className="flex gap-2">
-                                  <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
-                                    {parsedOption.odds || '-'}
+                                  <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
+                                    {getDisplayedOdd(parsedOption.odds)}
                                   </span>
-                                  <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-200 ring-1 ring-blue-500/20">
+                                  <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400">
                                     {percent}%
                                   </span>
                                 </div>
                               </div>
-                              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
                                 <div
-                                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                                  className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
                                   style={{ width: `${percent}%` }}
                                 />
                               </div>
-                              <p className="mt-1 text-[11px] font-medium text-cyan-300/75">{votes[idx]} apostas</p>
+                              <p className="mt-2 text-[11px] text-zinc-400">{votes[idx]} apostas</p>
                             </button>
                           );
                         });
                       })()}
                   </div>
                 ) : (
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {Array.isArray(votacao.opcoes) &&
                       votacao.opcoes.map((opcao, idx) => {
                         const parsedOption = parsePollOption(opcao);
                         return (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-2 rounded-full bg-blue-500/15 px-3 py-1 text-xs text-blue-200"
+                            className="inline-flex items-center gap-2 rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400"
                           >
                             {parsedOption.label}
                           </span>
@@ -488,10 +613,82 @@ export default function PublicVotingBoard({
                       })}
                   </div>
                 )}
+                <div className="mt-4 border-t border-white/10 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => void toggleComments(votacao.id)}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-green-500/30 hover:bg-white/10"
+                  >
+                    <span>Comentários</span>
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-zinc-300">
+                      {(commentsByVotingId[votacao.id] || []).length}
+                    </span>
+                  </button>
 
-                <p className="mt-4 text-center text-xs font-medium uppercase tracking-[0.14em] text-cyan-300/70">
-                  Selecione um candidato para abrir sua aposta
-                </p>
+                  {expandedCommentsId === votacao.id && (
+                    <div className="mt-3 space-y-3 rounded-2xl border border-white/10 bg-[#11151b] p-3">
+                      <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                        {loadingCommentsByVotingId[votacao.id] ? (
+                          <p className="text-xs text-zinc-400">Carregando comentários...</p>
+                        ) : (commentsByVotingId[votacao.id] || []).length > 0 ? (
+                          (commentsByVotingId[votacao.id] || []).map((comment) => (
+                            <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-white">{comment.username}</span>
+                                <span className="text-[11px] text-zinc-500">
+                                  {new Date(comment.created_at).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs leading-5 text-zinc-300">{comment.message}</p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-xs text-zinc-400">Ainda não há comentários neste mercado.</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <textarea
+                          value={commentDraftByVotingId[votacao.id] || ''}
+                          onChange={(event) =>
+                            setCommentDraftByVotingId((current) => ({
+                              ...current,
+                              [votacao.id]: event.target.value,
+                            }))
+                          }
+                          onFocus={() => {
+                            if (!user) {
+                              router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
+                            }
+                          }}
+                          onClick={() => {
+                            if (!user) {
+                              router.push(`/login?next=${encodeURIComponent(buildCurrentUrl())}`);
+                            }
+                          }}
+                          rows={3}
+                          placeholder={user ? 'Compartilhe sua leitura desse mercado...' : 'Faça login para comentar'}
+                          disabled={!user}
+                          className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-zinc-500">
+                            {commentStatusByVotingId[votacao.id] || (user ? 'Comentários aparecem assim que o card for aberto.' : 'Entre na sua conta para comentar neste mercado.')}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => void submitComment(votacao.id)}
+                            disabled={!user}
+                            className="rounded-full bg-green-500 px-3 py-1.5 text-xs font-semibold text-[#0f1115] transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {user ? 'Comentar' : 'Entrar'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             );
           })}
@@ -499,20 +696,21 @@ export default function PublicVotingBoard({
       )}
 
       {betModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-3">
-          <div className="flex max-h-[88vh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-2xl">
-            <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-4 pb-4 pt-4 text-white">
-              <div className="inline-flex rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)]">
+            <div className="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_58%,#22c55e_100%)] px-5 pb-5 pt-5 text-white">
+              <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-50">
                 Confirmar aposta
               </div>
-              <p className="mt-2 text-sm font-semibold text-white/95">{betModal.votacaoTitulo}</p>
+              <p className="mt-3 text-lg font-bold text-white">{betModal.votacaoTitulo}</p>
+              <p className="mt-1 text-sm text-blue-50/85">Revise os dados antes de confirmar sua posição.</p>
             </div>
 
-            <div className="overflow-y-auto p-4">
-              <div className="-mt-7 rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-3 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Candidato</p>
+            <div className="overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-5">
+              <div className="-mt-10 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.4)]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Seleção</p>
                 <div className="mt-2 flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-cyan-200 bg-white">
+                  <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
                     {betModal.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={betModal.imageUrl} alt={betModal.candidato} className="h-full w-full object-cover" />
@@ -522,13 +720,13 @@ export default function PublicVotingBoard({
                   </div>
                   <p className="text-base font-bold text-slate-900">{betModal.candidato}</p>
                 </div>
-                <div className="mt-2 inline-flex rounded-full bg-gradient-to-r from-cyan-100 to-blue-100 px-2.5 py-1 text-xs font-extrabold tabular-nums text-cyan-900 ring-1 ring-cyan-200">
+                <div className="mt-3 inline-flex rounded-2xl bg-emerald-50 px-3 py-1.5 text-xs font-extrabold tabular-nums text-emerald-700">
                   {betModal.odd.toFixed(2)}
                 </div>
               </div>
 
-              <label className="mt-4 block text-sm font-medium text-slate-700">Valor da aposta</label>
-              <div className="mt-2 flex items-center rounded-xl border border-cyan-200 bg-cyan-50/50 px-3 py-2 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100">
+              <label className="mt-5 block text-sm font-semibold text-slate-700">Valor da aposta</label>
+              <div className="mt-2 flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
                 <span className="text-sm font-bold text-blue-700">R$</span>
                 <input
                   type="number"
@@ -556,12 +754,12 @@ export default function PublicVotingBoard({
                           type="button"
                           onClick={() => setBetAmount(String(value))}
                           disabled={disabled}
-                          className={`rounded-xl border px-2.5 py-1.5 text-xs font-bold tabular-nums transition ${
+                          className={`rounded-2xl border px-2.5 py-2 text-xs font-bold tabular-nums transition ${
                             disabled
                               ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
                               : isActive
-                                ? 'border-blue-400 bg-blue-600 text-white shadow-sm'
-                                : 'border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 hover:shadow-sm'
+                                ? 'border-blue-500 bg-blue-600 text-white shadow-sm'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
                           }`}
                         >
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)}
@@ -573,26 +771,26 @@ export default function PublicVotingBoard({
                       <button
                         type="button"
                         onClick={() => setBetAmount(String(Math.floor(userBalance * 100) / 100))}
-                        className="col-span-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 hover:shadow-sm sm:col-span-4"
+                        className="col-span-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-4"
                       >
-                        Usar saldo maximo
+                        Usar saldo máximo
                       </button>
                     )}
                   </div>
 
-                  <div className="mt-3 grid gap-1.5 rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-2.5 text-xs sm:text-sm">
+                  <div className="mt-4 grid gap-2 rounded-[24px] border border-slate-200 bg-white p-4 text-xs shadow-[0_16px_35px_-28px_rgba(15,23,42,0.45)] sm:text-sm">
                     <div className="flex items-center justify-between text-slate-600">
-                      <span>Saldo disponivel</span>
+                      <span>Saldo disponível</span>
                       <span className="font-semibold text-slate-900">{formattedUserBalance}</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-600">
-                      <span>Retorno total se vencer</span>
+                      <span>Retorno estimado</span>
                       <span className="font-bold tabular-nums text-cyan-700">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialReturn)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-slate-600">
-                      <span>Lucro liquido</span>
+                      <span>Lucro potencial</span>
                       <span className="font-bold tabular-nums text-blue-700">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialProfit)}
                       </span>
@@ -607,7 +805,7 @@ export default function PublicVotingBoard({
 
               {betFeedback && (
                 <p
-                  className={`mt-3 rounded-xl px-3 py-2 text-sm font-medium ${
+                  className={`mt-4 rounded-2xl px-4 py-3 text-sm font-medium ${
                     betFeedback.includes('sucesso') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                   }`}
                 >
@@ -615,7 +813,7 @@ export default function PublicVotingBoard({
                 </p>
               )}
 
-              <div className="mt-4 flex gap-2">
+              <div className="mt-5 flex gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -623,7 +821,7 @@ export default function PublicVotingBoard({
                     setBetAmount('');
                     setBetFeedback(null);
                   }}
-                  className="flex-1 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="flex-1 rounded-full border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Cancelar
                 </button>
@@ -631,9 +829,9 @@ export default function PublicVotingBoard({
                   type="button"
                   onClick={() => void handlePlaceBet()}
                   disabled={placingBet || loadingUser}
-                  className="flex-1 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-cyan-600 disabled:opacity-60"
+                  className="flex-1 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#06b6d4_55%,#22c55e_100%)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-60"
                 >
-                  {user ? (placingBet ? 'Enviando...' : 'Apostar') : 'Entrar'}
+                  {user ? (placingBet ? 'Enviando...' : 'Confirmar aposta') : 'Entrar'}
                 </button>
               </div>
             </div>

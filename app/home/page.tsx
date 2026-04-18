@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
 import CategoryCarousel from '../components/category-carousel';
 import BottomNavigation from '../../components/bottom-navigation';
 
@@ -11,11 +11,14 @@ const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
   { value: 'politica', label: 'Política' },
   { value: 'entretenimento', label: 'Entretenimento' },
-  { value: 'futebol', label: 'Futebol' },
+  { value: 'esportes', label: 'Esportes' },
+  { value: 'financeiro', label: 'Financeiro' },
+  { value: 'celebridades', label: 'Celebridades' },
+  { value: 'criptomoedas', label: 'Criptomoedas' },
 ] as const;
 
 type PollType = 'opcoes-livres' | 'enquete-candidatos';
-type PollCategory = 'politica' | 'entretenimento' | 'futebol' | '';
+type PollCategory = 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas' | '';
 
 type PollOption = {
   label: string;
@@ -63,7 +66,34 @@ type ChatMessageItem = {
   created_at: string;
 };
 
+type BetCommentItem = {
+  id: string;
+  votacao_id: string;
+  user_id: string;
+  username: string;
+  message: string;
+  avatar_url?: string;
+  created_at: string;
+};
+
 type BetCountsMap = Record<string, Record<string, number>>;
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+const normalizePollCategory = (value: unknown): PollCategory => {
+  if (value === 'futebol' || value === 'esportes') return 'esportes';
+  if (value === 'politica' || value === 'entretenimento' || value === 'financeiro' || value === 'celebridades' || value === 'criptomoedas') {
+    return value;
+  }
+
+  return '';
+};
 
 const parsePollMetadata = (descricao: string | null | undefined) => {
   const rawDescription = descricao || '';
@@ -82,10 +112,7 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
       };
       return {
         tipo: parsed.tipo === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres',
-        categoria:
-          parsed.categoria === 'politica' || parsed.categoria === 'entretenimento' || parsed.categoria === 'futebol'
-            ? parsed.categoria
-            : '',
+        categoria: normalizePollCategory(parsed.categoria),
         encerramentoAposta: String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim(),
         descricaoLimpa: cleanDescription,
       };
@@ -173,6 +200,8 @@ const getRealBetCount = (counts: BetCountsMap, votacaoId: string, candidateLabel
   return counts[votacaoId]?.[normalizeCandidate(candidateLabel)] || 0;
 };
 
+const getDisplayedOdd = (value: string) => (value === '' ? '-' : value);
+
 const getCategoryLabel = (categoria: string) => {
   return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
 };
@@ -186,7 +215,7 @@ function UsuariosPageContent() {
     imageUrl: string;
   };
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState('');
@@ -218,7 +247,9 @@ function UsuariosPageContent() {
   const [pixStatusMessage, setPixStatusMessage] = useState<string | null>(null);
   const [votacoesAtivas, setVotacoesAtivas] = useState<VotingRecord[]>([]);
   const [votacoesError, setVotacoesError] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<'todos' | 'politica' | 'entretenimento' | 'futebol'>('todos');
+  const [selectedCategory, setSelectedCategory] = useState<
+    'todos' | 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas'
+  >('todos');
   const [betHistory, setBetHistory] = useState<BetHistoryItem[]>([]);
   const [betHistoryError, setBetHistoryError] = useState<string | null>(null);
   const [betHistoryOpen, setBetHistoryOpen] = useState(false);
@@ -236,6 +267,11 @@ function UsuariosPageContent() {
   const [betAmount, setBetAmount] = useState('');
   const [placingBet, setPlacingBet] = useState(false);
   const [betFeedback, setBetFeedback] = useState<string | null>(null);
+  const [expandedCommentsId, setExpandedCommentsId] = useState<string | null>(null);
+  const [commentsByVotingId, setCommentsByVotingId] = useState<Record<string, BetCommentItem[]>>({});
+  const [commentDraftByVotingId, setCommentDraftByVotingId] = useState<Record<string, string>>({});
+  const [commentStatusByVotingId, setCommentStatusByVotingId] = useState<Record<string, string | null>>({});
+  const [loadingCommentsByVotingId, setLoadingCommentsByVotingId] = useState<Record<string, boolean>>({});
   const router = useRouter();
   const searchParams = useSearchParams();
   const avatarPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -507,8 +543,110 @@ function UsuariosPageContent() {
   // Só bloqueia se birth_date já estiver preenchido
   const identityLocked = Boolean(user?.user_metadata?.birth_date);
 
-  const hasRequiredBetProfile = (currentUser: any) => {
+  const hasRequiredBetProfile = (currentUser: User | null) => {
     return Boolean(currentUser?.user_metadata?.cpf && currentUser?.user_metadata?.birth_date);
+  };
+
+  const loadComments = async (votacaoId: string) => {
+    setLoadingCommentsByVotingId((current) => ({ ...current, [votacaoId]: true }));
+
+    try {
+      const response = await fetch(`/api/votacoes/comments?votacaoId=${encodeURIComponent(votacaoId)}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+      const payload = (await response.json()) as { comments?: BetCommentItem[]; error?: string };
+
+      if (!response.ok) {
+        setCommentStatusByVotingId((current) => ({
+          ...current,
+          [votacaoId]: payload.error || 'Não foi possível carregar os comentários.',
+        }));
+        return;
+      }
+
+      setCommentsByVotingId((current) => ({
+        ...current,
+        [votacaoId]: Array.isArray(payload.comments) ? payload.comments : [],
+      }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: null }));
+    } catch {
+      setCommentStatusByVotingId((current) => ({
+        ...current,
+        [votacaoId]: 'Não foi possível carregar os comentários.',
+      }));
+    } finally {
+      setLoadingCommentsByVotingId((current) => ({ ...current, [votacaoId]: false }));
+    }
+  };
+
+  const toggleComments = async (votacaoId: string) => {
+    const shouldOpen = expandedCommentsId !== votacaoId;
+    setExpandedCommentsId(shouldOpen ? votacaoId : null);
+
+    if (shouldOpen && commentsByVotingId[votacaoId] === undefined) {
+      await loadComments(votacaoId);
+    }
+  };
+
+  const submitComment = async (votacaoId: string) => {
+    const message = String(commentDraftByVotingId[votacaoId] || '').trim();
+
+    if (!user) {
+      router.push('/login?next=%2Fhome');
+      return;
+    }
+
+    if (!message) {
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Digite um comentário.' }));
+      return;
+    }
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Sessão inválida. Faça login novamente.' }));
+        return;
+      }
+
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Enviando comentário...' }));
+
+      const response = await fetch('/api/votacoes/comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ votacaoId, message }),
+      });
+
+      const payload = (await response.json()) as { comment?: BetCommentItem; error?: string };
+
+      const nextComment = payload.comment;
+
+      if (!response.ok || !nextComment) {
+        setCommentStatusByVotingId((current) => ({
+          ...current,
+          [votacaoId]: payload.error || 'Não foi possível publicar o comentário.',
+        }));
+        return;
+      }
+
+      setCommentsByVotingId((current) => ({
+        ...current,
+        [votacaoId]: [...(current[votacaoId] || []), nextComment],
+      }));
+      setCommentDraftByVotingId((current) => ({ ...current, [votacaoId]: '' }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Comentário publicado.' }));
+    } catch {
+      setCommentStatusByVotingId((current) => ({
+        ...current,
+        [votacaoId]: 'Não foi possível publicar o comentário.',
+      }));
+    }
   };
 
   const supabase = createClient(
@@ -562,8 +700,8 @@ function UsuariosPageContent() {
       return;
     }
 
-    const odd = Number(option.odds || 0);
-    if (!Number.isFinite(odd) || odd <= 0) {
+    const odd = Number(option.odds);
+    if (option.odds === '' || !Number.isFinite(odd) || odd <= 0) {
       alert('Esta opção ainda não possui odd configurada.');
       return;
     }
@@ -580,7 +718,7 @@ function UsuariosPageContent() {
   };
 
   const handlePlaceBet = async () => {
-    if (!betModal) return;
+    if (!betModal || !user) return;
 
     const amount = Number(betAmount.replace(',', '.'));
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -598,7 +736,7 @@ function UsuariosPageContent() {
     setBetFeedback(null);
 
     try {
-      const existingBets = Array.isArray(user?.user_metadata?.bets) ? user.user_metadata.bets : [];
+      const existingBets = Array.isArray(user.user_metadata?.bets) ? user.user_metadata.bets : [];
       const nextBalance = Math.round((currentBalance - amount) * 100) / 100;
       const nextBets = [
         ...existingBets,
@@ -695,8 +833,8 @@ function UsuariosPageContent() {
       setPixQrCode(payload.qrCode || null);
       setPixQrBase64(payload.qrCodeBase64 || null);
       setPixStatusMessage('PIX gerado. Aguarde a confirmação do pagamento.');
-    } catch (createPixError: any) {
-      setPixStatusMessage(createPixError?.message || 'Erro ao gerar PIX.');
+    } catch (createPixError: unknown) {
+      setPixStatusMessage(getErrorMessage(createPixError, 'Erro ao gerar PIX.'));
     } finally {
       setCreatingPix(false);
     }
@@ -1157,8 +1295,8 @@ function UsuariosPageContent() {
       }
       setPendingAvatarFile(null);
       setPendingAvatarPreview(null);
-    } catch (uploadUnexpectedError: any) {
-      alert('Erro no upload: ' + uploadUnexpectedError.message);
+    } catch (uploadUnexpectedError: unknown) {
+      alert('Erro no upload: ' + getErrorMessage(uploadUnexpectedError, 'Erro desconhecido.'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -1199,9 +1337,16 @@ function UsuariosPageContent() {
       }
 
       // Salva a data de nascimento via endpoint seguro
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       const res = await fetch('/api/profile/birthdate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ birth_date: birthDate }),
       });
       if (!res.ok) {
@@ -1239,8 +1384,8 @@ function UsuariosPageContent() {
       alert('Perfil atualizado com sucesso!');
       setProfileNotice(null);
       setProfileOpen(false);
-    } catch (profileError: any) {
-      alert('Erro ao salvar perfil: ' + profileError.message);
+    } catch (profileError: unknown) {
+      alert('Erro ao salvar perfil: ' + getErrorMessage(profileError, 'Erro desconhecido.'));
     } finally {
       setSavingProfile(false);
     }
@@ -1446,11 +1591,10 @@ function UsuariosPageContent() {
             {betHistoryOpen && (
               <div
                 className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-cyan-400 bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 shadow-2xl sm:absolute sm:right-0 sm:top-14 sm:left-auto sm:w-[min(560px,calc(100vw-1rem))] sm:translate-x-0 sm:translate-y-0 sm:max-h-[70vh] sm:rounded-3xl"
-                style={{ fontFamily: 'var(--font-poppins), sans-serif', boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.15)' }}
+                style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
               >
                 <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-3 pb-3 pt-3 text-white sm:px-6 sm:pb-5 sm:pt-6">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Área do usuário</p>
                     <h3 className="mt-0.5 text-sm font-bold sm:mt-1 sm:text-lg">Histórico de apostas</h3>
                   </div>
                   <button
@@ -1465,7 +1609,7 @@ function UsuariosPageContent() {
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-5">
                   {betHistoryError && (
                     <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-2.5 text-xs text-red-700 sm:mb-4 sm:p-4 sm:text-sm">
                       {betHistoryError}
@@ -1613,19 +1757,19 @@ function UsuariosPageContent() {
             )}
             {profileOpen && (
               <div
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,360px)] flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 shadow-2xl sm:top-14 sm:w-[min(360px,calc(100vw-1rem))] sm:max-h-[70vh] sm:rounded-3xl"
+                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 flex max-h-[calc(100vh-9.5rem)] w-[min(92vw,380px)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#171b22] shadow-2xl sm:top-14 sm:w-[min(380px,calc(100vw-1rem))] sm:max-h-[70vh]"
                 style={{ fontFamily: 'var(--font-poppins), sans-serif', boxShadow: '0 8px 32px 0 rgba(0, 255, 255, 0.15)' }}
               >
-                <div className="bg-gradient-to-r from-blue-700 via-cyan-700 to-blue-900 px-3 py-3 sm:px-5 sm:py-4">
+                <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top,#243042,transparent_70%)] px-4 py-4 sm:px-5 sm:py-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-cyan-100 sm:text-base">Perfil da conta</h3>
+                      <h3 className="text-sm font-semibold text-white sm:text-base">Perfil da conta</h3>
                       <p className="mt-0.5 text-[11px] text-cyan-200 sm:mt-1 sm:text-xs">Atualize seus dados de exibição.</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setProfileOpen(false)}
-                      className="rounded-full p-1.5 text-blue-100 transition hover:bg-blue-500 hover:text-white"
+                      className="rounded-full border border-white/10 p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white"
                       aria-label="Fechar perfil"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -1638,19 +1782,20 @@ function UsuariosPageContent() {
                 <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
 
                 {profileNotice && (
-                  <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 sm:mb-4 sm:p-3 sm:text-sm">
+                  <div className="mb-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200 sm:mb-4 sm:text-sm">
                     {profileNotice}
                   </div>
                 )}
 
                 <form onSubmit={handleSaveProfile} className="space-y-2.5 sm:space-y-4">
-                  <div className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-blue-900 via-slate-900 to-blue-950 p-2.5 sm:gap-3 sm:p-3">
-                    <div className="relative h-12 w-12 overflow-hidden rounded-full bg-blue-950 shadow-lg sm:h-16 sm:w-16 group">
+                  <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                    <div className="flex items-center gap-3">
+                    <div className="group relative h-12 w-12 overflow-hidden rounded-full border border-white/10 bg-[#0f1115] shadow-lg sm:h-16 sm:w-16">
                       {avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={avatarUrl} alt="Foto de perfil" className="h-full w-full object-cover group-hover:ring-4 group-hover:ring-cyan-400/60 transition" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-cyan-300">
+                        <div className="flex h-full w-full items-center justify-center text-zinc-300">
                           <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                             <circle cx="12" cy="8" r="4" />
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" />
@@ -1660,7 +1805,7 @@ function UsuariosPageContent() {
 
 
                       <label
-                        className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-cyan-700 to-blue-700 text-white shadow-lg transition hover:bg-cyan-600 sm:h-7 sm:w-7"
+                        className="absolute bottom-0 right-0 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-green-500 text-[#0f1115] shadow-lg transition hover:scale-105 sm:h-7 sm:w-7"
                         title="Alterar foto"
                       >
                         {uploadingAvatar ? (
@@ -1682,24 +1827,28 @@ function UsuariosPageContent() {
                         />
                       </label>
                     </div>
-                    <p className="text-xs text-cyan-200 sm:text-sm">Atualize sua foto de perfil.</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">{displayName}</p>
+                      <p className="mt-1 text-xs text-zinc-400 sm:text-sm">Atualize sua foto de perfil.</p>
+                    </div>
+                    </div>
                   </div>
 
-                  <div className="rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 p-2.5 sm:p-3">
-                    <p className="text-[11px] uppercase tracking-wide text-cyan-400">Email</p>
-                    <p className="text-xs font-medium text-cyan-100 break-all sm:text-sm">{user?.email}</p>
+                  <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                    <p className="text-[11px] uppercase tracking-wide text-zinc-500">Email</p>
+                    <p className="mt-1 break-all text-xs font-medium text-white sm:text-sm">{user?.email}</p>
                     {/* Botão admin removido */}
 
                     {/* Exibição do id removida */}
                   </div>
 
                   {pendingAvatarPreview && (
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-2.5 sm:p-3">
-                      <p className="mb-2 text-xs font-medium text-slate-800 sm:text-sm">Ajuste sua foto</p>
+                    <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                      <p className="mb-2 text-xs font-medium text-white sm:text-sm">Ajuste sua foto</p>
                       <div className="mb-3 flex items-center justify-center">
                         <div
                           ref={avatarPreviewRef}
-                          className={`h-24 w-24 overflow-hidden rounded-full border border-blue-100 bg-white touch-none sm:h-28 sm:w-28 ${
+                          className={`h-24 w-24 overflow-hidden rounded-full border border-white/10 bg-[#0f1115] touch-none sm:h-28 sm:w-28 ${
                             isDraggingAvatar ? 'cursor-grabbing' : 'cursor-grab'
                           }`}
                           style={{ touchAction: 'none' }}
@@ -1724,7 +1873,7 @@ function UsuariosPageContent() {
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-600">Arraste para mover.</p>
+                      <p className="text-xs text-zinc-400">Arraste para mover.</p>
 
                       <div className="mt-3 flex items-center justify-end gap-2">
                         <button
@@ -1736,7 +1885,7 @@ function UsuariosPageContent() {
                             setPendingAvatarFile(null);
                             setPendingAvatarPreview(null);
                           }}
-                          className="rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-700 transition hover:bg-slate-100"
+                          className="rounded-xl border border-white/10 px-3 py-2 text-xs text-zinc-300 transition hover:bg-white/10"
                         >
                           Cancelar foto
                         </button>
@@ -1744,7 +1893,7 @@ function UsuariosPageContent() {
                           type="button"
                           onClick={handleUploadAvatar}
                           disabled={uploadingAvatar}
-                          className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                          className="rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-[#0f1115] transition hover:bg-green-400 disabled:opacity-50"
                         >
                           {uploadingAvatar ? 'Enviando...' : 'Aplicar foto'}
                         </button>
@@ -1752,8 +1901,8 @@ function UsuariosPageContent() {
                     </div>
                   )}
 
-                  <div>
-                    <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
+                  <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                    <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-zinc-300 sm:text-sm">
                       Nome de usuário
                     </label>
                     <input
@@ -1764,12 +1913,12 @@ function UsuariosPageContent() {
                       minLength={3}
                       required
                       placeholder="Nome de usuário (@seunome)"
-                      className="w-full rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-cyan-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-cyan-400 sm:py-2"
+                      className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-[#0f1115] disabled:text-zinc-500"
                     />
                   </div>
 
-                  <div>
-                    <label htmlFor="profile-cpf" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
+                  <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                    <label htmlFor="profile-cpf" className="mb-1 block text-xs font-medium text-zinc-300 sm:text-sm">
                       CPF
                     </label>
                     <input
@@ -1781,13 +1930,13 @@ function UsuariosPageContent() {
                       placeholder="CPF (000.000.000-00)"
                       required
                       disabled={identityLocked}
-                      className="w-full rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-cyan-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-cyan-400 sm:py-2"
+                      className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-[#0f1115] disabled:text-zinc-500"
                     />
                   </div>
 
                   {!identityLocked && (
-                    <div>
-                      <label htmlFor="profile-cpf-confirm" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
+                    <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                      <label htmlFor="profile-cpf-confirm" className="mb-1 block text-xs font-medium text-zinc-300 sm:text-sm">
                         Confirme seu CPF
                       </label>
                       <input
@@ -1798,13 +1947,13 @@ function UsuariosPageContent() {
                         onChange={(e) => setCpfConfirmation(formatCpf(e.target.value))}
                         placeholder="Confirme seu CPF"
                         required
-                        className="w-full rounded-xl bg-slate-900 px-3 py-1.5 text-sm text-cyan-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 sm:py-2"
+                        className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                       />
                     </div>
                   )}
 
-                  <div>
-                    <label htmlFor="profile-birthDate" className="mb-1 block text-xs font-medium text-cyan-200 sm:text-sm">
+                  <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
+                    <label htmlFor="profile-birthDate" className="mb-1 block text-xs font-medium text-zinc-300 sm:text-sm">
                       Data de nascimento
                     </label>
                     <input
@@ -1813,8 +1962,8 @@ function UsuariosPageContent() {
                       value={birthDate}
                       onChange={(e) => setBirthDate(e.target.value)}
                       required
-                      disabled
-                      className="w-full rounded-xl bg-slate-800 px-3 py-1.5 text-sm text-cyan-400 shadow-sm cursor-not-allowed sm:py-2"
+                      disabled={identityLocked}
+                      className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm disabled:cursor-not-allowed disabled:text-zinc-500"
                     />
                   </div>
 
@@ -1822,14 +1971,14 @@ function UsuariosPageContent() {
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="flex-1 rounded-xl border border-red-400 bg-gradient-to-r from-red-900 to-red-700 px-2.5 py-1.5 text-xs text-red-200 transition hover:bg-red-800 hover:text-white sm:px-3 sm:py-2 sm:text-sm shadow"
+                      className="flex-1 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300 transition hover:bg-red-500/15 hover:text-white sm:text-sm"
                     >
                       Sair
                     </button>
                     <button
                       type="submit"
                       disabled={savingProfile}
-                      className="flex-1 rounded-xl bg-gradient-to-r from-cyan-700 to-blue-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-lg transition hover:from-cyan-600 hover:to-blue-800 disabled:opacity-50 sm:px-3 sm:py-2 sm:text-sm"
+                      className="flex-1 rounded-xl bg-green-500 px-3 py-2 text-xs font-semibold text-[#0f1115] shadow-lg transition hover:bg-green-400 disabled:opacity-50 sm:text-sm"
                     >
                       {savingProfile ? 'Salvando...' : 'Salvar'}
                     </button>
@@ -2127,16 +2276,13 @@ function UsuariosPageContent() {
             </div>
           </>
         ) : (
-          <div className="w-full max-w-2xl">
+          <div className="w-full">
           <section className="mb-8 text-center text-white">
             <div>
-              <p className="mb-3 inline-flex rounded-full border border-cyan-500/30 bg-cyan-900/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">
-                Área do usuário
-              </p>
               <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Mercado de previsão</h2>
               <p className="mt-4 text-sm leading-7 text-cyan-200 sm:text-base">
                 Acompanhe as votações e aposte no candidato que você acredita.<br />
-                Entre em entretenimento, esportes, política ou futebol e participe das interações ao vivo.
+                Entre em entretenimento, esportes, política, financeiro, celebridades ou cripto e participe das interações ao vivo.
               </p>
             </div>
           </section>
@@ -2144,14 +2290,17 @@ function UsuariosPageContent() {
           <section>
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-xl font-bold text-white">Votações em destaque</h2>
-                <p className="hidden text-xs font-medium uppercase tracking-[0.18em] text-cyan-300/70 sm:block">Categorias</p>
+                <div />
               </div>
 
               <CategoryCarousel
                 categories={[...CATEGORY_OPTIONS]}
                 selectedCategory={selectedCategory}
-                onCategoryChange={(value) => setSelectedCategory(value as 'todos' | 'politica' | 'entretenimento' | 'futebol')}
+                onCategoryChange={(value) =>
+                  setSelectedCategory(
+                    value as 'todos' | 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas'
+                  )
+                }
                 variant="dark"
               />
             </div>
@@ -2163,33 +2312,34 @@ function UsuariosPageContent() {
             )}
 
             {filteredVotacoes.length > 0 ? (
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {filteredVotacoes.map((votacao) => {
                   const metadata = parsePollMetadata(votacao.descricao);
                   const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
                   const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= Date.now();
 
                   return (
-                    <div key={votacao.id} className="rounded-3xl border border-cyan-700/60 bg-slate-950/75 p-6 shadow-[0_18px_40px_-24px_rgba(34,211,238,0.45)] transition duration-200 hover:-translate-y-0.5 hover:border-cyan-400">
-                      <div className="mb-3 flex flex-wrap justify-center gap-2">
-                        <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
+                    <div key={votacao.id} className="min-h-[180px] rounded-2xl border border-white/10 bg-[#171b22] p-4 shadow-md transition-all duration-200 hover:-translate-y-1 hover:border-green-500/30 hover:shadow-[0_0_25px_rgba(34,197,94,0.08)]">
+                      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                        <span className="text-xs text-zinc-400">
                           {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
                         </span>
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          metadata.tipo === 'enquete-candidatos' ? 'bg-blue-500/15 text-blue-200' : 'bg-slate-700/70 text-slate-200'
+                        <span className={`inline-flex items-center gap-2 text-xs font-semibold ${
+                          isBetClosed ? 'text-zinc-500' : 'text-yellow-400'
                         }`}>
-                          {metadata.tipo === 'enquete-candidatos' ? 'Enquete por candidato' : 'Opções livres'}
-                        </span>
-                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          isBetClosed ? 'bg-rose-500/15 text-rose-200' : 'bg-emerald-500/15 text-emerald-200'
-                        }`}>
-                          {isBetClosed ? 'Aposta encerrada' : 'Aposta aberta'}
+                          {!isBetClosed && (
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400/80" />
+                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-yellow-300" />
+                            </span>
+                          )}
+                          {isBetClosed ? 'ENCERRADA' : 'AO VIVO'}
                         </span>
                       </div>
 
-                      <h3 className="mb-2 text-center text-lg font-bold text-white">{votacao.titulo}</h3>
-                      <p className="mb-4 line-clamp-3 text-center text-sm leading-6 text-cyan-100/85">{metadata.descricaoLimpa}</p>
-                      <p className="mb-4 text-center text-xs text-cyan-300/80">
+                      <h3 className="mb-2 text-sm font-semibold text-white">{votacao.titulo}</h3>
+                      <p className="mb-4 line-clamp-3 text-sm leading-6 text-zinc-400">{metadata.descricaoLimpa}</p>
+                      <p className="mb-4 text-xs text-zinc-400">
                         Encerra em:{' '}
                         {metadata.encerramentoAposta
                           ? new Date(metadata.encerramentoAposta).toLocaleString('pt-BR')
@@ -2216,47 +2366,47 @@ function UsuariosPageContent() {
                                   type="button"
                                   onClick={() => openBetModal(votacao, parsedOption)}
                                   disabled={isBetClosed}
-                                  className="w-full rounded-2xl border border-cyan-800/80 bg-slate-900/90 px-3 py-2.5 text-left transition hover:border-cyan-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-55"
+                                  className="w-full rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-left transition-all duration-200 hover:border-green-500/20 hover:bg-[#151a22] disabled:cursor-not-allowed disabled:opacity-55"
                                 >
                                   <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-cyan-900 bg-slate-800">
+                                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
                                         {parsedOption.imageUrl ? (
                                           // eslint-disable-next-line @next/next/no-img-element
                                           <img src={parsedOption.imageUrl} alt={parsedOption.label} className="h-full w-full object-cover" />
                                         ) : (
-                                          <span className="text-xs font-semibold text-cyan-200">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
+                                          <span className="text-xs font-semibold text-white">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
                                         )}
                                       </div>
                                       <span className="text-sm font-semibold text-white">{parsedOption.label}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-200">
-                                        {parsedOption.odds || '-'}
+                                      <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
+                                        {getDisplayedOdd(parsedOption.odds)}
                                       </span>
-                                      <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-200 ring-1 ring-blue-500/20">
+                                      <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400">
                                         {percent}%
                                       </span>
                                     </div>
                                   </div>
-                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
                                     <div
-                                      className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                                      className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
                                       style={{ width: `${percent}%` }}
                                     />
                                   </div>
-                                  <p className="mt-1 text-[11px] font-medium text-cyan-300/75">{votes[idx]} apostas</p>
+                                  <p className="mt-2 text-[11px] text-zinc-400">{votes[idx]} apostas</p>
                                 </button>
                               );
                             });
                           })()}
                         </div>
                       ) : (
-                        <div className="flex flex-wrap justify-center gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {Array.isArray(votacao.opcoes) && votacao.opcoes.map((opcao, idx) => {
                             const parsedOption = parsePollOption(opcao);
                             return (
-                              <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-blue-500/15 px-3 py-1 text-xs text-blue-200">
+                              <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
                                 {parsedOption.label}
                               </span>
                             );
@@ -2264,7 +2414,72 @@ function UsuariosPageContent() {
                         </div>
                       )}
 
-                      <p className="mt-4 text-center text-xs font-medium uppercase tracking-[0.14em] text-cyan-300/70">Selecione um candidato para abrir sua aposta</p>
+                      <div className="mt-4 border-t border-white/10 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => void toggleComments(votacao.id)}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-green-500/30 hover:bg-white/10"
+                        >
+                          <span>Comentários</span>
+                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-zinc-300">
+                            {(commentsByVotingId[votacao.id] || []).length}
+                          </span>
+                        </button>
+
+                        {expandedCommentsId === votacao.id && (
+                          <div className="mt-3 space-y-3 rounded-2xl border border-white/10 bg-[#11151b] p-3">
+                            <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
+                              {loadingCommentsByVotingId[votacao.id] ? (
+                                <p className="text-xs text-zinc-400">Carregando comentários...</p>
+                              ) : (commentsByVotingId[votacao.id] || []).length > 0 ? (
+                                (commentsByVotingId[votacao.id] || []).map((comment) => (
+                                  <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-semibold text-white">{comment.username}</span>
+                                      <span className="text-[11px] text-zinc-500">
+                                        {new Date(comment.created_at).toLocaleString('pt-BR')}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-xs leading-5 text-zinc-300">{comment.message}</p>
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-xs text-zinc-400">Ainda não há comentários neste mercado.</p>
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <textarea
+                                value={commentDraftByVotingId[votacao.id] || ''}
+                                onChange={(event) =>
+                                  setCommentDraftByVotingId((current) => ({
+                                    ...current,
+                                    [votacao.id]: event.target.value,
+                                  }))
+                                }
+                                rows={3}
+                                placeholder={user ? 'Compartilhe sua leitura desse mercado...' : 'Entre para comentar'}
+                                disabled={!user}
+                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-60"
+                              />
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[11px] text-zinc-500">
+                                  {commentStatusByVotingId[votacao.id] || 'Comentários aparecem assim que o card for aberto.'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => void submitComment(votacao.id)}
+                                  disabled={!user}
+                                  className="rounded-full bg-green-500 px-3 py-1.5 text-xs font-semibold text-[#0f1115] transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {user ? 'Comentar' : 'Entrar'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                     </div>
                   );
                 })}
@@ -2281,20 +2496,21 @@ function UsuariosPageContent() {
           </section>
 
           {betModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-3">
-              <div className="flex max-h-[88vh] w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-2xl">
-                <div className="bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-4 pb-4 pt-4 text-white">
-                  <div className="inline-flex rounded-full bg-white/20 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-50">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 backdrop-blur-sm">
+              <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)]">
+                <div className="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_58%,#22c55e_100%)] px-5 pb-5 pt-5 text-white">
+                  <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-50">
                     Confirmar aposta
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-white/95">{betModal.votacaoTitulo}</p>
+                  <p className="mt-3 text-lg font-bold text-white">{betModal.votacaoTitulo}</p>
+                  <p className="mt-1 text-sm text-blue-50/85">Revise os dados antes de confirmar sua posição.</p>
                 </div>
 
-                <div className="overflow-y-auto p-4">
-                  <div className="-mt-7 rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-3 shadow-sm">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Candidato</p>
+                <div className="overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-5">
+                  <div className="-mt-10 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.4)]">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Seleção</p>
                     <div className="mt-2 flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-cyan-200 bg-white">
+                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
                         {betModal.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={betModal.imageUrl} alt={betModal.candidato} className="h-full w-full object-cover" />
@@ -2304,13 +2520,13 @@ function UsuariosPageContent() {
                       </div>
                       <p className="text-base font-bold text-slate-900">{betModal.candidato}</p>
                     </div>
-                    <div className="mt-2 inline-flex rounded-full bg-gradient-to-r from-cyan-100 to-blue-100 px-2.5 py-1 text-xs font-extrabold tabular-nums text-cyan-900 ring-1 ring-cyan-200">
+                    <div className="mt-3 inline-flex rounded-2xl bg-emerald-50 px-3 py-1.5 text-xs font-extrabold tabular-nums text-emerald-700">
                       {betModal.odd.toFixed(2)}
                     </div>
                   </div>
 
-                  <label className="mt-4 block text-sm font-medium text-slate-700">Valor da aposta</label>
-                  <div className="mt-2 flex items-center rounded-xl border border-cyan-200 bg-cyan-50/50 px-3 py-2 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100">
+                  <label className="mt-5 block text-sm font-semibold text-slate-700">Valor da aposta</label>
+                  <div className="mt-2 flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
                     <span className="text-sm font-bold text-blue-700">R$</span>
                     <input
                       type="number"
@@ -2335,12 +2551,12 @@ function UsuariosPageContent() {
                           type="button"
                           onClick={() => setBetAmount(String(value))}
                           disabled={disabled}
-                          className={`rounded-xl border px-2.5 py-1.5 text-xs font-bold tabular-nums transition ${
+                          className={`rounded-2xl border px-2.5 py-2 text-xs font-bold tabular-nums transition ${
                             disabled
                               ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
                               : isActive
-                                ? 'border-blue-400 bg-blue-600 text-white shadow-sm'
-                                : 'border-cyan-200 bg-cyan-50 text-cyan-800 hover:bg-cyan-100 hover:shadow-sm'
+                                ? 'border-blue-500 bg-blue-600 text-white shadow-sm'
+                                : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
                           }`}
                         >
                           {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)}
@@ -2352,26 +2568,26 @@ function UsuariosPageContent() {
                       <button
                         type="button"
                         onClick={() => setBetAmount(String(Math.floor(userBalance * 100) / 100))}
-                        className="col-span-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 hover:shadow-sm sm:col-span-4"
+                        className="col-span-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-4"
                       >
                         Usar saldo máximo
                       </button>
                     )}
                   </div>
 
-                  <div className="mt-3 grid gap-1.5 rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-2.5 text-xs sm:text-sm">
+                  <div className="mt-4 grid gap-2 rounded-[24px] border border-slate-200 bg-white p-4 text-xs shadow-[0_16px_35px_-28px_rgba(15,23,42,0.45)] sm:text-sm">
                     <div className="flex items-center justify-between text-slate-600">
                       <span>Saldo disponível</span>
                       <span className="font-semibold text-slate-900">{formattedUserBalance}</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-600">
-                      <span>Retorno total se vencer</span>
+                      <span>Retorno estimado</span>
                       <span className="font-bold tabular-nums text-cyan-700">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialReturn)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-slate-600">
-                      <span>Lucro líquido</span>
+                      <span>Lucro potencial</span>
                       <span className="font-bold tabular-nums text-blue-700">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialProfit)}
                       </span>
@@ -2382,14 +2598,14 @@ function UsuariosPageContent() {
                   </div>
 
                   {betFeedback && (
-                    <p className={`mt-3 rounded-xl px-3 py-2 text-sm font-medium ${
+                    <p className={`mt-4 rounded-2xl px-4 py-3 text-sm font-medium ${
                       betFeedback.includes('sucesso') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                     }`}>
                       {betFeedback}
                     </p>
                   )}
 
-                  <div className="mt-4 flex gap-2">
+                  <div className="mt-5 flex gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -2397,7 +2613,7 @@ function UsuariosPageContent() {
                         setBetAmount('');
                         setBetFeedback(null);
                       }}
-                      className="flex-1 rounded-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                      className="flex-1 rounded-full border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
                       Cancelar
                     </button>
@@ -2405,9 +2621,9 @@ function UsuariosPageContent() {
                       type="button"
                       onClick={() => void handlePlaceBet()}
                       disabled={placingBet}
-                      className="flex-1 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-cyan-600 disabled:opacity-60"
+                      className="flex-1 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#06b6d4_55%,#22c55e_100%)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-60"
                     >
-                      {placingBet ? 'Enviando...' : 'Apostar'}
+                      {placingBet ? 'Enviando...' : 'Confirmar aposta'}
                     </button>
                   </div>
                 </div>

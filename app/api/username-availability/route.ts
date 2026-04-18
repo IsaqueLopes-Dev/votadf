@@ -15,6 +15,14 @@ const normalizeUsername = (value: string) => {
 
 const isValidUsername = (value: string) => /^@[^\s]+$/.test(value) && value.length >= 4;
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const username = normalizeUsername(searchParams.get('username') || '');
@@ -61,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ available: true });
-  } catch (error: any) {
-    return NextResponse.json({ available: false, reason: error.message || 'unknown-error' }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ available: false, reason: getErrorMessage(error, 'unknown-error') }, { status: 500 });
   }
 }

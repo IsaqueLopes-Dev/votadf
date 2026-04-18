@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 
-const RETENTION_WINDOW_MS = 24 * 60 * 60 * 1000;
-const MAX_MESSAGE_LENGTH = 280;
-const MAX_MESSAGES = 200;
 const COMMENT_PREFIX = '__bet_comment__:';
+const COMMENT_RETENTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_COMMENT_LENGTH = 220;
+const MAX_COMMENTS_PER_CARD = 50;
 
-type ChatMessageRow = {
+type CommentRow = {
   id: string;
   user_id: string;
   username: string;
@@ -45,8 +45,25 @@ const getDisplayName = (user: User) => {
   return `@${email.split('@')[0]}`;
 };
 
-const cleanupOldMessages = async (supabaseAdmin: SupabaseClient) => {
-  const cutoff = new Date(Date.now() - RETENTION_WINDOW_MS).toISOString();
+const getCommentPrefix = (votacaoId: string) => `${COMMENT_PREFIX}${votacaoId}:`;
+
+const buildStoredMessage = (votacaoId: string, message: string) => `${getCommentPrefix(votacaoId)}${message}`;
+
+const parseStoredComment = (row: CommentRow, votacaoId: string) => {
+  const prefix = getCommentPrefix(votacaoId);
+  if (!row.message.startsWith(prefix)) {
+    return null;
+  }
+
+  return {
+    ...row,
+    votacao_id: votacaoId,
+    message: row.message.slice(prefix.length).trim(),
+  };
+};
+
+const cleanupOldComments = async (supabaseAdmin: SupabaseClient) => {
+  const cutoff = new Date(Date.now() - COMMENT_RETENTION_WINDOW_MS).toISOString();
   await supabaseAdmin.from('live_chat_messages').delete().lt('created_at', cutoff);
 };
 
@@ -71,31 +88,36 @@ const resolveAuthenticatedUser = async (request: Request) => {
 };
 
 export async function GET(request: Request) {
-  const authResult = await resolveAuthenticatedUser(request);
-  if ('error' in authResult) return authResult.error;
+  const votacaoId = new URL(request.url).searchParams.get('votacaoId')?.trim() || '';
+
+  if (!votacaoId) {
+    return NextResponse.json({ error: 'votacaoId é obrigatório.' }, { status: 400 });
+  }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuração de chat.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuração de comentários.' }, { status: 500 });
   }
 
-  await cleanupOldMessages(supabaseAdmin);
+  await cleanupOldComments(supabaseAdmin);
 
   const withAvatarQuery = await supabaseAdmin
     .from('live_chat_messages')
     .select('id, user_id, username, message, avatar_url, created_at')
+    .ilike('message', `${getCommentPrefix(votacaoId)}%`)
     .order('created_at', { ascending: true })
-    .limit(MAX_MESSAGES);
+    .limit(MAX_COMMENTS_PER_CARD);
 
-  let data = withAvatarQuery.data as ChatMessageRow[] | null;
+  let data = withAvatarQuery.data as CommentRow[] | null;
   let error = withAvatarQuery.error;
 
   if (error && String(error.message || '').toLowerCase().includes('avatar_url')) {
     const fallbackQuery = await supabaseAdmin
       .from('live_chat_messages')
       .select('id, user_id, username, message, created_at')
+      .ilike('message', `${getCommentPrefix(votacaoId)}%`)
       .order('created_at', { ascending: true })
-      .limit(MAX_MESSAGES);
+      .limit(MAX_COMMENTS_PER_CARD);
 
     if (fallbackQuery.error) {
       error = fallbackQuery.error;
@@ -105,56 +127,58 @@ export async function GET(request: Request) {
       data = (fallbackQuery.data || []).map((item) => ({
         ...item,
         avatar_url: '',
-      })) as ChatMessageRow[];
+      })) as CommentRow[];
     }
   }
 
   if (error) {
-    return NextResponse.json(
-      {
-        error:
-          'Não foi possível carregar o chat. Verifique se a tabela live_chat_messages existe no Supabase.',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Não foi possível carregar os comentários.' }, { status: 500 });
   }
 
-  const messages = ((data || []) as ChatMessageRow[]).filter((item) => !item.message.startsWith(COMMENT_PREFIX));
+  const comments = (data || [])
+    .map((row) => parseStoredComment(row, votacaoId))
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
 
-  return NextResponse.json({ messages });
+  return NextResponse.json({ comments });
 }
 
 export async function POST(request: Request) {
   const authResult = await resolveAuthenticatedUser(request);
   if ('error' in authResult) return authResult.error;
 
-  let body: { message?: string };
+  let body: { votacaoId?: string; message?: string };
   try {
-    body = (await request.json()) as { message?: string };
+    body = (await request.json()) as { votacaoId?: string; message?: string };
   } catch {
     return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
   }
 
+  const votacaoId = String(body.votacaoId || '').trim();
   const message = String(body.message || '').trim();
-  if (!message) {
-    return NextResponse.json({ error: 'Digite uma mensagem.' }, { status: 400 });
+
+  if (!votacaoId) {
+    return NextResponse.json({ error: 'votacaoId é obrigatório.' }, { status: 400 });
   }
 
-  if (message.length > MAX_MESSAGE_LENGTH) {
-    return NextResponse.json({ error: `A mensagem pode ter no máximo ${MAX_MESSAGE_LENGTH} caracteres.` }, { status: 400 });
+  if (!message) {
+    return NextResponse.json({ error: 'Digite um comentário.' }, { status: 400 });
+  }
+
+  if (message.length > MAX_COMMENT_LENGTH) {
+    return NextResponse.json({ error: `O comentário pode ter no máximo ${MAX_COMMENT_LENGTH} caracteres.` }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuração de chat.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuração de comentários.' }, { status: 500 });
   }
 
-  await cleanupOldMessages(supabaseAdmin);
+  await cleanupOldComments(supabaseAdmin);
 
   const payload = {
     user_id: authResult.user.id,
     username: getDisplayName(authResult.user),
-    message,
+    message: buildStoredMessage(votacaoId, message),
     avatar_url: String(authResult.user.user_metadata?.avatar_url || '').trim(),
   };
 
@@ -164,7 +188,7 @@ export async function POST(request: Request) {
     .select('id, user_id, username, message, avatar_url, created_at')
     .single();
 
-  let data = withAvatarInsert.data as ChatMessageRow | null;
+  let data = withAvatarInsert.data as CommentRow | null;
   let error = withAvatarInsert.error;
 
   if (error && String(error.message || '').toLowerCase().includes('avatar_url')) {
@@ -184,21 +208,20 @@ export async function POST(request: Request) {
     } else {
       error = null;
       data = {
-        ...(fallbackInsert.data as Omit<ChatMessageRow, 'avatar_url'>),
+        ...(fallbackInsert.data as Omit<CommentRow, 'avatar_url'>),
         avatar_url: '',
       };
     }
   }
 
   if (error || !data) {
-    return NextResponse.json(
-      {
-        error:
-          'Não foi possível enviar a mensagem. Verifique se a tabela live_chat_messages existe no Supabase.',
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Não foi possível publicar o comentário.' }, { status: 500 });
   }
 
-  return NextResponse.json({ message: data as ChatMessageRow });
+  const parsedComment = parseStoredComment(data, votacaoId);
+  if (!parsedComment) {
+    return NextResponse.json({ error: 'Não foi possível processar o comentário.' }, { status: 500 });
+  }
+
+  return NextResponse.json({ comment: parsedComment });
 }

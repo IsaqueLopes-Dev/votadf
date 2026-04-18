@@ -24,6 +24,18 @@ const getSiteUrl = (request: Request) => {
   return `${protocol}://${host}`;
 };
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+type PixBody = {
+  amount?: unknown;
+};
+
 export async function POST(request: Request) {
   const token = getBearerToken(request);
 
@@ -45,8 +57,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 });
   }
 
-  const body = await request.json().catch(() => ({}));
-  const amount = Number(body?.amount || 0);
+  const body = (await request.json().catch(() => ({}))) as PixBody;
+  const amount = Number(body.amount || 0);
 
   if (!Number.isFinite(amount) || amount < MIN_PIX_DEPOSIT || amount > MAX_PIX_DEPOSIT) {
     return NextResponse.json(
@@ -114,12 +126,12 @@ export async function POST(request: Request) {
     return NextResponse.json({
       paymentId: created.id,
       status: created.status,
-      qrCode: transactionData?.qr_code || null,
-      qrCodeBase64: transactionData?.qr_code_base64 || null,
-      ticketUrl: transactionData?.ticket_url || null,
+      qrCode: transactionData.qr_code,
+      qrCodeBase64: transactionData.qr_code_base64,
+      ticketUrl: transactionData.ticket_url || null,
     });
-  } catch (error: any) {
-    const rawMessage = String(error?.message || '');
+  } catch (error: unknown) {
+    const rawMessage = getErrorMessage(error, '');
     const normalized = rawMessage.toLowerCase();
 
     if (normalized.includes('collector user without key enabled for qr render')) {
@@ -132,9 +144,6 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json(
-      { error: error?.message || 'Falha ao criar cobrança PIX.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: getErrorMessage(error, 'Falha ao criar cobrança PIX.') }, { status: 500 });
   }
 }

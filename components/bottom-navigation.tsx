@@ -38,7 +38,7 @@ export default function BottomNavigation() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Navegação principal"
     >
-      <div className="mx-auto flex h-[68px] w-full max-w-3xl items-center justify-around px-4">
+      <div className="flex h-[68px] w-full items-center justify-around px-4">
         {navItems.map((item) => {
           const isActive = item.matches(pathname);
 

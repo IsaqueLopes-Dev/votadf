@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type User } from '@supabase/supabase-js';
 import BottomNavigation from '../../../components/bottom-navigation';
 import CategoryCarousel from '../../components/category-carousel';
 // --- CONFIGURAÇÕES E TIPOS ---
@@ -11,7 +11,10 @@ const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
   { value: 'politica', label: 'Política' },
   { value: 'entretenimento', label: 'Entretenimento' },
-  { value: 'futebol', label: 'Futebol' },
+  { value: 'esportes', label: 'Esportes' },
+  { value: 'financeiro', label: 'Financeiro' },
+  { value: 'celebridades', label: 'Celebridades' },
+  { value: 'criptomoedas', label: 'Criptomoedas' },
 ];
 
 type PollOption = {
@@ -20,17 +23,47 @@ type PollOption = {
   odds: string;
 };
 
+type PollMetadata = {
+  tipo: string;
+  categoria: string;
+  banner: string;
+};
+
+const normalizePollCategory = (value: unknown) => {
+  if (value === 'futebol' || value === 'esportes') return 'esportes';
+  if (value === 'politica' || value === 'entretenimento' || value === 'financeiro' || value === 'celebridades' || value === 'criptomoedas') {
+    return value;
+  }
+
+  return '';
+};
+
+type VotingRecord = {
+  id: string;
+  titulo: string;
+  descricao: string;
+  opcoes: string[];
+  odd_sim?: string;
+  odd_nao?: string;
+};
+
+type BetModalState = {
+  votacaoTitulo: string;
+  candidato: string;
+  odd: string;
+};
+
 // --- FUNÇÕES DE SUPORTE ---
-const parsePollMetadata = (descricao: string | null | undefined) => {
+const parsePollMetadata = (descricao: string | null | undefined): PollMetadata => {
   const rawDescription = descricao || '';
   if (rawDescription.startsWith(META_PREFIX)) {
     const lineBreakIndex = rawDescription.indexOf('\n');
     const metaLine = lineBreakIndex === -1 ? rawDescription : rawDescription.slice(0, lineBreakIndex);
     try {
-      const parsed = JSON.parse(metaLine.replace(META_PREFIX, ''));
+      const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as Partial<PollMetadata>;
       return { 
         tipo: parsed.tipo || 'opcoes-livres',
-        categoria: parsed.categoria || '',
+        categoria: normalizePollCategory(parsed.categoria),
         banner: parsed.banner || ''
       };
     } catch {
@@ -40,10 +73,18 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
   return { tipo: 'opcoes-livres', categoria: '', banner: '' };
 };
 
-const parsePollOption = (option: any): PollOption => {
+const parsePollOption = (option: unknown): PollOption => {
+  if (typeof option !== 'string') {
+    return { label: '', imageUrl: '', odds: '1.00' };
+  }
+
   try {
-    const parsed = JSON.parse(option);
-    return { label: parsed.label, imageUrl: parsed.imageUrl, odds: parsed.odds };
+    const parsed = JSON.parse(option) as Partial<PollOption>;
+    return {
+      label: parsed.label || '',
+      imageUrl: parsed.imageUrl || '',
+      odds: parsed.odds != null ? String(parsed.odds) : '1.00',
+    };
   } catch {
     return { label: option, imageUrl: '', odds: '1.00' };
   }
@@ -54,12 +95,12 @@ const getCategoryLabel = (cat: string) =>
 
 // --- COMPONENTE ---
 function UsuariosPageContent() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [votacoesAtivas, setVotacoesAtivas] = useState<any[]>([]);
+  const [votacoesAtivas, setVotacoesAtivas] = useState<VotingRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('todos');
 
-  const [betModal, setBetModal] = useState<any>(null);
+  const [betModal, setBetModal] = useState<BetModalState | null>(null);
   const [betAmount, setBetAmount] = useState('');
   const [placingBet, setPlacingBet] = useState(false);
   const [betFeedback, setBetFeedback] = useState<string | null>(null);
@@ -150,14 +191,14 @@ function UsuariosPageContent() {
         <CategoryCarousel
           categories={CATEGORY_OPTIONS}
           selectedCategory={selectedCategory}
-          onCategoryChange={(val: any) => setSelectedCategory(val)}
+          onCategoryChange={(val) => setSelectedCategory(val)}
           basePath="/admin/votacoes"
         />
 
         {/* VOTAÇÕES */}
-        <section className="grid gap-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {votacoesAtivas
-            .filter(v =>
+            .filter((v) =>
               selectedCategory === 'todos' ||
               parsePollMetadata(v.descricao).categoria === selectedCategory
             )
@@ -169,11 +210,11 @@ function UsuariosPageContent() {
                   ? [
                       JSON.stringify({
                         label: 'Sim',
-                        odds: votacao.odd_sim || '1.80'
+                        odds: votacao.odd_sim ?? '1.80'
                       }),
                       JSON.stringify({
                         label: 'Não',
-                        odds: votacao.odd_nao || '1.80'
+                        odds: votacao.odd_nao ?? '1.80'
                       }),
                     ]
                   : votacao.opcoes;
@@ -203,7 +244,7 @@ function UsuariosPageContent() {
 
                   {/* OPÇÕES */}
                   <div className="grid gap-2">
-                    {optionsToRender.map((opt: any, idx: number) => {
+                    {optionsToRender.map((opt: string, idx: number) => {
                       const option = parsePollOption(opt);
 
                       return (
