@@ -1285,19 +1285,39 @@ function UsuariosPageContent() {
     );
   }
 
+  // Estilo de fundo igual ao login
+  const loginBgStyle = {
+    margin: 0,
+    minHeight: '100vh',
+    height: '100%',
+    display: 'flex',
+    flexDirection: "column" as React.CSSProperties['flexDirection'],
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    backgroundColor: '#111111',
+    backgroundImage: 'linear-gradient(32deg, rgba(8,8,8,0.74) 30px, transparent)',
+    backgroundSize: '60px 60px',
+    backgroundPosition: '-5px -5px',
+    fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
+  };
   return (
     <div
-      className="relative min-h-screen overflow-hidden bg-[#e5e7eb]"
-      style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
+      className="relative min-h-screen overflow-hidden"
+      style={loginBgStyle}
     >
-      <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-blue-300/30 blur-3xl" />
-      <div className="pointer-events-none absolute top-1/3 -right-20 h-80 w-80 rounded-full bg-cyan-200/30 blur-3xl" />
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
-        <div className="flex w-full items-center justify-between gap-2 py-3 sm:py-4">
+        <div className="flex w-full items-center justify-between gap-2 py-3 sm:py-4 px-4 sm:px-10" style={{maxWidth: 1200, margin: '0 auto'}}>
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-white/20 ring-1 ring-white/30" />
-            <h1 className="text-xl sm:text-2xl font-bold text-white shrink-0 tracking-tight">VotaDF</h1>
+            <img
+              src="/logo.png"
+              alt="Logo VP"
+              style={{ height: 36, width: 36, objectFit: 'contain', marginRight: 8 }}
+            />
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1}}>
+              <span className="text-xl sm:text-2xl font-bold text-white shrink-0 tracking-tight" style={{fontFamily: 'inherit', marginBottom: -8, letterSpacing: 0}}>Votaai</span>
+              <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{marginTop: 0, fontFamily: 'inherit', textAlign: 'center'}}>Previsão</span>
+            </div>
           </div>
           <div className="relative flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Saldo */}
@@ -2101,20 +2121,20 @@ function UsuariosPageContent() {
           </>
         ) : (
           <div className="rounded-none border-y border-blue-100 bg-white/95 p-4 shadow-none backdrop-blur sm:rounded-3xl sm:border sm:p-10 sm:shadow-[0_20px_50px_-24px_rgba(30,64,175,0.35)]">
-          <section className="mb-10 grid gap-6 rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-600 to-blue-500 p-6 text-white shadow-lg sm:p-8">
+          <section className="mb-10 grid gap-6 rounded-3xl border border-gray-200 bg-gray-50 p-6 text-gray-900 shadow-lg sm:p-8">
             <div>
-              <p className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-100">
+              <p className="mb-3 inline-flex rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-blue-700">
                 Área do usuário
               </p>
               <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Bem-vindo, {displayName}!</h2>
-              <p className="mt-4 text-sm leading-7 text-blue-100 sm:text-base">
+              <p className="mt-4 text-sm leading-7 text-gray-700 sm:text-base">
                 Explore os destaques<br />
                 Entre em entretenimento, esportes, política ou futebol e participe das interações ao vivo.
               </p>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-blue-100/80 bg-gradient-to-b from-white to-blue-50/40 p-5 shadow-sm sm:p-6">
+          <section className="rounded-3xl border border-gray-200 bg-white p-5 shadow-lg sm:p-6">
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-2xl font-semibold text-slate-900">Explore os destaques</h2>
@@ -2142,9 +2162,9 @@ function UsuariosPageContent() {
                   const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= Date.now();
 
                   return (
-                    <div key={votacao.id} className="rounded-3xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md">
+                    <div key={votacao.id} className="rounded-3xl border border-gray-200 bg-gray-50 p-6 shadow-lg transition duration-200 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-xl">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-semibold text-slate-900 sm:text-lg">{votacao.titulo}</h3>
+                        <h3 className="text-base font-semibold text-gray-900 sm:text-lg">{votacao.titulo}</h3>
                         <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
                           {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
                         </span>
@@ -2160,8 +2180,8 @@ function UsuariosPageContent() {
                         </span>
                       </div>
 
-                      <p className="mb-4 line-clamp-3 text-sm leading-6 text-slate-600">{metadata.descricaoLimpa}</p>
-                      <p className="mb-4 text-xs text-slate-500">
+                      <p className="mb-4 line-clamp-3 text-sm leading-6 text-gray-600">{metadata.descricaoLimpa}</p>
+                      <p className="mb-4 text-xs text-gray-500">
                         Encerra em:{' '}
                         {metadata.encerramentoAposta
                           ? new Date(metadata.encerramentoAposta).toLocaleString('pt-BR')
@@ -2188,19 +2208,19 @@ function UsuariosPageContent() {
                                   type="button"
                                   onClick={() => openBetModal(votacao, parsedOption)}
                                   disabled={isBetClosed}
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/30 disabled:cursor-not-allowed disabled:opacity-55"
+                                  className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-2.5 text-left transition hover:border-blue-400 hover:bg-blue-50/30 disabled:cursor-not-allowed disabled:opacity-55"
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+                                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100">
                                         {parsedOption.imageUrl ? (
                                           // eslint-disable-next-line @next/next/no-img-element
                                           <img src={parsedOption.imageUrl} alt={parsedOption.label} className="h-full w-full object-cover" />
                                         ) : (
-                                          <span className="text-xs font-semibold text-slate-400">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
+                                          <span className="text-xs font-semibold text-gray-400">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
                                         )}
                                       </div>
-                                      <span className="text-sm font-semibold text-slate-800">{parsedOption.label}</span>
+                                      <span className="text-sm font-semibold text-gray-800">{parsedOption.label}</span>
                                     </div>
                                     <div className="flex gap-2">
                                       <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -2211,13 +2231,13 @@ function UsuariosPageContent() {
                                       </span>
                                     </div>
                                   </div>
-                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-200">
                                     <div
                                       className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"
                                       style={{ width: `${percent}%` }}
                                     />
                                   </div>
-                                  <p className="mt-1 text-[11px] font-medium text-slate-500">{votes[idx]} apostas</p>
+                                  <p className="mt-1 text-[11px] font-medium text-gray-500">{votes[idx]} apostas</p>
                                 </button>
                               );
                             });
@@ -2236,14 +2256,14 @@ function UsuariosPageContent() {
                         </div>
                       )}
 
-                      <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-slate-400">Selecione um candidato para abrir sua aposta</p>
+                      <p className="mt-4 text-xs font-medium uppercase tracking-[0.14em] text-gray-400">Selecione um candidato para abrir sua aposta</p>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-8 text-center">
-                <p className="text-slate-600">
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
+                <p className="text-gray-600">
                   {selectedCategory === 'todos'
                     ? 'Nenhuma votação ativa no momento. Volte em breve!'
                     : `Nenhuma votação ativa na categoria ${getCategoryLabel(selectedCategory)}.`}

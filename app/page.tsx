@@ -1,230 +1,156 @@
+
+
 import Link from 'next/link';
-import CandidatoLink from '@/app/components/candidato-link';
-import { createClient } from '@supabase/supabase-js';
-import CandidatoLink from './components/candidato-link';
 import CategoryCarousel from './components/category-carousel';
-import ParticiparButton from './components/participar-button'
+import BottomNavigation from '../components/bottom-navigation';
 
-const META_PREFIX = '__meta__:';
 const CATEGORY_OPTIONS = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'politica', label: 'Política' },
-  { value: 'entretenimento', label: 'Entretenimento' },
-  { value: 'futebol', label: 'Futebol' },
-] as const;
+	{ value: 'todos', label: 'Todos' },
+	{ value: 'politica', label: 'Política' },
+	{ value: 'entretenimento', label: 'Entretenimento' },
+	{ value: 'futebol', label: 'Futebol' },
+];
 
-type PollType = 'opcoes-livres' | 'enquete-candidatos';
-type PollCategory = 'politica' | 'entretenimento' | 'futebol' | '';
-
-type PollOption = {
-  label: string;
-  imageUrl: string;
-  odds: string;
-  oddsNao: string;
+type Votacao = {
+	id: string | number;
+	titulo: string;
+	descricao: string;
+	opcoes?: any;
+	ativa?: boolean;
+	created_at: string;
 };
 
-type BetCountsMap = Record<string, Record<string, number>>;
 
-const parsePollMetadata = (descricao: string | null | undefined) => {
-  const rawDescription = descricao || '';
 
-  if (rawDescription.startsWith(META_PREFIX)) {
-    const lineBreakIndex = rawDescription.indexOf('\n');
-    const metaLine = lineBreakIndex === -1 ? rawDescription : rawDescription.slice(0, lineBreakIndex);
-    const cleanDescription = lineBreakIndex === -1 ? '' : rawDescription.slice(lineBreakIndex + 1);
+function parsePollMetadata(descricao: string | null | undefined) {
+	const rawDescription = descricao || '';
+	if (rawDescription.startsWith('__meta__:')) {
+		const lineBreakIndex = rawDescription.indexOf('\n');
+		const metaLine = lineBreakIndex === -1 ? rawDescription : rawDescription.slice(0, lineBreakIndex);
+		const cleanDescription = lineBreakIndex === -1 ? '' : rawDescription.slice(lineBreakIndex + 1);
+		try {
+			const parsed = JSON.parse(metaLine.replace('__meta__:', '')) as {
+				categoria?: string;
+				encerramentoAposta?: string;
+				bettingClosesAt?: string;
+			};
+			return {
+				categoria: parsed.categoria || '',
+				encerramentoAposta: String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim(),
+				descricaoLimpa: cleanDescription,
+			};
+		} catch {
+			return { categoria: '', encerramentoAposta: '', descricaoLimpa: cleanDescription };
+		}
+	}
+	return { categoria: '', encerramentoAposta: '', descricaoLimpa: rawDescription };
+}
 
-    try {
-      const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as {
-        tipo?: PollType;
-        categoria?: PollCategory;
-        encerramentoAposta?: string;
-        bettingClosesAt?: string;
-      };
-      return {
-        tipo: parsed.tipo === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres',
-        categoria:
-          parsed.categoria === 'politica' || parsed.categoria === 'entretenimento' || parsed.categoria === 'futebol'
-            ? parsed.categoria
-            : '',
-        encerramentoAposta: String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim(),
-        descricaoLimpa: cleanDescription,
-      };
-    } catch {
-      return {
-        tipo: 'opcoes-livres' as const,
-        categoria: '' as PollCategory,
-        encerramentoAposta: '',
-        descricaoLimpa: cleanDescription,
-      };
-    }
-  }
+function getCategoryLabel(categoria: string) {
+	return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
+}
 
-  if (rawDescription.startsWith('__tipo__:enquete-candidatos\n')) {
-    return {
-      tipo: 'enquete-candidatos' as const,
-      categoria: '' as PollCategory,
-      encerramentoAposta: '',
-      descricaoLimpa: rawDescription.replace('__tipo__:enquete-candidatos\n', ''),
-    };
-  }
+function formatDate(date: string) {
+	try {
+		return new Date(date).toLocaleString('pt-BR');
+	} catch {
+		return date;
+	}
+}
 
-  return {
-    tipo: 'opcoes-livres' as const,
-    categoria: '' as PollCategory,
-    encerramentoAposta: '',
-    descricaoLimpa: rawDescription,
-  };
-};
-
-const getCategoryLabel = (categoria: string) => {
-  return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
-};
-
-const parsePollOption = (option: unknown): PollOption => {
-  if (typeof option !== 'string') {
-    return { label: '', imageUrl: '', odds: '', oddsNao: '' };
-  }
-
-  try {
-    const parsed = JSON.parse(option) as Partial<
-      PollOption & { odds: number | null; oddsNao: number | null; image_url: string; image: string; avatarUrl: string }
-    >;
-    if (typeof parsed.label === 'string') {
-      return {
-        label: parsed.label,
-        imageUrl:
-          typeof parsed.imageUrl === 'string'
-            ? parsed.imageUrl
-            : typeof parsed.image_url === 'string'
-              ? parsed.image_url
-              : typeof parsed.image === 'string'
-                ? parsed.image
-                : typeof parsed.avatarUrl === 'string'
-                  ? parsed.avatarUrl
-                  : '',
-        odds: parsed.odds != null && Number.isFinite(Number(parsed.odds)) ? String(parsed.odds) : '',
-        oddsNao: parsed.oddsNao != null && Number.isFinite(Number(parsed.oddsNao)) ? String(parsed.oddsNao) : '',
-      };
-    }
-  } catch {
-    // Compatibilidade com opções antigas em texto puro.
-  }
-
-  return {
-    label: option,
-    imageUrl: '',
-    odds: '',
-    oddsNao: '',
-  };
-};
-
-const getDeterministicHash = (value: string) => {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-};
-
-const normalizeCandidate = (value: string) => value.trim().toLowerCase();
-
-const getSimulatedBaseBets = (votacaoId: string, option: PollOption, index: number) => {
-  const hash = getDeterministicHash(`${votacaoId}:${option.label}:${index}:base`);
-  return 18 + (hash % 73);
-};
-
-const getRealBetCount = (counts: BetCountsMap, votacaoId: string, candidateLabel: string) => {
-  return counts[votacaoId]?.[normalizeCandidate(candidateLabel)] || 0;
-};
-
-const getSimulatedScore = (votacaoId: string, option: PollOption, index: number) => {
-  const odd = Number(option.odds || 0);
-  const oddWeight = Number.isFinite(odd) && odd > 0 ? 1 / odd : 0.5;
-  const hash = getDeterministicHash(`${votacaoId}:${option.label}:${index}`);
-  const jitter = 0.82 + (hash % 36) / 100;
-  return oddWeight * jitter;
-};
-
-export const revalidate = 10;
 
 async function getVotacoesAtivas() {
-  try {
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Configuração do Supabase ausente para carregar votações públicas.');
-      return [];
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase
-      .from('votacoes')
-      .select('id, titulo, descricao, opcoes, ativa, created_at')
-      .eq('ativa', true)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao buscar votações:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (error) {
-    console.error('Erro:', error);
-    return [];
-  }
+	try {
+		const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/votacoes/public`, { cache: 'no-store' });
+		if (!res.ok) return [];
+		const json = await res.json();
+		return json.votacoes || [];
+	} catch {
+		return [];
+	}
 }
 
-async function getBetCounts(): Promise<BetCountsMap> {
-  try {
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-    if (!supabaseUrl || !serviceRole) {
-      return {};
-    }
-
-    const supabaseAdmin = createClient(supabaseUrl, serviceRole);
-    const counts: BetCountsMap = {};
-    let page = 1;
-    const perPage = 100;
-
-    while (true) {
-      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-      if (error) {
-        return {};
-      }
-
-      const users = data.users || [];
-
-      users.forEach((user) => {
-        const metadata = (user.user_metadata || {}) as Record<string, unknown>;
-        const rawBets = Array.isArray(metadata.bets) ? metadata.bets : [];
-
-        rawBets.forEach((item) => {
-          const bet = (item || {}) as Record<string, unknown>;
-          const votacaoId = String(bet.votacaoId || '').trim();
-          const candidato = normalizeCandidate(String(bet.candidato || ''));
-
-          if (!votacaoId || !candidato) return;
-          if (!counts[votacaoId]) counts[votacaoId] = {};
-          counts[votacaoId][candidato] = (counts[votacaoId][candidato] || 0) + 1;
-        });
-      });
-
-      if (users.length < perPage) {
-        break;
-      }
-
-      page += 1;
-    }
-
-    return counts;
-  } catch {
-    return {};
-  }
+export default async function Home() {
+  // Exibir todas as votações ativas sem filtro de categoria
+  const votacoes: Votacao[] = await getVotacoesAtivas();
+  return (
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        backgroundColor: '#111111',
+        backgroundImage: 'linear-gradient(32deg, rgba(8,8,8,0.74) 30px, transparent)',
+        backgroundSize: '60px 60px',
+        backgroundPosition: '-5px -5px',
+        fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
+      }}
+    >
+      {/* Header/Navbar */}
+      <header className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
+        <div className="flex w-full items-center justify-between gap-2 py-3 sm:py-4 px-4 sm:px-10" style={{maxWidth: 1200, margin: '0 auto'}}>
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="Logo VP"
+              style={{ height: 36, width: 36, objectFit: 'contain', marginRight: 8 }}
+            />
+            <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1}}>
+              <span className="text-xl sm:text-2xl font-bold text-white shrink-0 tracking-tight" style={{fontFamily: 'inherit', marginBottom: -8, letterSpacing: 0}}>Votaai</span>
+              <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{marginTop: 0, fontFamily: 'inherit', textAlign: 'center'}}>Previsão</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/login?next=%2Fhome%3Fdeposit%3D1"
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-blue-600 shadow-[0_6px_16px_-8px_rgba(30,64,175,0.65)] transition hover:-translate-y-0.5 hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
+            >
+              Depositar
+            </Link>
+            <Link
+              href="/login"
+              className="rounded-full border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20 sm:px-4 sm:py-2 sm:text-sm"
+            >
+              Criar conta ou fazer login
+            </Link>
+          </div>
+        </div>
+      </header>
+      {/* Conteúdo principal */}
+      <main className="flex flex-col items-center flex-1 w-full py-10 px-2">
+        <h1 className="text-3xl font-bold text-white mb-2">Mercado de previsão</h1>
+        <p className="text-cyan-200 mb-6 text-center">Acompanhe as votações e aposte no candidato que você acredita.<br />Odds definidas e atualizadas em tempo real.</p>
+        <div className="w-full max-w-2xl mb-8">
+          <CategoryCarousel categories={CATEGORY_OPTIONS} selectedCategory={"todos"} />
+        </div>
+        <div className="w-full max-w-2xl">
+          <h2 className="text-xl font-bold text-white mb-4">Votações em destaque</h2>
+          {votacoes.length === 0 ? (
+            <div className="text-cyan-200 text-center py-8 rounded-xl bg-cyan-900/30 border border-cyan-700">
+              <p>Nenhuma votação ativa no momento. Volte em breve!</p>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2">
+              {votacoes.map((votacao) => (
+                <div key={votacao.id} className="card">
+                  <div className="card__content">
+                    <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 8, textAlign: 'center' }}>{votacao.titulo}</h3>
+                    <p style={{ fontSize: 14, marginBottom: 12, textAlign: 'center', color: '#b3b3ff' }}>{votacao.descricao}</p>
+                    <p style={{ fontSize: 12, color: '#7de2ff', marginTop: 'auto', textAlign: 'center' }}>
+                      Criada em: {formatDate(votacao.created_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+      {/* Bottom Navigation */}
+      <BottomNavigation />
+    </div>
+  );
 }
+<<<<<<< HEAD
 
 export default async function Home({
   searchParams,
@@ -455,3 +381,5 @@ export default async function Home({
     </main>
   );
 }
+=======
+>>>>>>> 44a598c (ajustes landing, cards, admin, bugs)
