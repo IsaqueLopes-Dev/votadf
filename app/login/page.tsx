@@ -18,6 +18,11 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 
 const normalizeCpfDigits = (value: string) => value.replace(/\D/g, '');
 
+type UserCpfRow = {
+  id: string;
+  cpf: string | null;
+};
+
 const findUserByNormalizedCpf = async (
   supabase: ReturnType<typeof getSupabaseClient>,
   normalizedCpf: string
@@ -28,7 +33,8 @@ const findUserByNormalizedCpf = async (
     throw error;
   }
 
-  return data?.find((user) => normalizeCpfDigits(String(user.cpf || '')) === normalizedCpf) || null;
+  const users = (data || []) as UserCpfRow[];
+  return users.find((user) => normalizeCpfDigits(String(user.cpf || '')) === normalizedCpf) || null;
 };
 
 const resolvePostLoginPath = (candidate: string | null | undefined) => {
