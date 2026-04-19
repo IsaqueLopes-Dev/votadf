@@ -2140,7 +2140,7 @@ function UsuariosPageContent() {
                         className="mt-0.5 h-4 w-4 rounded border-white/20 bg-[#0f1115] text-amber-400 focus:ring-amber-400"
                       />
                       <span>
-                        Confirmo que meu CPF e minha data de nascimento estao corretos. Depois disso, esses dados serao bloqueados e so o admin podera alterar.
+                        Confirmo que meu CPF e minha data de nascimento estão corretos. Depois disso, esses dados serão bloqueados e só o admin poderá alterar.
                       </span>
                     </label>
                   ) : (
