@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
@@ -29,7 +29,7 @@ function LoginPageContent() {
   const [isRecoverySession, setIsRecoverySession] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = getSupabaseClient();
+  const supabase = useMemo(() => getSupabaseClient(), []);
   const next = searchParams?.get('next') || '/home';
   const isResetMode = searchParams?.get('reset') === '1';
   const shouldSwitchAccount = searchParams?.get('switch') === '1';

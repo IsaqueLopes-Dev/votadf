@@ -1,15 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
-
-const MIN_PIX_DEPOSIT = 10;
-const MAX_PIX_DEPOSIT = 200;
-
-const getBearerToken = (request: Request) => {
-  const auth = request.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
-};
+import { getAuthenticatedUnifiedProfileContext } from '../../profile/utils';
 
 const getSiteUrl = (request: Request) => {
   const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
@@ -36,49 +27,33 @@ type PixBody = {
   amount?: unknown;
 };
 
+const MIN_PIX_DEPOSIT = 10;
+
 export async function POST(request: Request) {
-  const token = getBearerToken(request);
-
-  if (!token) {
-    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const context = await getAuthenticatedUnifiedProfileContext(request);
+  if ('error' in context) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
-  const anonSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
-
-  const {
-    data: { user },
-    error: userError,
-  } = await anonSupabase.auth.getUser(token);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 });
-  }
-
+  const { user, profile } = context;
   const body = (await request.json().catch(() => ({}))) as PixBody;
   const amount = Number(body.amount || 0);
 
-  if (!Number.isFinite(amount) || amount < MIN_PIX_DEPOSIT || amount > MAX_PIX_DEPOSIT) {
-    return NextResponse.json(
-      { error: `Valor inválido. Use entre R$ ${MIN_PIX_DEPOSIT} e R$ ${MAX_PIX_DEPOSIT}.` },
-      { status: 400 }
-    );
+  if (!Number.isFinite(amount) || amount < MIN_PIX_DEPOSIT) {
+    return NextResponse.json({ error: 'Valor invalido. O deposito minimo e de R$ 10,00.' }, { status: 400 });
   }
 
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
   if (!accessToken) {
-    return NextResponse.json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' }, { status: 500 });
+    return NextResponse.json({ error: 'MERCADO_PAGO_ACCESS_TOKEN nao configurado.' }, { status: 500 });
   }
 
   const siteUrl = getSiteUrl(request);
   if (!siteUrl) {
-    return NextResponse.json({ error: 'Não foi possível determinar a URL do site.' }, { status: 500 });
+    return NextResponse.json({ error: 'Nao foi possivel determinar a URL do site.' }, { status: 500 });
   }
 
-  const cpf = String(user.user_metadata?.cpf || '').replace(/\D/g, '');
-
+  const cpf = profile.cpf.replace(/\D/g, '');
   const mpClient = new MercadoPagoConfig({ accessToken });
   const paymentApi = new Payment(mpClient);
 
@@ -86,10 +61,10 @@ export async function POST(request: Request) {
     const created = await paymentApi.create({
       body: {
         transaction_amount: amount,
-        description: 'Depósito de saldo - VotaDF',
+        description: 'Deposito de saldo - VotaDF',
         payment_method_id: 'pix',
         payer: {
-          email: user.email || 'usuario@votadf.app',
+          email: profile.email || user.email || 'usuario@votadf.app',
           ...(cpf.length === 11
             ? {
                 identification: {
@@ -117,7 +92,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            'Sua conta Mercado Pago ainda não está habilitada para gerar QR PIX neste ambiente. Ative o recebimento PIX/chave PIX na conta e tente novamente.',
+            'Sua conta Mercado Pago ainda nao esta habilitada para gerar QR PIX neste ambiente. Ative o recebimento PIX/chave PIX na conta e tente novamente.',
         },
         { status: 400 }
       );
@@ -138,12 +113,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            'A conta do Mercado Pago usada no token não possui chave PIX habilitada para QR. Ative o PIX na conta (produção) e tente novamente.',
+            'A conta do Mercado Pago usada no token nao possui chave PIX habilitada para QR. Ative o PIX na conta (producao) e tente novamente.',
         },
         { status: 400 }
       );
     }
 
-    return NextResponse.json({ error: getErrorMessage(error, 'Falha ao criar cobrança PIX.') }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error, 'Falha ao criar cobranca PIX.') }, { status: 500 });
   }
 }
