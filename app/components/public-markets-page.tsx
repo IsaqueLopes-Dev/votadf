@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import PublicVotingBoard from './public-voting-board';
 import BottomNavigation from '../../components/bottom-navigation';
+import AuthenticatedHomeRedirect from './authenticated-home-redirect';
 
 const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
@@ -80,6 +81,7 @@ export default async function PublicMarketsPage({
         fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
       }}
     >
+      <AuthenticatedHomeRedirect />
       <header
         className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur"
         style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
