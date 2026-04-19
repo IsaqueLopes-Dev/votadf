@@ -185,6 +185,7 @@ export default function PublicVotingBoard({
   const [commentDraftByVotingId, setCommentDraftByVotingId] = useState<Record<string, string>>({});
   const [commentStatusByVotingId, setCommentStatusByVotingId] = useState<Record<string, string | null>>({});
   const [loadingCommentsByVotingId, setLoadingCommentsByVotingId] = useState<Record<string, boolean>>({});
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
 
   const router = useRouter();
   const pathname = usePathname();
@@ -238,6 +239,14 @@ export default function PublicVotingBoard({
     };
 
     void loadBetCounts();
+  }, []);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNowTimestamp(Date.now());
+    }, 30000);
+
+    return () => window.clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -298,10 +307,15 @@ export default function PublicVotingBoard({
 
   const filteredVotacoes = useMemo(() => {
     return votacoes.filter((votacao) => {
+      const metadata = parsePollMetadata(votacao.descricao);
+      const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
+      const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= nowTimestamp;
+
+      if (isBetClosed) return false;
       if (selectedCategory === 'todos') return true;
-      return parsePollMetadata(votacao.descricao).categoria === selectedCategory;
+      return metadata.categoria === selectedCategory;
     });
-  }, [selectedCategory, votacoes]);
+  }, [nowTimestamp, selectedCategory, votacoes]);
 
   const rawBalance = user?.user_metadata?.balance ?? user?.user_metadata?.saldo ?? 0;
   const parsedBalance = typeof rawBalance === 'number' ? rawBalance : Number(String(rawBalance).replace(',', '.'));

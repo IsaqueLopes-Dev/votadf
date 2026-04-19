@@ -233,6 +233,7 @@ function UsuariosPageContent() {
   const [cpfConfirmation, setCpfConfirmation] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [confirmIdentityLock, setConfirmIdentityLock] = useState(false);
+  const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
   const [avatarUrl, setAvatarUrl] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -1553,11 +1554,22 @@ function UsuariosPageContent() {
     : 0;
   const parsedWithdrawAmount = Number(withdrawAmount.replace(',', '.'));
   const filteredVotacoes = votacoesAtivas.filter((votacao) => {
-    if (selectedCategory === 'todos') return true;
-
     const metadata = parsePollMetadata(votacao.descricao);
+    const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
+    const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= nowTimestamp;
+
+    if (isBetClosed) return false;
+    if (selectedCategory === 'todos') return true;
     return metadata.categoria === selectedCategory;
   });
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNowTimestamp(Date.now());
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   if (loading) {
     return (
