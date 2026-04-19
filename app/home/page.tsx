@@ -346,7 +346,8 @@ function UsuariosPageContent() {
           .select('role')
           .eq('id', user.id)
           .single();
-        setUserRole(profile?.role || null);
+        const roleProfile = profile as { role?: string | null } | null;
+        setUserRole(roleProfile?.role || null);
       } else {
         setUserRole(null);
       }

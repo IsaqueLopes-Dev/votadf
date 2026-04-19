@@ -15,6 +15,24 @@ export type UnifiedProfile = {
   role: string;
 };
 
+type AuthenticatedProfileContext = {
+  user: User;
+  anonSupabase: ReturnType<typeof getAnonSupabase>;
+  adminSupabase: ReturnType<typeof getAdminSupabase>;
+  status: 200;
+};
+
+type AuthenticatedUnifiedProfileContext = AuthenticatedProfileContext & {
+  user: User;
+  profile: UnifiedProfile;
+  status: 200;
+};
+
+type AuthErrorContext = {
+  error: string;
+  status: 401 | 500;
+};
+
 const PROFILE_SELECT_VARIANTS = [
   'id, email, username, cpf, birth_date, avatar_url, role',
   'id, email, username, cpf, birth_date, role',
@@ -76,7 +94,9 @@ export const getAnonSupabase = () =>
 export const getAdminSupabase = () =>
   createClient(getSupabaseUrl(), getServiceRoleKey());
 
-export const getAuthenticatedProfileContext = async (request: Request) => {
+export const getAuthenticatedProfileContext = async (
+  request: Request
+): Promise<AuthenticatedProfileContext | AuthErrorContext> => {
   const token = getBearerToken(request);
 
   if (!token) {
@@ -100,6 +120,25 @@ export const getAuthenticatedProfileContext = async (request: Request) => {
   }
 
   return { user, anonSupabase, adminSupabase, status: 200 as const };
+};
+
+export const getAuthenticatedUnifiedProfileContext = async (
+  request: Request
+): Promise<AuthenticatedUnifiedProfileContext | AuthErrorContext> => {
+  const context = await getAuthenticatedProfileContext(request);
+
+  if ('error' in context) {
+    return context;
+  }
+
+  const { user, profile } = await syncUnifiedProfile(context.adminSupabase, context.user);
+
+  return {
+    ...context,
+    user,
+    profile,
+    status: 200 as const,
+  };
 };
 
 export const readPublicUserProfile = async (
