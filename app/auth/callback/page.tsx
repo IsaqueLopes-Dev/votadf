@@ -4,6 +4,8 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient } from '../../utils/supabaseClient';
 
+const DEFAULT_POST_LOGIN_PATH = '/usuarios';
+
 const emailOtpTypes = new Set([
   'signup',
   'invite',
@@ -14,6 +16,27 @@ const emailOtpTypes = new Set([
 ] as const);
 
 type EmailOtpType = typeof emailOtpTypes extends Set<infer T> ? T : never;
+
+const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+const resolvePostLoginPath = (candidate: string | null | undefined) => {
+  const normalized = String(candidate || '').trim();
+
+  if (
+    !normalized ||
+    normalized === '/' ||
+    normalized.startsWith('/login') ||
+    normalized.startsWith('/auth/callback')
+  ) {
+    return DEFAULT_POST_LOGIN_PATH;
+  }
+
+  if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+    return DEFAULT_POST_LOGIN_PATH;
+  }
+
+  return normalized;
+};
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -27,14 +50,94 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     let mounted = true;
+    let timeoutId: number | null = null;
 
     const getResolvedNext = () => {
       if (typeof window === 'undefined') {
-        return next || '/home';
+        return DEFAULT_POST_LOGIN_PATH;
       }
 
       const storedNext = window.sessionStorage.getItem('post_login_redirect') || '';
-      return next || storedNext || '/home';
+      return resolvePostLoginPath(next || storedNext);
+    };
+
+    const clearPendingRedirect = () => {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('post_login_redirect');
+      }
+    };
+
+    const syncProfile = async (accessToken: string) => {
+      await fetch('/api/profile/me', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: 'no-store',
+      }).catch(() => null);
+    };
+
+    const normalizeHashSession = async () => {
+      if (typeof window === 'undefined') return null;
+
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash) return null;
+
+      const hashParams = new URLSearchParams(hash);
+      const accessToken = hashParams.get('access_token') || '';
+      const refreshToken = hashParams.get('refresh_token') || '';
+
+      if (!accessToken || !refreshToken) {
+        return null;
+      }
+
+      const { data, error: setSessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (setSessionError) {
+        throw setSessionError;
+      }
+
+      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
+      return data.session || null;
+    };
+
+    const waitForStableSession = async () => {
+      for (let attempt = 0; attempt < 24; attempt += 1) {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+        if (session?.access_token) {
+          return session;
+        }
+
+        await wait(250);
+      }
+
+      return null;
+    };
+
+    const finishWithSession = async () => {
+      const session = await waitForStableSession();
+
+      if (!mounted) return false;
+      if (!session?.access_token) return false;
+
+      await syncProfile(session.access_token);
+
+      if (!mounted) return true;
+
+      clearPendingRedirect();
+      router.replace(getResolvedNext());
+      return true;
     };
 
     const finishAuth = async () => {
@@ -43,11 +146,12 @@ function AuthCallbackContent() {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
           if (!mounted) return;
-
           if (exchangeError) {
             setError(exchangeError.message);
             return;
           }
+        } else {
+          await normalizeHashSession();
         }
 
         if (tokenHash && type && emailOtpTypes.has(type as EmailOtpType)) {
@@ -57,30 +161,13 @@ function AuthCallbackContent() {
           });
 
           if (!mounted) return;
-
           if (verifyError) {
             setError(verifyError.message);
             return;
           }
         }
 
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        if (error) {
-          setError(error.message);
-          return;
-        }
-
-        if (session) {
-          if (typeof window !== 'undefined') {
-            window.sessionStorage.removeItem('post_login_redirect');
-          }
-          router.replace(getResolvedNext());
+        if (await finishWithSession()) {
           return;
         }
 
@@ -89,22 +176,27 @@ function AuthCallbackContent() {
         } = supabase.auth.onAuthStateChange((event, currentSession) => {
           if (!mounted) return;
 
-          if (currentSession && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-            if (typeof window !== 'undefined') {
-              window.sessionStorage.removeItem('post_login_redirect');
-            }
+          if (!currentSession?.access_token) return;
+          if (event !== 'SIGNED_IN' && event !== 'TOKEN_REFRESHED' && event !== 'INITIAL_SESSION') return;
+
+          void (async () => {
+            await syncProfile(currentSession.access_token);
+
+            if (!mounted) return;
+
+            clearPendingRedirect();
             router.replace(getResolvedNext());
-          }
+          })();
         });
 
-        window.setTimeout(() => {
-          if (!mounted) return;
+        timeoutId = window.setTimeout(() => {
           subscription.unsubscribe();
-          setError('Não foi possível concluir o login com Google. Tente novamente.');
-        }, 4000);
+          if (!mounted) return;
+          setError('Nao foi possivel concluir o login com Google. Tente novamente.');
+        }, 8000);
       } catch (callbackError) {
         if (!mounted) return;
-        setError(callbackError instanceof Error ? callbackError.message : 'Não foi possível concluir o login.');
+        setError(callbackError instanceof Error ? callbackError.message : 'Nao foi possivel concluir o login.');
       }
     };
 
@@ -112,6 +204,9 @@ function AuthCallbackContent() {
 
     return () => {
       mounted = false;
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [code, next, router, supabase.auth, tokenHash, type]);
 
@@ -145,7 +240,7 @@ function AuthCallbackContent() {
       >
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Concluindo login</h1>
         <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6, color: '#cbd5e1' }}>
-          Estamos finalizando o acesso com Google e redirecionando você.
+          Estamos finalizando o acesso com Google e redirecionando voce.
         </p>
         {error ? (
           <div

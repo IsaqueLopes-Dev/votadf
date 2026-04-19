@@ -6,12 +6,33 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
+const DEFAULT_POST_LOGIN_PATH = '/usuarios';
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message) {
     return error.message;
   }
 
   return fallback;
+};
+
+const resolvePostLoginPath = (candidate: string | null | undefined) => {
+  const normalized = String(candidate || '').trim();
+
+  if (
+    !normalized ||
+    normalized === '/' ||
+    normalized.startsWith('/login') ||
+    normalized.startsWith('/auth/callback')
+  ) {
+    return DEFAULT_POST_LOGIN_PATH;
+  }
+
+  if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+    return DEFAULT_POST_LOGIN_PATH;
+  }
+
+  return normalized;
 };
 
 function LoginPageContent() {
@@ -30,7 +51,7 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const next = searchParams?.get('next') || '/home';
+  const next = resolvePostLoginPath(searchParams?.get('next'));
   const isResetMode = searchParams?.get('reset') === '1';
   const shouldSwitchAccount = searchParams?.get('switch') === '1';
 
