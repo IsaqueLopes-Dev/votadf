@@ -46,7 +46,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
-  const allowedAdminEmail = 'isaquelopespires@gmail.com';
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -57,13 +56,6 @@ export default function AdminPage() {
 
         if (!user) {
           router.push('/login?next=/admin');
-          return;
-        }
-
-        // Verifica se o e-mail é o permitido
-        if (user.email !== allowedAdminEmail) {
-          setError('Acesso restrito: este painel é exclusivo para administradores.');
-          setLoading(false);
           return;
         }
 
