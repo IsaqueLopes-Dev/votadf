@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const MIN_WITHDRAWAL = 10;
+const MIN_WITHDRAWAL = 50;
 
 const getBearerToken = (request: Request) => {
   const auth = request.headers.get('authorization') || '';

@@ -1,26 +1,38 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+import { ensureAdminRequest } from '../../utils';
 
-export async function POST(req: NextRequest) {
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-  const { userId, adminEmail } = await req.json();
+export async function POST(request: Request) {
+  const { user, supabaseAdmin, errorResponse } = await ensureAdminRequest(request);
 
-  // Verifica se o adminEmail está autorizado
-  // Validação de admin removida: agora só permite via endpoint seguro
-
-  // Exclui o usuário do Supabase Auth
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (errorResponse || !supabaseAdmin || !user) {
+    return errorResponse;
   }
 
-  // Chama a função SQL para limpar dados relacionados
+  let payload: { userId?: unknown };
+  try {
+    payload = (await request.json()) as { userId?: unknown };
+  } catch {
+    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+  }
+
+  const userId = String(payload.userId || '').trim();
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Informe o userId.' }, { status: 400 });
+  }
+
+  if (userId === user.id) {
+    return NextResponse.json({ error: 'Você não pode excluir seu próprio usuário admin.' }, { status: 400 });
+  }
+
   const { error: rpcError } = await supabaseAdmin.rpc('delete_user_and_related', { user_id: userId });
   if (rpcError) {
     return NextResponse.json({ error: rpcError.message }, { status: 500 });
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

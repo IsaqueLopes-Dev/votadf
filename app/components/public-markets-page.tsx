@@ -1,4 +1,4 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import PublicVotingBoard from './public-voting-board';
 import BottomNavigation from '../../components/bottom-navigation';
@@ -84,8 +84,8 @@ export default async function PublicMarketsPage({
         className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur"
         style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
       >
-        <div className="flex w-full items-center justify-between gap-2 px-4 py-3 sm:px-10 sm:py-4">
-          <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-10 sm:py-4">
+          <div className="flex min-w-0 items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
@@ -97,20 +97,20 @@ export default async function PublicMarketsPage({
                 Votaai
               </span>
               <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{ marginTop: 0, fontFamily: 'inherit', textAlign: 'center' }}>
-                Previsao
+                Previsão
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-3">
             <Link
               href="/login?next=%2Fhome%3Fdeposit%3D1"
-              className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-blue-600 shadow-[0_6px_16px_-8px_rgba(30,64,175,0.65)] transition hover:-translate-y-0.5 hover:bg-blue-50 sm:px-4 sm:py-2 sm:text-sm"
+              className="flex-1 rounded-full bg-white px-3 py-2 text-center text-xs font-bold text-blue-600 shadow-[0_6px_16px_-8px_rgba(30,64,175,0.65)] transition hover:-translate-y-0.5 hover:bg-blue-50 sm:flex-none sm:px-4 sm:py-2 sm:text-sm"
             >
               Depositar
             </Link>
             <Link
               href="/login"
-              className="rounded-full border border-white/40 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20 sm:px-4 sm:py-2 sm:text-sm"
+              className="flex-1 rounded-full border border-white/40 bg-white/15 px-3 py-2 text-center text-xs font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/20 sm:flex-none sm:px-4 sm:py-2 sm:text-sm"
             >
               Criar conta ou fazer login
             </Link>
@@ -118,9 +118,9 @@ export default async function PublicMarketsPage({
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col items-center w-full px-2 py-10 pb-28">
-        <h1 className="mb-2 text-3xl font-bold text-white">Mercado de previsão</h1>
-        <p className="mb-6 text-center text-cyan-200">
+      <main className="flex w-full flex-1 flex-col items-center px-3 py-8 pb-28 sm:px-2 sm:py-10">
+        <h1 className="mb-2 text-center text-2xl font-bold text-white sm:text-3xl">Mercado de previsão</h1>
+        <p className="mb-6 max-w-2xl text-center text-sm leading-6 text-cyan-200 sm:text-base">
           Acompanhe as votações e aposte no candidato que você acredita.
           <br />
           Odds definidas e atualizadas em tempo real.
@@ -139,3 +139,4 @@ export default async function PublicMarketsPage({
     </div>
   );
 }
+

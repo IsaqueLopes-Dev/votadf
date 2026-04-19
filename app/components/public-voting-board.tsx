@@ -240,6 +240,62 @@ export default function PublicVotingBoard({
     void loadBetCounts();
   }, []);
 
+  useEffect(() => {
+    const votacaoIds = votacoes.map((votacao) => votacao.id).filter(Boolean);
+
+    if (votacaoIds.length === 0) {
+      return;
+    }
+
+    const missingIds = votacaoIds.filter((votacaoId) => commentsByVotingId[votacaoId] === undefined);
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const preloadCommentCounts = async () => {
+      try {
+        const responses = await Promise.all(
+          missingIds.map(async (votacaoId) => {
+            const response = await fetch(`/api/votacoes/comments?votacaoId=${encodeURIComponent(votacaoId)}`, {
+              method: 'GET',
+              cache: 'no-store',
+            });
+
+            const payload = (await response.json()) as { comments?: BetCommentItem[] };
+            return {
+              votacaoId,
+              comments: response.ok && Array.isArray(payload.comments) ? payload.comments : [],
+            };
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setCommentsByVotingId((current) => {
+          const next = { ...current };
+
+          for (const item of responses) {
+            next[item.votacaoId] = item.comments;
+          }
+
+          return next;
+        });
+      } catch {
+        // Mantém o contador em zero se o preload falhar.
+      }
+    };
+
+    void preloadCommentCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [commentsByVotingId, votacoes]);
+
   const filteredVotacoes = useMemo(() => {
     return votacoes.filter((votacao) => {
       if (selectedCategory === 'todos') return true;
@@ -697,7 +753,7 @@ export default function PublicVotingBoard({
                         />
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[11px] text-zinc-500">
-                            {commentStatusByVotingId[votacao.id] || (user ? 'Comentários aparecem assim que o card for aberto.' : 'Entre na sua conta para comentar neste mercado.')}
+                            {commentStatusByVotingId[votacao.id] || (user ? '' : 'Entre na sua conta para comentar neste mercado.')}
                           </span>
                           <button
                             type="button"

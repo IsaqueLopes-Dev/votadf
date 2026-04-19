@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -38,7 +38,7 @@ export default function BottomNavigation() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       aria-label="Navegação principal"
     >
-      <div className="flex h-[68px] w-full items-center justify-around px-4">
+      <div className="flex h-[64px] w-full items-center justify-around px-2 sm:h-[68px] sm:px-4">
         {navItems.map((item) => {
           const isActive = item.matches(pathname);
 
@@ -46,7 +46,7 @@ export default function BottomNavigation() {
             <Link
               key={item.href}
               href={item.href}
-              className={`group flex min-w-[96px] flex-col items-center justify-center gap-1 rounded-2xl px-4 py-2 transition duration-200 active:scale-95 ${
+              className={`group flex min-w-[78px] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 transition duration-200 active:scale-95 sm:min-w-[96px] sm:px-4 ${
                 isActive ? 'text-blue-500' : 'text-[#888888] hover:text-slate-300'
               }`}
               aria-current={isActive ? 'page' : undefined}
@@ -54,7 +54,7 @@ export default function BottomNavigation() {
               <span className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}>
                 {item.icon}
               </span>
-              <span className="text-[11px] font-semibold tracking-[0.08em] uppercase">{item.label}</span>
+              <span className="text-[10px] font-semibold tracking-[0.06em] uppercase sm:text-[11px]">{item.label}</span>
               <span className={`h-1 w-8 rounded-full transition ${isActive ? 'bg-blue-500' : 'bg-transparent'}`} />
             </Link>
           );
@@ -63,3 +63,4 @@ export default function BottomNavigation() {
     </nav>
   );
 }
+

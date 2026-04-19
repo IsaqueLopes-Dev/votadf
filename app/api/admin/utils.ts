@@ -15,6 +15,17 @@ const getSupabaseUrl = () =>
 const getServiceRoleKey = () =>
   process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+const getAdminEmails = () => {
+  const rawValue = process.env.ADMIN_EMAIL || '';
+
+  return new Set(
+    rawValue
+      .split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+  );
+};
+
 export const getBearerToken = (request: Request) => {
   const auth = request.headers.get('authorization') || '';
 
@@ -35,8 +46,6 @@ export const getAdminSupabase = () => {
 };
 
 export const ensureAdminRequest = async (request: Request) => {
-  console.log('CHEGOU NO ADMIN 🔥');
-
   const token = getBearerToken(request);
 
   if (!token) {
@@ -48,12 +57,12 @@ export const ensureAdminRequest = async (request: Request) => {
     };
   }
 
-  const supabase = getAnonSupabase();
+  const supabaseAdmin = getAdminSupabase();
 
   const {
     data: { user },
     error,
-  } = await supabase.auth.getUser(token);
+  } = await supabaseAdmin.auth.getUser(token);
 
   if (error || !user) {
     return {
@@ -64,20 +73,12 @@ export const ensureAdminRequest = async (request: Request) => {
     };
   }
 
-  console.log('AUTH USER ID:', user.id);
-  console.log('AUTH EMAIL:', user.email);
-
-  // 🔥 BUSCA POR ID (CORRETO E SEGURO)
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
 
-  console.log('PROFILE:', profile);
-  console.log('PROFILE ERROR:', profileError);
-
-  // 🔥 CHECAGEM ROBUSTA
   if (profileError) {
     return {
       errorResponse: NextResponse.json(
@@ -87,7 +88,10 @@ export const ensureAdminRequest = async (request: Request) => {
     };
   }
 
-  if (!profile) {
+  const isEmailAdmin = getAdminEmails().has(String(user.email || '').trim().toLowerCase());
+  const role = String(profile?.role || '').trim().toLowerCase();
+
+  if (!isEmailAdmin && !profile) {
     return {
       errorResponse: NextResponse.json(
         { error: 'Usuário não encontrado na base de permissões.' },
@@ -96,7 +100,7 @@ export const ensureAdminRequest = async (request: Request) => {
     };
   }
 
-  if (profile.role !== 'admin') {
+  if (!isEmailAdmin && role !== 'admin') {
     return {
       errorResponse: NextResponse.json(
         { error: 'Acesso negado.' },
@@ -107,7 +111,7 @@ export const ensureAdminRequest = async (request: Request) => {
 
   return {
     user,
-    supabaseAdmin: getAdminSupabase(),
+    supabaseAdmin,
     errorResponse: null,
   };
 };

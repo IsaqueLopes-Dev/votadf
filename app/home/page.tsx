@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -291,7 +291,7 @@ function UsuariosPageContent() {
   const MIN_AVATAR_ZOOM = 1;
   const MAX_AVATAR_ZOOM = 3;
   const MIN_PIX_DEPOSIT = 10;
-  const MAX_PIX_DEPOSIT = 200;
+  const MIN_WITHDRAWAL = 50;
 
   useEffect(() => {
     // Cleanup
@@ -580,6 +580,62 @@ function UsuariosPageContent() {
     }
   };
 
+  useEffect(() => {
+    const votacaoIds = votacoesAtivas.map((votacao) => votacao.id).filter(Boolean);
+
+    if (votacaoIds.length === 0) {
+      return;
+    }
+
+    const missingIds = votacaoIds.filter((votacaoId) => commentsByVotingId[votacaoId] === undefined);
+    if (missingIds.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const preloadCommentCounts = async () => {
+      try {
+        const responses = await Promise.all(
+          missingIds.map(async (votacaoId) => {
+            const response = await fetch(`/api/votacoes/comments?votacaoId=${encodeURIComponent(votacaoId)}`, {
+              method: 'GET',
+              cache: 'no-store',
+            });
+
+            const payload = (await response.json()) as { comments?: BetCommentItem[] };
+            return {
+              votacaoId,
+              comments: response.ok && Array.isArray(payload.comments) ? payload.comments : [],
+            };
+          })
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setCommentsByVotingId((current) => {
+          const next = { ...current };
+
+          for (const item of responses) {
+            next[item.votacaoId] = item.comments;
+          }
+
+          return next;
+        });
+      } catch {
+        // Mantém o contador em zero se o preload falhar.
+      }
+    };
+
+    void preloadCommentCounts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [commentsByVotingId, votacoesAtivas]);
+
   const toggleComments = async (votacaoId: string) => {
     const shouldOpen = expandedCommentsId !== votacaoId;
     setExpandedCommentsId(shouldOpen ? votacaoId : null);
@@ -795,8 +851,8 @@ function UsuariosPageContent() {
   };
 
   const handleCreatePixDeposit = async () => {
-    if (depositAmount < MIN_PIX_DEPOSIT || depositAmount > MAX_PIX_DEPOSIT) {
-      setPixStatusMessage(`Digite um valor entre R$ ${MIN_PIX_DEPOSIT} e R$ ${MAX_PIX_DEPOSIT}.`);
+    if (depositAmount < MIN_PIX_DEPOSIT) {
+      setPixStatusMessage(`Digite um valor a partir de R$ ${MIN_PIX_DEPOSIT}.`);
       return;
     }
 
@@ -845,6 +901,11 @@ function UsuariosPageContent() {
 
     if (!Number.isFinite(amountToWithdraw) || amountToWithdraw <= 0) {
       setWithdrawStatusMessage('Digite um valor válido para sacar.');
+      return;
+    }
+
+    if (amountToWithdraw < MIN_WITHDRAWAL) {
+      setWithdrawStatusMessage(`Valor mínimo para saque é R$ ${MIN_WITHDRAWAL}.`);
       return;
     }
 
@@ -1391,7 +1452,11 @@ function UsuariosPageContent() {
     }
   };
 
-  const displayName = username || user?.user_metadata?.username || `@${user?.email?.split('@')[0]}` || '@usuario';
+  const emailHandle = user?.email?.split('@')?.[0]?.trim();
+  const displayName =
+    String(username || '').trim() ||
+    String(user?.user_metadata?.username || '').trim() ||
+    (emailHandle ? `@${emailHandle}` : '@usuario');
   const rawBalance = user?.user_metadata?.balance ?? user?.user_metadata?.saldo ?? 0;
   const parsedBalance = typeof rawBalance === 'number'
     ? rawBalance
@@ -1410,7 +1475,6 @@ function UsuariosPageContent() {
     ? Math.max(potentialReturn - parsedBetAmount, 0)
     : 0;
   const parsedWithdrawAmount = Number(withdrawAmount.replace(',', '.'));
-  const withdrawAmountIsValid = Number.isFinite(parsedWithdrawAmount) && parsedWithdrawAmount > 0;
   const filteredVotacoes = votacoesAtivas.filter((votacao) => {
     if (selectedCategory === 'todos') return true;
 
@@ -1452,8 +1516,8 @@ function UsuariosPageContent() {
     >
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
-        <div className="flex w-full items-center justify-between gap-2 py-3 sm:py-4 px-4 sm:px-10" style={{maxWidth: 1200, margin: '0 auto'}}>
-          <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-10 sm:py-4" style={{maxWidth: 1200, margin: '0 auto'}}>
+          <div className="flex min-w-0 items-center gap-3">
             <img
               src="/logo.png"
               alt="Logo VP"
@@ -1464,37 +1528,59 @@ function UsuariosPageContent() {
               <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{marginTop: 0, fontFamily: 'inherit', textAlign: 'center'}}>Previsão</span>
             </div>
           </div>
-          <div className="relative flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="relative flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-3 min-w-0">
             {/* Saldo */}
-            <button
-              type="button"
-              onClick={() => {
-                setBalanceMenuOpen((prev) => !prev);
-                setProfileOpen(false);
-                setBetHistoryOpen(false);
-                setDepositOpen(false);
-              }}
-              className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 sm:px-4 py-1.5 sm:py-2 shrink-0 transition hover:bg-white/20"
-            >
-              <svg className="h-3.5 w-3.5 text-blue-100 hidden sm:block" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
-                <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
-              </svg>
-              <span className="text-xs sm:text-sm font-semibold text-white">
-                <span className="hidden sm:inline">Saldo: </span>{formattedUserBalance}
-              </span>
-            </button>
-            {balanceMenuOpen && (
-              <div className="absolute right-0 top-12 z-40 w-72">
-                <div className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-950 via-blue-950 to-blue-900 p-5 shadow-2xl">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Saldo disponível</span>
-                  <span className="text-2xl font-extrabold text-cyan-100 tracking-tight drop-shadow-lg block">{formattedUserBalance}</span>
-                  <span className="inline-block rounded-full bg-cyan-900/60 px-3 py-1 text-[11px] font-bold text-cyan-200 shadow mb-1">{user?.user_metadata?.cpf || 'não definido'}</span>
-                  <span className="text-xs text-cyan-500">Saque será pago para o CPF acima</span>
-                  <div className="flex flex-col gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
+              <button
+                type="button"
+                onClick={() => {
+                  setBalanceMenuOpen((prev) => !prev);
+                  setProfileOpen(false);
+                  setBetHistoryOpen(false);
+                  setDepositOpen(false);
+                }}
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/15 bg-white/12 px-3 py-1.5 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.65)] transition hover:bg-white/20 sm:flex-none sm:px-4 sm:py-2"
+              >
+                <span className="hidden h-7 w-7 items-center justify-center rounded-full bg-white/12 sm:flex">
+                  <svg className="h-3.5 w-3.5 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                    <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd"/>
+                  </svg>
+                </span>
+                <span className="text-left leading-none">
+                  <span className="hidden sm:block text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100/75">Saldo</span>
+                  <span className="text-xs sm:text-sm font-semibold text-white">
+                    {formattedUserBalance}
+                  </span>
+                </span>
+                <svg
+                  className={`h-3.5 w-3.5 text-blue-100 transition-transform ${balanceMenuOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/>
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+                </svg>
+              </button>
+              {balanceMenuOpen && (
+                <div className="absolute right-0 top-12 z-40 w-80 max-w-[calc(100vw-2rem)]">
+                  <div className="overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-950 via-blue-950 to-blue-900 shadow-[0_28px_60px_-24px_rgba(2,6,23,0.9)]">
+                    <div className="border-b border-white/10 bg-gradient-to-r from-cyan-500/12 via-transparent to-blue-500/10 px-5 pb-5 pt-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/90">Painel financeiro</p>
+                      <p className="mt-2 text-xs text-blue-100/75">Saldo disponível</p>
+                      <p className="mt-1 text-3xl font-extrabold tracking-tight text-white">{formattedUserBalance}</p>
+                    </div>
+
+                    <div className="px-5 py-4">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300/80">CPF para saque</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{user?.user_metadata?.cpf || 'Não definido'}</p>
+                        <p className="mt-1 text-xs leading-5 text-blue-100/65">O valor solicitado será enviado para o CPF cadastrado na sua conta.</p>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
                         setWithdrawOpen(true);
                         setBalanceMenuOpen(false);
                         setProfileOpen(false);
@@ -1502,10 +1588,10 @@ function UsuariosPageContent() {
                         setDepositOpen(false);
                         resetPixState();
                       }}
-                      className="w-full rounded-xl bg-emerald-700 px-5 py-2 text-sm font-bold text-emerald-100 shadow-lg hover:bg-emerald-800 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                    >
-                      Solicitar saque
-                    </button>
+                        className="w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-3 text-sm font-bold text-emerald-950 shadow-[0_16px_30px_-18px_rgba(16,185,129,0.85)] transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                      >
+                        Solicitar saque
+                      </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -1522,13 +1608,14 @@ function UsuariosPageContent() {
                         setDepositOpen(false);
                         void loadFinancialHistory();
                       }}
-                      className="w-full rounded-xl bg-cyan-900 px-5 py-2 text-sm font-bold text-cyan-100 shadow-lg hover:bg-cyan-950 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                    >
-                      Ver histórico financeiro
-                    </button>
+                        className="w-full rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-5 py-3 text-sm font-bold text-cyan-100 shadow-[0_14px_28px_-22px_rgba(34,211,238,0.7)] transition hover:bg-cyan-400/15 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                      >
+                        Ver histórico financeiro
+                      </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
             )}
             {/* Botão Depositar */}
             <button
@@ -1540,7 +1627,7 @@ function UsuariosPageContent() {
                 setBalanceMenuOpen(false);
                 resetPixState();
               }}
-              className="rounded-full bg-white px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold text-blue-600 shadow-sm transition hover:bg-blue-50 active:scale-95 shrink-0"
+              className="flex-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-blue-600 shadow-sm transition hover:bg-blue-50 active:scale-95 sm:flex-none sm:px-4 sm:py-2 sm:text-sm shrink-0"
             >
               Depositar
             </button>
@@ -1994,24 +2081,27 @@ function UsuariosPageContent() {
       {/* Main Content */}
       <main
         className={
-          depositOpen || withdrawOpen
+          depositOpen
             ? 'min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 py-6 pb-24 sm:py-10 sm:pb-28'
+            : withdrawOpen
+              ? 'flex min-h-screen w-full items-start justify-center px-3 py-6 pb-24 sm:px-6 sm:py-10 sm:pb-28'
             : 'flex flex-1 flex-col items-center w-full px-2 py-10 pb-24 sm:pb-28'
         }
       >
         {depositOpen ? (
           <>
           <div
-            className="mx-auto max-w-md overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-blue-950 to-blue-900 shadow-2xl"
+            className="mx-auto max-w-md overflow-hidden rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.16),transparent_34%),linear-gradient(160deg,#020617_0%,#082f49_46%,#0f172a_100%)] shadow-[0_32px_90px_-30px_rgba(2,6,23,0.95)]"
             style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
           >
-            {/* Cabeçalho escuro */}
-            <div className="bg-gradient-to-r from-blue-800 via-cyan-800 to-blue-900 px-6 pt-6 pb-10 text-center">
+            {/* Cabeçalho */}
+            <div className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,rgba(8,47,73,0.96)_0%,rgba(8,145,178,0.86)_52%,rgba(30,64,175,0.92)_100%)] px-6 pb-10 pt-6 text-center">
+              <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_68%)]" />
               <div className="mb-1 flex items-center justify-start">
                 <button
                   type="button"
                   onClick={() => setDepositOpen(false)}
-                  className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-700 hover:text-white"
+                  className="relative z-10 flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-cyan-50 transition hover:bg-white/15 hover:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -2019,44 +2109,38 @@ function UsuariosPageContent() {
                   Voltar
                 </button>
               </div>
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/10">
-                <svg className="h-8 w-8 text-cyan-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="relative z-10 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[22px] border border-white/15 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
+                <svg className="h-8 w-8 text-cyan-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-cyan-100">Depositar</h2>
-              <p className="mt-1 text-sm text-cyan-200">Adicione saldo via PIX de forma instantânea</p>
+              <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100/75">Adicionar saldo</p>
+              <h2 className="relative z-10 mt-2 text-3xl font-bold text-white">Depósito via PIX</h2>
+              <p className="relative z-10 mt-2 text-sm leading-6 text-cyan-50/85">Adicione saldo com confirmação rápida, código instantâneo e liberação automática após o pagamento.</p>
             </div>
 
             {/* Conteúdo */}
-            <div className="-mt-6 rounded-t-3xl bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900 px-5 pt-6 pb-6 sm:px-7 sm:pb-8">
+            <div className="-mt-5 rounded-t-[30px] border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(15,23,42,0.98)_100%)] px-5 pb-6 pt-6 sm:px-7 sm:pb-8">
 
               {/* Card valor */}
-              <div className="mb-5 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950 shadow-lg">
-                <div className="px-4 py-3 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-cyan-400">Valor do depósito</p>
-                  <button
-                    type="button"
-                    onClick={() => setDepositAmount(MAX_PIX_DEPOSIT)}
-                    className="rounded-full bg-cyan-900 px-3 py-1 text-[11px] font-bold text-cyan-200 transition hover:bg-cyan-800"
-                  >
-                    USAR MÁXIMO
-                  </button>
+              <div className="mb-5 overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
+                <div className="border-b border-white/8 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Valor do depósito</p>
                 </div>
 
-                <div className="flex items-center gap-2 px-4 py-4">
-                  <span className="text-xl font-semibold text-cyan-400">R$</span>
+                <div className="flex items-end gap-2 px-4 py-5">
+                  <span className="pb-1 text-lg font-semibold text-cyan-300">R$</span>
                   <input
                     type="text"
                     inputMode="numeric"
                     value={formattedDepositAmount}
                     onChange={(e) => setDepositAmount(parseCurrencyToNumber(e.target.value))}
-                    className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-cyan-100 outline-none"
+                    className="w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none sm:text-5xl"
                     aria-label="Valor do deposito"
                   />
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 px-4 py-3">
+                <div className="grid grid-cols-2 gap-2 px-4 pb-4 sm:grid-cols-4">
                   {[10, 50, 100, 200].map((amount) => (
                     <button
                       key={amount}
@@ -2064,8 +2148,8 @@ function UsuariosPageContent() {
                       onClick={() => setDepositAmount(amount)}
                       className={`rounded-xl py-2 text-sm font-semibold transition active:scale-95 ${
                         depositAmount === amount
-                          ? 'bg-cyan-700 text-white shadow-sm'
-                          : 'border border-cyan-900 bg-slate-900 text-cyan-200 hover:border-cyan-700 hover:text-cyan-100'
+                          ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_14px_26px_-18px_rgba(34,211,238,0.9)]'
+                          : 'border border-white/10 bg-slate-950/70 text-cyan-100/85 hover:border-cyan-400/30 hover:bg-slate-900'
                       }`}
                     >
                       {`R$\u00a0${amount}`}
@@ -2076,29 +2160,36 @@ function UsuariosPageContent() {
 
               {/* Avisos */}
               {depositAmount < MIN_PIX_DEPOSIT && (
-                <div className="mb-4 flex items-center gap-2 rounded-2xl bg-amber-900/30 px-4 py-3">
+                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-400/15 bg-amber-500/10 px-4 py-3">
                   <svg className="h-4 w-4 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                   </svg>
                   <p className="text-sm text-amber-200">Valor mínimo para depósito: <strong>R$ 10</strong></p>
                 </div>
               )}
-              {depositAmount > MAX_PIX_DEPOSIT && (
-                <div className="mb-4 flex items-center gap-2 rounded-2xl bg-amber-900/30 px-4 py-3">
-                  <svg className="h-4 w-4 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
-                  </svg>
-                  <p className="text-sm text-amber-200">Valor máximo por depósito: <strong>R$ 200</strong></p>
-                </div>
-              )}
-
               {/* Botão principal */}
-              <button
-                type="button"
-                onClick={handleCreatePixDeposit}
-                disabled={depositAmount < MIN_PIX_DEPOSIT || depositAmount > MAX_PIX_DEPOSIT || creatingPix}
-                className="w-full rounded-2xl bg-gradient-to-r from-cyan-700 to-blue-700 py-4 text-base font-bold text-white shadow-lg transition hover:from-cyan-600 hover:to-blue-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
-              >
+              <div className="mb-4 rounded-[24px] border border-cyan-400/12 bg-cyan-400/[0.04] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo do depósito</p>
+                <div className="mt-3 flex items-center justify-between text-sm text-blue-100/80">
+                  <span>Forma de pagamento</span>
+                  <span className="font-semibold text-white">PIX</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm text-blue-100/80">
+                  <span>Valor mínimo</span>
+                  <span className="font-semibold text-white">R$ 10</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm text-blue-100/80">
+                  <span>Valor selecionado</span>
+                  <span className="font-semibold text-cyan-100">R$ {formattedDepositAmount}</span>
+                </div>
+              </div>
+
+                <button
+                  type="button"
+                  onClick={handleCreatePixDeposit}
+                  disabled={depositAmount < MIN_PIX_DEPOSIT || creatingPix}
+                  className="w-full rounded-[22px] bg-[linear-gradient(135deg,#22d3ee_0%,#2563eb_58%,#1d4ed8_100%)] py-4 text-base font-bold text-white shadow-[0_24px_40px_-22px_rgba(37,99,235,0.9)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                >
                 {creatingPix ? (
                   <span className="flex items-center justify-center gap-2">
                     <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -2114,24 +2205,24 @@ function UsuariosPageContent() {
                 <p className="mt-3 text-center text-sm text-cyan-300">{pixStatusMessage}</p>
               )}
 
-              <p className="mt-5 text-center text-xs text-cyan-400">
-                O depósito é instantâneo e estará disponível assim que confirmado pelo banco.
+              <p className="mt-5 text-center text-xs leading-5 text-cyan-100/70">
+                O depósito será creditado assim que o pagamento for confirmado pela instituição bancária.
               </p>
-              <p className="mt-3 text-sm text-blue-100/80">Logado como {displayName}. Escolha uma votação para apostar.</p>
+              <p className="mt-3 text-center text-sm text-blue-100/80">Logado como {displayName}. Escolha uma votação para apostar.</p>
             </div>
           </div>
 
           {/* Modal overlay do QR Code */}
           {(pixQrBase64 || pixQrCode) && (
             <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-              <div className="relative w-full sm:max-w-sm overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
+              <div className="relative w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-sm sm:rounded-3xl" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
 
                 {/* Header colorido */}
-                <div className="bg-blue-600 px-6 pt-5 pb-7 sm:pt-6 sm:pb-8 text-center">
+                <div className="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_58%,#06b6d4_100%)] px-6 pb-7 pt-5 text-center sm:pb-8 sm:pt-6">
                   <button
                     type="button"
                     onClick={() => { setPixQrCode(null); setPixQrBase64(null); setPixPaymentId(null); setPixStatusMessage(null); }}
-                    className="absolute right-4 top-4 rounded-full p-1.5 text-blue-200 transition hover:bg-blue-500 hover:text-white"
+                    className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/10 p-1.5 text-blue-100 transition hover:bg-white/20 hover:text-white"
                     aria-label="Fechar"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -2139,14 +2230,14 @@ function UsuariosPageContent() {
                     </svg>
                   </button>
                   {/* Ícone PIX */}
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/15">
                     <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
                       <path d="M12 22V12M2 7L12 12M22 7L12 12" stroke="currentColor" strokeWidth="2"/>
                     </svg>
                   </div>
                   <p className="text-xl font-bold text-white">Pague com PIX</p>
-                  <p className="mt-1 text-sm text-blue-100">Escaneie o QR Code ou copie o código</p>
+                  <p className="mt-1 text-sm text-blue-100">Escaneie o QR Code ou copie o código para concluir o pagamento</p>
                 </div>
 
                 {/* Conteúdo */}
@@ -2169,7 +2260,7 @@ function UsuariosPageContent() {
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
                         {pixQrBase64 ? 'Ou copie o código abaixo' : 'Copie o código PIX'}
                       </p>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 break-all leading-relaxed font-mono">
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 break-all font-mono text-xs leading-relaxed text-slate-600">
                         {pixQrCode}
                       </div>
                       <button
@@ -2178,7 +2269,7 @@ function UsuariosPageContent() {
                           await navigator.clipboard.writeText(pixQrCode);
                           setPixStatusMessage('Código PIX copiado!');
                         }}
-                        className="mt-3 w-full rounded-2xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-95"
+                        className="mt-3 w-full rounded-2xl bg-[linear-gradient(135deg,#2563eb_0%,#0891b2_100%)] py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
                       >
                         Copiar código PIX
                       </button>
@@ -2206,16 +2297,22 @@ function UsuariosPageContent() {
           </>
         ) : withdrawOpen ? (
           <>
-            <div className="mx-auto max-w-md overflow-hidden rounded-3xl bg-white shadow-xl" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
-              <div className="bg-blue-600 px-6 pt-6 pb-10 text-center">
-                <div className="mb-1 flex items-center justify-start">
+            <div
+              className="mx-auto w-full max-w-md overflow-hidden rounded-[34px] border border-white/12 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.2),transparent_30%),linear-gradient(160deg,rgba(2,6,23,0.96)_0%,rgba(10,21,40,0.96)_38%,rgba(15,23,42,0.98)_100%)] shadow-[0_34px_100px_-28px_rgba(2,6,23,0.88)] backdrop-blur-xl"
+              style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
+            >
+              <div className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,rgba(8,47,73,0.9)_0%,rgba(30,64,175,0.88)_52%,rgba(8,145,178,0.9)_100%)] px-5 pb-9 pt-6 sm:px-6">
+                <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_70%)]" />
+                <div className="absolute -right-8 top-10 h-28 w-28 rounded-full bg-cyan-300/10 blur-3xl" />
+                <div className="absolute -left-10 bottom-0 h-24 w-24 rounded-full bg-blue-200/10 blur-3xl" />
+                <div className="mb-5 flex items-center justify-start">
                   <button
                     type="button"
                     onClick={() => {
                       setWithdrawOpen(false);
                       resetWithdrawState();
                     }}
-                    className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-blue-100 transition hover:bg-blue-500 hover:text-white"
+                    className="relative z-10 flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium text-blue-50 transition hover:bg-white/15 hover:text-white"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
@@ -2223,55 +2320,138 @@ function UsuariosPageContent() {
                     Voltar
                   </button>
                 </div>
-                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20">
-                  <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2M5 9h14l-1 10H6L5 9z" />
-                  </svg>
+                <div className="relative z-10 flex items-start gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[22px] border border-white/15 bg-white/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]">
+                    <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a5 5 0 00-10 0v2M5 9h14l-1 10H6L5 9z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100/75">Área financeira</p>
+                    <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">Solicitar saque</h2>
+                    <p className="mt-2 max-w-xs text-sm leading-6 text-blue-100/85">
+                      Informe o valor desejado e confirme para receber no CPF cadastrado.
+                    </p>
+                  </div>
                 </div>
-                <h2 className="text-2xl font-bold text-white">Solicitar saque</h2>
-                <p className="mt-1 text-sm text-blue-100">O pagamento será realizado para o CPF cadastrado</p>
+
               </div>
 
-              <div className="-mt-6 rounded-t-3xl bg-blue-50 px-5 pt-6 pb-6 sm:px-7 sm:pb-8">
-                <div className="mb-4 rounded-2xl border border-blue-100 bg-white p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Saldo disponível</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-900">{formattedUserBalance}</p>
-                  <p className="mt-2 text-sm text-slate-600">CPF para pagamento: <span className="font-semibold text-slate-800">{user?.user_metadata?.cpf || 'não definido'}</span></p>
+              <div className="-mt-5 rounded-t-[30px] border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.96)_0%,rgba(15,23,42,0.98)_100%)] px-4 pb-6 pt-6 sm:px-7 sm:pb-8">
+                <div className="mb-4 rounded-[26px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo disponível</p>
+                      <p className="mt-2 text-3xl font-bold tracking-tight text-white">{formattedUserBalance}</p>
+                    </div>
+                    <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/10 px-3 py-2 text-right">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200/75">Status</p>
+                      <p className="mt-1 text-xs font-semibold text-emerald-100">Disponível para saque</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 rounded-[22px] border border-white/8 bg-black/20 p-3 text-sm text-blue-100/75">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>CPF para recebimento</span>
+                      <span className="font-semibold text-white">{user?.user_metadata?.cpf || 'Não definido'}</span>
+                    </div>
+                    <p className="text-xs leading-5 text-slate-400">
+                      O valor aprovado será enviado para o CPF cadastrado na conta.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mb-4 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-                  <div className="border-b border-blue-100 px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Valor do saque</p>
+                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-400/15 bg-amber-500/10 px-4 py-3">
+                  <svg className="h-4 w-4 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                  </svg>
+                  <p className="text-sm text-amber-200">Valor mínimo para saque: <strong>R$ 50</strong></p>
+                </div>
+
+                <div className="mb-4 overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
+                  <div className="border-b border-white/8 px-4 py-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Valor do saque</p>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-4">
-                    <span className="text-xl font-semibold text-slate-400">R$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
-                      className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-slate-900 outline-none"
-                      aria-label="Valor do saque"
-                      placeholder="0,00"
-                    />
+                  <div className="px-4 py-5">
+                    <div className="flex items-end gap-2 rounded-[22px] border border-white/8 bg-black/20 px-4 py-4 focus-within:border-cyan-400/35 focus-within:bg-black/25">
+                      <span className="pb-1 text-lg font-semibold text-cyan-300">R$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        className="w-full bg-transparent text-3xl font-bold tracking-tight text-white outline-none placeholder:text-slate-500 sm:text-5xl"
+                        aria-label="Valor do saque"
+                        placeholder="0,00"
+                      />
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-slate-400">
+                      Digite o valor que deseja retirar. A solicitação ficará pendente até aprovação.
+                    </p>
                   </div>
                 </div>
 
                 {withdrawStatusMessage && (
-                  <div className="mb-4 rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-medium text-slate-700">
+                  <div className="mb-4 rounded-2xl border border-cyan-400/15 bg-cyan-400/10 px-4 py-3 text-sm font-medium text-cyan-50 shadow-[0_14px_30px_-26px_rgba(34,211,238,0.35)]">
                     {withdrawStatusMessage}
                   </div>
                 )}
 
+                <div className="mb-5 rounded-[26px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo da solicitação</p>
+                      <p className="mt-1 text-xs text-slate-400">Confira os dados antes de confirmar.</p>
+                    </div>
+                    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-blue-100/80">
+                      Revisão final
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
+                      <span>Saldo disponível</span>
+                      <span className="font-semibold text-white">{formattedUserBalance}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
+                      <span>Valor solicitado</span>
+                      <span className="font-semibold text-white">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          Number.isFinite(parsedWithdrawAmount) ? parsedWithdrawAmount : 0
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
+                      <span>Valor mínimo</span>
+                      <span className="font-semibold text-white">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(MIN_WITHDRAWAL)}
+                      </span>
+                    </div>
+                    <div className="h-px bg-white/8" />
+                    <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
+                      <span>Saldo após solicitação</span>
+                      <span className="font-semibold text-cyan-200">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                          Math.max(userBalance - (Number.isFinite(parsedWithdrawAmount) ? parsedWithdrawAmount : 0), 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   onClick={handleRequestWithdraw}
-                  disabled={requestingWithdraw || !withdrawAmountIsValid || parsedWithdrawAmount > userBalance}
-                  className="w-full rounded-2xl bg-blue-600 py-4 text-base font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                  disabled={requestingWithdraw}
+                  className="w-full rounded-[22px] bg-[linear-gradient(135deg,#22d3ee_0%,#2563eb_58%,#1d4ed8_100%)] py-4 text-base font-bold text-white shadow-[0_24px_40px_-22px_rgba(37,99,235,0.75)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 >
                   {requestingWithdraw ? 'Enviando solicitação...' : 'Confirmar solicitação de saque'}
                 </button>
+
+                <p className="mt-4 text-center text-xs leading-5 text-slate-400">
+                  A aprovação é feita com base nos dados da conta e o pagamento segue para o CPF cadastrado.
+                </p>
               </div>
             </div>
           </>
@@ -2650,3 +2830,5 @@ export default function UsuariosPage() {
     </Suspense>
   );
 }
+
+

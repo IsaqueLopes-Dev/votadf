@@ -32,6 +32,7 @@ function LoginPageContent() {
   const supabase = getSupabaseClient();
   const next = searchParams?.get('next') || '/home';
   const isResetMode = searchParams?.get('reset') === '1';
+  const shouldSwitchAccount = searchParams?.get('switch') === '1';
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -43,6 +44,31 @@ function LoginPageContent() {
   }, []);
 
   useEffect(() => {
+    if (!shouldSwitchAccount) return;
+
+    let mounted = true;
+
+    const clearCurrentSession = async () => {
+      await supabase.auth.signOut();
+
+      if (!mounted || typeof window === 'undefined') return;
+
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.delete('switch');
+      const cleanedQuery = nextParams.toString();
+      const nextUrl = cleanedQuery ? `/login?${cleanedQuery}` : '/login';
+      window.history.replaceState({}, document.title, nextUrl);
+      setNotice('Sessão anterior encerrada. Agora você pode entrar com outro e-mail.');
+    };
+
+    void clearCurrentSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, [shouldSwitchAccount, supabase.auth]);
+
+  useEffect(() => {
     let mounted = true;
 
     const redirectIfAuthenticated = async () => {
@@ -52,7 +78,7 @@ function LoginPageContent() {
 
       if (!mounted) return;
 
-      if (session && !isResetMode && !isRecoverySession) {
+      if (session && !isResetMode && !isRecoverySession && !shouldSwitchAccount) {
         router.replace(next);
       }
     };
@@ -72,7 +98,7 @@ function LoginPageContent() {
       }
 
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-        if (!isResetMode && !isRecoverySession) {
+        if (!isResetMode && !isRecoverySession && !shouldSwitchAccount) {
           router.replace(next);
         }
       }
@@ -82,7 +108,7 @@ function LoginPageContent() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [isRecoverySession, isResetMode, next, router, supabase.auth]);
+  }, [isRecoverySession, isResetMode, next, router, shouldSwitchAccount, supabase.auth]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,7 +219,7 @@ function LoginPageContent() {
     setNotice(null);
 
     try {
-      const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(next)}`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
       const { error: googleError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
