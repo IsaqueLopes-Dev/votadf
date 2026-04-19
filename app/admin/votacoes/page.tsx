@@ -129,11 +129,36 @@ export default function AdminVotacoesPage() {
     void loadVotacoes();
   }, [loadVotacoes]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadVotacoes();
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, [loadVotacoes]);
+
   const filteredVotacoes = useMemo(() => {
     if (filter === 'active') return votacoes.filter((item) => item.isActive);
     if (filter === 'inactive') return votacoes.filter((item) => !item.isActive);
     return votacoes;
   }, [filter, votacoes]);
+
+  const analytics = useMemo(() => {
+    const now = Date.now();
+    const active = votacoes.filter((item) => item.isActive);
+    const closesSoon = active.filter((item) => {
+      if (!item.closesAt) return false;
+      const diff = new Date(item.closesAt).getTime() - now;
+      return diff > 0 && diff <= 24 * 60 * 60 * 1000;
+    });
+
+    return {
+      activeCount: active.length,
+      closesSoon: closesSoon.length,
+      noResult: votacoes.filter((item) => !item.result.trim()).length,
+      avgOptions: votacoes.length ? votacoes.reduce((sum, item) => sum + item.options.length, 0) / votacoes.length : 0,
+    };
+  }, [votacoes]);
 
   const resetForm = () => {
     setForm(initialForm);
@@ -248,9 +273,9 @@ export default function AdminVotacoesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#dbeafe_0%,#eff6ff_24%,#f8fafc_100%)]">
-      <header className="border-b border-blue-100 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
+    <div className="min-h-screen">
+      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Link href="/admin" className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
               Voltar ao dashboard
@@ -265,7 +290,7 @@ export default function AdminVotacoesPage() {
               resetForm();
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+            className="rounded-full bg-[linear-gradient(135deg,#00c3ff,#0099cc)] px-4 py-2.5 text-sm font-semibold text-[#03111f] transition hover:brightness-105"
           >
             Nova votação
           </button>
@@ -273,8 +298,27 @@ export default function AdminVotacoesPage() {
       </header>
 
       <main className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
+        <section className="lg:col-span-2 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-[26px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <p className="text-sm text-cyan-300">Mercados ativos</p>
+            <p className="mt-2 text-3xl font-bold text-white">{analytics.activeCount}</p>
+          </div>
+          <div className="rounded-[26px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <p className="text-sm text-amber-300">Fecham em 24h</p>
+            <p className="mt-2 text-3xl font-bold text-white">{analytics.closesSoon}</p>
+          </div>
+          <div className="rounded-[26px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <p className="text-sm text-rose-300">Sem resultado</p>
+            <p className="mt-2 text-3xl font-bold text-white">{analytics.noResult}</p>
+          </div>
+          <div className="rounded-[26px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <p className="text-sm text-emerald-300">Media de opcoes</p>
+            <p className="mt-2 text-3xl font-bold text-white">{analytics.avgOptions.toFixed(1)}</p>
+          </div>
+        </section>
+
+        <section className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">
                 {editingId ? 'Editar votação' : 'Criar votação'}
@@ -285,7 +329,7 @@ export default function AdminVotacoesPage() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
               >
                 Cancelar edição
               </button>
@@ -471,7 +515,7 @@ export default function AdminVotacoesPage() {
           </div>
         </section>
 
-        <section className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
+        <section className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-slate-900">Mercados cadastrados</h2>

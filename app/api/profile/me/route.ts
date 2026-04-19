@@ -1,42 +1,107 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import {
+  getAuthenticatedProfileContext,
+  isValidBirthDate,
+  isValidUsername,
+  normalizeUsername,
+  readBirthDateProfile,
+  readPublicUserProfile,
+  syncUnifiedProfile,
+} from '../utils';
 
-const getBearerToken = (request: Request) => {
-  const auth = request.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
+type ProfileUpdatePayload = {
+  username?: unknown;
+  cpf?: unknown;
+  birth_date?: unknown;
+  avatar_url?: unknown;
 };
 
 export async function GET(request: Request) {
-  const token = getBearerToken(request);
+  const context = await getAuthenticatedProfileContext(request);
 
-  if (!token) {
-    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  if ('error' in context) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
+  try {
+    const { profile } = await syncUnifiedProfile(context.adminSupabase, context.user);
+    return NextResponse.json({ profile });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro ao carregar perfil.' },
+      { status: 500 }
+    );
+  }
+}
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser(token);
+export async function POST(request: Request) {
+  const context = await getAuthenticatedProfileContext(request);
 
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 });
+  if ('error' in context) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const body = (await request.json().catch(() => ({}))) as ProfileUpdatePayload;
+  const username = normalizeUsername(String(body.username || ''));
+  const cpf = String(body.cpf || '').trim();
+  const birthDate = String(body.birth_date || '').trim();
+  const avatarUrl = String(body.avatar_url || '').trim();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!username || !isValidUsername(username)) {
+    return NextResponse.json({ error: 'Nome de usuario invalido.' }, { status: 400 });
   }
 
-  return NextResponse.json(profile);
+  if (!cpf) {
+    return NextResponse.json({ error: 'CPF obrigatorio.' }, { status: 400 });
+  }
+
+  if (!birthDate || !isValidBirthDate(birthDate)) {
+    return NextResponse.json({ error: 'Data de nascimento invalida.' }, { status: 400 });
+  }
+
+  try {
+    const currentPublicUser = await readPublicUserProfile(context.adminSupabase, context.user.id);
+    const currentBirthDateProfile = await readBirthDateProfile(context.adminSupabase, context.user.id);
+    const currentBirthDate =
+      String(currentPublicUser?.birth_date || '').trim() ||
+      String(currentBirthDateProfile?.birth_date || '').trim() ||
+      String(context.user.user_metadata?.birth_date || '').trim();
+
+    if (currentBirthDate && currentBirthDate !== birthDate) {
+      return NextResponse.json(
+        { error: 'Data de nascimento ja cadastrada. So admin pode alterar.' },
+        { status: 403 }
+      );
+    }
+
+    const { data: existingUser, error: usernameError } = await context.adminSupabase
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .neq('id', context.user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (usernameError) {
+      throw new Error(usernameError.message);
+    }
+
+    if (existingUser) {
+      return NextResponse.json({ error: 'Esse nome de usuario ja esta em uso.' }, { status: 409 });
+    }
+
+    const { profile } = await syncUnifiedProfile(context.adminSupabase, context.user, {
+      username,
+      cpf,
+      birth_date: birthDate,
+      avatar_url: avatarUrl,
+    });
+
+    return NextResponse.json({ profile });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erro ao salvar perfil.' },
+      { status: 500 }
+    );
+  }
 }

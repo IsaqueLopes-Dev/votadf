@@ -27,14 +27,12 @@ function LoginPageContent() {
   const [birthDate, setBirthDate] = useState('');
   const [showConfirmEmail, setShowConfirmEmail] = useState(false);
   const [isRecoverySession, setIsRecoverySession] = useState(false);
-  const [sendingMagicLink, setSendingMagicLink] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = getSupabaseClient();
   const next = searchParams?.get('next') || '/home';
   const isResetMode = searchParams?.get('reset') === '1';
   const shouldSwitchAccount = searchParams?.get('switch') === '1';
-  const isAdminLoginFlow = next.startsWith('/admin');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -182,7 +180,7 @@ function LoginPageContent() {
         return;
       }
 
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -198,6 +196,22 @@ function LoginPageContent() {
         setError(signUpError.message);
         setLoading(false);
         return;
+      }
+
+      if (signUpData.session?.access_token) {
+        await fetch('/api/profile/me', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${signUpData.session.access_token}`,
+          },
+          body: JSON.stringify({
+            username: normalizedUsername,
+            cpf,
+            birth_date: birthDate,
+            avatar_url: '',
+          }),
+        }).catch(() => null);
       }
 
       setIsSignUp(false);
@@ -243,39 +257,6 @@ function LoginPageContent() {
       setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleMagicLink = async () => {
-    setSendingMagicLink(true);
-    setError(null);
-    setNotice(null);
-
-    if (!email.trim()) {
-      setError('Informe seu e-mail para receber o link de acesso.');
-      setSendingMagicLink(false);
-      return;
-    }
-
-    try {
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          emailRedirectTo: redirectTo,
-        },
-      });
-
-      if (otpError) {
-        setError(otpError.message);
-        return;
-      }
-
-      setNotice('Enviamos um link de acesso para o seu e-mail. Abra o link neste mesmo dispositivo para entrar.');
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Não foi possível enviar o link de acesso.'));
-    } finally {
-      setSendingMagicLink(false);
     }
   };
 
@@ -511,20 +492,6 @@ function LoginPageContent() {
           {isSignUp ? 'Cadastrar com Google' : 'Entrar com Google'}
         </button>
 
-        {!isSignUp && !isRecoverySession && !isAdminLoginFlow && (
-          <button
-            type="button"
-            style={{
-              ...styles.magicLinkButton,
-              opacity: sendingMagicLink ? 0.7 : 1,
-              cursor: sendingMagicLink ? 'not-allowed' : 'pointer',
-            }}
-            onClick={() => void handleMagicLink()}
-            disabled={loading || sendingMagicLink}
-          >
-            {sendingMagicLink ? 'Enviando link...' : 'Entrar com link por e-mail'}
-          </button>
-        )}
       </form>
     );
   };
@@ -908,18 +875,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-  },
-  magicLinkButton: {
-    width: '100%',
-    padding: 12,
-    borderRadius: 10,
-    border: '1px solid rgba(0, 195, 255, 0.35)',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    background: 'rgba(0, 195, 255, 0.12)',
-    color: '#c6f6ff',
-    marginTop: 10,
   },
   link: {
     marginTop: 14,

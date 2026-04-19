@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
@@ -68,6 +68,19 @@ export default function TransacoesPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
+  const topBalances = useMemo(
+    () => [...(transactionsData?.transactions || [])].sort((a, b) => b.balance - a.balance).slice(0, 5),
+    [transactionsData?.transactions]
+  );
+
+  const suspiciousAccounts = useMemo(
+    () =>
+      (transactionsData?.transactions || [])
+        .filter((item) => item.transactionCount >= 5 || item.creditedPixPaymentIds.length >= 3 || item.balance >= 1000)
+        .slice(0, 5),
+    [transactionsData?.transactions]
+  );
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -103,6 +116,14 @@ export default function TransacoesPage() {
     void checkAuth();
   }, [router]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadTransactions();
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   const loadTransactions = async () => {
     try {
       const {
@@ -123,18 +144,18 @@ export default function TransacoesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-600">Carregando...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 text-sm text-slate-200 backdrop-blur-xl">Carregando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
+    <div className="min-h-screen" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
       {/* Header */}
-      <header className="bg-blue-600 shadow-md">
-        <div className="flex w-full items-center gap-4 py-4">
-          <Link href="/admin" className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+      <header className="border-b border-white/10 bg-black/20 shadow-md backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center">
+          <Link href="/admin" className="flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -148,7 +169,7 @@ export default function TransacoesPage() {
       </header>
 
       {/* Main Content */}
-      <main className="w-full px-0 py-6 sm:py-10">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <section className="mb-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
             <p className="text-sm text-blue-700">Créditos PIX contabilizados</p>
@@ -161,6 +182,48 @@ export default function TransacoesPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm text-slate-600">Contas com histórico</p>
             <p className="mt-2 text-3xl font-bold text-slate-900">{transactionsData?.totals.activeAccounts ?? 0}</p>
+          </div>
+        </section>
+
+        <section className="mb-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <h2 className="text-xl font-semibold text-white">Visao financeira</h2>
+            <p className="mt-1 text-sm text-slate-300">Concentracao de saldo, recorrencia de creditos e contas-chave.</p>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              <div className="rounded-[24px] border border-white/10 bg-black/15 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Maior saldo</p>
+                <p className="mt-3 text-2xl font-bold text-white">{formatCurrency(topBalances[0]?.balance ?? 0)}</p>
+                <p className="mt-1 text-sm text-slate-300">{topBalances[0]?.displayName || 'Sem conta destacada'}</p>
+              </div>
+              <div className="rounded-[24px] border border-white/10 bg-black/15 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Contas monitoradas</p>
+                <p className="mt-3 text-2xl font-bold text-white">{suspiciousAccounts.length}</p>
+                <p className="mt-1 text-sm text-slate-300">com alto volume ou saldo relevante</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <h2 className="text-xl font-semibold text-white">Alertas operacionais</h2>
+            <p className="mt-1 text-sm text-slate-300">Sinais de contas com saldo alto ou movimento atipico.</p>
+            <div className="mt-5 space-y-3">
+              {suspiciousAccounts.length ? suspiciousAccounts.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4">
+                  <p className="text-sm font-semibold text-white">{item.displayName}</p>
+                  <p className="mt-1 text-xs text-slate-200">{item.email || 'Sem e-mail'}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-slate-100">{formatCurrency(item.balance)}</span>
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-slate-100">{item.transactionCount} transacoes</span>
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-slate-100">{item.creditedPixPaymentIds.length} IDs</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm text-slate-300">
+                  Sem sinais operacionais relevantes neste momento.
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

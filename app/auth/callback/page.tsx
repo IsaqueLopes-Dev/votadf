@@ -4,6 +4,17 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient } from '../../utils/supabaseClient';
 
+const emailOtpTypes = new Set([
+  'signup',
+  'invite',
+  'magiclink',
+  'recovery',
+  'email_change',
+  'email',
+] as const);
+
+type EmailOtpType = typeof emailOtpTypes extends Set<infer T> ? T : never;
+
 function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,17 +50,10 @@ function AuthCallbackContent() {
           }
         }
 
-        if (tokenHash && type) {
+        if (tokenHash && type && emailOtpTypes.has(type as EmailOtpType)) {
           const { error: verifyError } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
-            type: type as
-              | 'signup'
-              | 'invite'
-              | 'magiclink'
-              | 'recovery'
-              | 'email_change'
-              | 'email'
-              | 'sms',
+            type: type as EmailOtpType,
           });
 
           if (!mounted) return;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
@@ -97,6 +97,59 @@ export default function AdminApostasPage() {
   const [settlingBetId, setSettlingBetId] = useState<string | null>(null);
   const router = useRouter();
 
+  const pendingBets = useMemo(
+    () => (data?.bets || []).filter((bet) => bet.status === 'aguardando'),
+    [data?.bets]
+  );
+
+  const topMarkets = useMemo(() => {
+    const byMarket = new Map<string, { title: string; count: number; amount: number; payout: number }>();
+
+    pendingBets.forEach((bet) => {
+      const current = byMarket.get(bet.votacaoId) || {
+        title: bet.votacaoTitulo || 'Mercado sem titulo',
+        count: 0,
+        amount: 0,
+        payout: 0,
+      };
+
+      current.count += 1;
+      current.amount += bet.amount;
+      current.payout += bet.potentialReturn;
+      byMarket.set(bet.votacaoId, current);
+    });
+
+    return Array.from(byMarket.values()).sort((a, b) => b.payout - a.payout).slice(0, 4);
+  }, [pendingBets]);
+
+  const topUsers = useMemo(() => {
+    const byUser = new Map<string, { name: string; email: string; total: number; bets: number }>();
+
+    (data?.bets || []).forEach((bet) => {
+      const current = byUser.get(bet.userId) || {
+        name: bet.userDisplayName || 'Usuario sem identificacao',
+        email: bet.userEmail || 'Sem email',
+        total: 0,
+        bets: 0,
+      };
+
+      current.total += bet.amount;
+      current.bets += 1;
+      byUser.set(bet.userId, current);
+    });
+
+    return Array.from(byUser.values()).sort((a, b) => b.total - a.total).slice(0, 5);
+  }, [data?.bets]);
+
+  const riskAlerts = useMemo(
+    () =>
+      pendingBets
+        .filter((bet) => bet.amount >= 250 || bet.potentialReturn >= 1000 || bet.userBalance < bet.amount)
+        .sort((a, b) => b.potentialReturn - a.potentialReturn)
+        .slice(0, 5),
+    [pendingBets]
+  );
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -130,6 +183,14 @@ export default function AdminApostasPage() {
 
     void checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void loadData();
+    }, 30000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -192,17 +253,17 @@ export default function AdminApostasPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-600">Carregando...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 text-sm text-slate-200 backdrop-blur-xl">Carregando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-600 to-blue-50" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
-      <header className="bg-blue-600 shadow-md">
-        <div className="flex w-full items-center gap-4 py-4">
-          <Link href="/admin" className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+    <div className="min-h-screen" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
+      <header className="border-b border-white/10 bg-black/20 shadow-md backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center">
+          <Link href="/admin" className="flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -215,7 +276,7 @@ export default function AdminApostasPage() {
         </div>
       </header>
 
-      <main className="w-full px-0 py-6 sm:py-10">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-10">
         <section className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
           <div className="rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
             <p className="text-sm text-blue-700">Total de apostas</p>
@@ -240,6 +301,81 @@ export default function AdminApostasPage() {
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm text-slate-600">Valor total apostado</p>
             <p className="mt-2 text-3xl font-bold text-slate-900">{formatCurrency(data?.totals.totalStaked ?? 0)}</p>
+          </div>
+        </section>
+
+        <section className="mb-6 grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Monitoramento ativo</h2>
+                <p className="mt-1 text-sm text-slate-300">Mercados mais expostos e usuarios com maior volume.</p>
+              </div>
+              <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200">
+                Auto refresh 30s
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-[24px] border border-white/10 bg-black/15 p-4">
+                <h3 className="text-sm font-semibold text-white">Mercados mais expostos</h3>
+                <div className="mt-4 space-y-3">
+                  {topMarkets.length ? topMarkets.map((item) => (
+                    <div key={item.title} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-sm font-semibold text-white">{item.title}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                        <span className="rounded-full bg-white/10 px-2.5 py-1">{item.count} apostas</span>
+                        <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-cyan-200">{formatCurrency(item.amount)}</span>
+                        <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-amber-200">{formatCurrency(item.payout)}</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-slate-400">Nenhum mercado com exposicao pendente.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-white/10 bg-black/15 p-4">
+                <h3 className="text-sm font-semibold text-white">Usuarios de maior volume</h3>
+                <div className="mt-4 space-y-3">
+                  {topUsers.length ? topUsers.map((user) => (
+                    <div key={`${user.email}-${user.name}`} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-sm font-semibold text-white">{user.name}</p>
+                      <p className="mt-1 text-xs text-slate-400">{user.email}</p>
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                        <span className="rounded-full bg-white/10 px-2.5 py-1">{user.bets} apostas</span>
+                        <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-emerald-200">{formatCurrency(user.total)}</span>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="text-sm text-slate-400">Ainda nao ha volume suficiente para ranking.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <h2 className="text-xl font-semibold text-white">Alertas de risco</h2>
+            <p className="mt-1 text-sm text-slate-300">Apostas que pedem revisao manual por tamanho, retorno ou saldo.</p>
+
+            <div className="mt-5 space-y-3">
+              {riskAlerts.length ? riskAlerts.map((bet) => (
+                <div key={bet.id} className="rounded-2xl border border-rose-400/20 bg-rose-400/10 p-4">
+                  <p className="text-sm font-semibold text-white">{bet.userDisplayName}</p>
+                  <p className="mt-1 text-sm text-slate-200">{bet.votacaoTitulo}</p>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-slate-100">{formatCurrency(bet.amount)}</span>
+                    <span className="rounded-full bg-amber-400/15 px-2.5 py-1 text-amber-200">{formatCurrency(bet.potentialReturn)} retorno</span>
+                    <span className="rounded-full bg-white/10 px-2.5 py-1 text-slate-100">Odd {bet.odd.toFixed(2)}</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm text-slate-300">
+                  Nenhum alerta critico identificado pelos criterios atuais.
+                </div>
+              )}
+            </div>
           </div>
         </section>
 

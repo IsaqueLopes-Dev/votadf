@@ -105,18 +105,20 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
-        <div className="text-slate-600">Carregando painel admin...</div>
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 text-sm text-slate-200 backdrop-blur-xl">
+          Carregando painel admin...
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
-        <div className="w-full max-w-lg rounded-3xl border border-rose-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-slate-900">Painel admin indisponível</h1>
-          <p className="mt-3 text-sm text-slate-600">{error}</p>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-lg rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,17,17,0.92)_0%,rgba(14,18,28,0.94)_100%)] p-8 shadow-[0_25px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <h1 className="text-2xl font-bold text-white">Painel admin indisponível</h1>
+          <p className="mt-3 text-sm text-slate-300">{error}</p>
           <div className="mt-6 flex gap-3">
             <button
               type="button"
@@ -128,7 +130,7 @@ export default function AdminPage() {
             <button
               type="button"
               onClick={handleSwitchAccount}
-              className="rounded-full border border-blue-300 px-5 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+              className="rounded-full border border-cyan-400/35 px-5 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400/10"
             >
               Trocar conta
             </button>
@@ -146,28 +148,28 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#dbeafe_0%,#eff6ff_22%,#f8fafc_100%)]">
-      <header className="border-b border-blue-100 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6">
+    <div className="min-h-screen">
+      <header className="border-b border-white/10 bg-black/20 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Administração</p>
-            <h1 className="mt-1 text-2xl font-bold text-slate-900">Painel de controle</h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Administração</p>
+            <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">Painel de controle</h1>
+            <p className="mt-1 text-sm text-slate-300">
               {user?.email ? `Logado como ${user.email}` : 'Gestão completa da operação.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
               href="/home"
-              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="rounded-full border border-white/12 px-4 py-2.5 text-center text-sm font-semibold text-slate-200 transition hover:bg-white/5"
             >
-              Ir para o app
+              Voltar para o site
             </Link>
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="rounded-full bg-[linear-gradient(135deg,#00c3ff,#0099cc)] px-4 py-2.5 text-sm font-semibold text-[#03111f] transition hover:brightness-105"
             >
               Sair
             </button>
@@ -177,29 +179,29 @@ export default function AdminPage() {
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="rounded-[28px] border border-blue-100 bg-white p-6 shadow-sm">
-            <p className="text-sm text-blue-700">Votações cadastradas</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{dashboard?.stats.totalVotacoes ?? 0}</p>
-            <p className="mt-2 text-sm text-slate-500">{dashboard?.stats.activeVotacoes ?? 0} ativas no momento</p>
+          <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <p className="text-sm text-cyan-300">Votações cadastradas</p>
+            <p className="mt-2 text-3xl font-bold text-white">{dashboard?.stats.totalVotacoes ?? 0}</p>
+            <p className="mt-2 text-sm text-slate-300">{dashboard?.stats.activeVotacoes ?? 0} ativas no momento</p>
           </div>
-          <div className="rounded-[28px] border border-emerald-100 bg-white p-6 shadow-sm">
-            <p className="text-sm text-emerald-700">Usuários com saldo</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{dashboard?.stats.usersWithBalance ?? 0}</p>
-            <p className="mt-2 text-sm text-slate-500">De {dashboard?.stats.totalUsuarios ?? 0} contas cadastradas</p>
+          <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <p className="text-sm text-emerald-300">Usuários com saldo</p>
+            <p className="mt-2 text-3xl font-bold text-white">{dashboard?.stats.usersWithBalance ?? 0}</p>
+            <p className="mt-2 text-sm text-slate-300">De {dashboard?.stats.totalUsuarios ?? 0} contas cadastradas</p>
           </div>
-          <div className="rounded-[28px] border border-cyan-100 bg-white p-6 shadow-sm">
-            <p className="text-sm text-cyan-700">Saldo total em conta</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900">{formatCurrency(dashboard?.stats.totalBalance ?? 0)}</p>
-            <p className="mt-2 text-sm text-slate-500">{dashboard?.stats.totalTransactions ?? 0} créditos PIX registrados</p>
+          <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <p className="text-sm text-sky-300">Saldo total em conta</p>
+            <p className="mt-2 text-3xl font-bold text-white">{formatCurrency(dashboard?.stats.totalBalance ?? 0)}</p>
+            <p className="mt-2 text-sm text-slate-300">{dashboard?.stats.totalTransactions ?? 0} créditos PIX registrados</p>
           </div>
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
+          <div className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
             <div className="mb-5 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900">Áreas de gestão</h2>
-                <p className="mt-1 text-sm text-slate-500">Tudo que você precisa para operar a plataforma.</p>
+                <h2 className="text-xl font-semibold text-white">Áreas de gestão</h2>
+                <p className="mt-1 text-sm text-slate-300">Tudo que você precisa para operar a plataforma.</p>
               </div>
             </div>
 
@@ -208,43 +210,43 @@ export default function AdminPage() {
                 <Link
                   key={section.href}
                   href={section.href}
-                  className="rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+                  className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0.04)_100%)] p-5 shadow-[0_18px_45px_rgba(0,0,0,0.16)] transition hover:-translate-y-0.5 hover:border-cyan-400/30 hover:bg-white/10"
                 >
-                  <h3 className="text-lg font-semibold text-slate-900">{section.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">{section.description}</p>
+                  <h3 className="text-lg font-semibold text-white">{section.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">{section.description}</p>
                 </Link>
               ))}
             </div>
           </div>
 
-          <div className="rounded-[30px] border border-blue-100 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">Atividade recente</h2>
-            <p className="mt-1 text-sm text-slate-500">Últimos eventos rastreados pelo painel.</p>
+          <div className="rounded-[30px] border border-white/10 bg-white/6 p-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:p-6">
+            <h2 className="text-xl font-semibold text-white">Atividade recente</h2>
+            <p className="mt-1 text-sm text-slate-300">Últimos eventos rastreados pelo painel.</p>
 
             <div className="mt-5 space-y-3">
               {dashboard?.recentActivity?.length ? (
                 dashboard.recentActivity.map((activity) => (
-                  <div key={activity.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
+                  <div key={activity.id} className="rounded-2xl border border-white/10 bg-black/15 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <span
                         className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                           activity.type === 'deposito'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-blue-100 text-blue-700'
+                            ? 'bg-emerald-400/15 text-emerald-300'
+                            : 'bg-cyan-400/15 text-cyan-300'
                         }`}
                       >
                         {activity.type === 'deposito' ? 'Depósito' : 'Votação'}
                       </span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-slate-400">
                         {new Date(activity.createdAt).toLocaleString('pt-BR')}
                       </span>
                     </div>
-                    <p className="mt-3 text-sm font-semibold text-slate-900">{activity.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{activity.description}</p>
+                    <p className="mt-3 text-sm font-semibold text-white">{activity.title}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-300">{activity.description}</p>
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <div className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm text-slate-300">
                   Nenhuma atividade recente encontrada.
                 </div>
               )}

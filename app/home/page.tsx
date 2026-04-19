@@ -77,6 +77,15 @@ type BetCommentItem = {
 };
 
 type BetCountsMap = Record<string, Record<string, number>>;
+type UserProfile = {
+  id: string;
+  email: string;
+  username: string;
+  cpf: string;
+  birth_date: string;
+  avatar_url: string;
+  role: string;
+};
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message) {
@@ -313,6 +322,24 @@ function UsuariosPageContent() {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          const response = await fetch('/api/profile/me', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (response.ok) {
+            const payload = (await response.json()) as { profile?: UserProfile };
+            setUserRole(payload.profile?.role || null);
+            return;
+          }
+        }
+
         const { data: profile } = await supabase
           .from('users')
           .select('role')
@@ -541,10 +568,13 @@ function UsuariosPageContent() {
   };
 
   // Só bloqueia se birth_date já estiver preenchido
-  const identityLocked = Boolean(user?.user_metadata?.birth_date);
+  const identityLocked = Boolean(String(birthDate || user?.user_metadata?.birth_date || '').trim());
 
   const hasRequiredBetProfile = (currentUser: User | null) => {
-    return Boolean(currentUser?.user_metadata?.cpf && currentUser?.user_metadata?.birth_date);
+    return Boolean(
+      String(cpf || currentUser?.user_metadata?.cpf || '').trim() &&
+      String(birthDate || currentUser?.user_metadata?.birth_date || '').trim()
+    );
   };
 
   const loadComments = async (votacaoId: string) => {
@@ -718,11 +748,43 @@ function UsuariosPageContent() {
         } = await supabase.auth.getUser();
         setUser(user);
         if (user) {
-          setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
-          setCpf(user.user_metadata?.cpf || '');
-          setCpfConfirmation(user.user_metadata?.cpf || '');
-          setBirthDate(user.user_metadata?.birth_date || '');
-          setAvatarUrl(user.user_metadata?.avatar_url || '');
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session?.access_token) {
+            const response = await fetch('/api/profile/me', {
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            });
+
+            if (response.ok) {
+              const payload = (await response.json()) as { profile?: UserProfile };
+              const profile = payload.profile;
+
+              if (profile) {
+                setUsername(profile.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
+                setCpf(profile.cpf || '');
+                setCpfConfirmation(profile.cpf || '');
+                setBirthDate(profile.birth_date || '');
+                setAvatarUrl(profile.avatar_url || '');
+                setUserRole(profile.role || null);
+              }
+            } else {
+              setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
+              setCpf(user.user_metadata?.cpf || '');
+              setCpfConfirmation(user.user_metadata?.cpf || '');
+              setBirthDate(user.user_metadata?.birth_date || '');
+              setAvatarUrl(user.user_metadata?.avatar_url || '');
+            }
+          } else {
+            setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
+            setCpf(user.user_metadata?.cpf || '');
+            setCpfConfirmation(user.user_metadata?.cpf || '');
+            setBirthDate(user.user_metadata?.birth_date || '');
+            setAvatarUrl(user.user_metadata?.avatar_url || '');
+          }
         }
         await Promise.all([loadVotacoesAtivas(), loadBetHistory(), loadBetCounts(), loadChatMessages(true)]);
 
@@ -914,7 +976,7 @@ function UsuariosPageContent() {
       return;
     }
 
-    const cpfValue = String(user?.user_metadata?.cpf || '').trim();
+    const cpfValue = String(cpf || user?.user_metadata?.cpf || '').trim();
     if (!cpfValue) {
       setWithdrawStatusMessage('CPF não cadastrado. Atualize seu perfil antes de sacar.');
       return;
@@ -1397,24 +1459,9 @@ function UsuariosPageContent() {
         return;
       }
 
-      // Salva a data de nascimento via endpoint seguro
       const {
         data: { session },
       } = await supabase.auth.getSession();
-
-      const res = await fetch('/api/profile/birthdate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({ birth_date: birthDate }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || 'Erro ao salvar data de nascimento.');
-        return;
-      }
 
       const isAvailable = await checkUsernameAvailability(normalizedUsername);
       if (!isAvailable) {
@@ -1422,25 +1469,50 @@ function UsuariosPageContent() {
         return;
       }
 
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
+      const response = await fetch('/api/profile/me', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
           username: normalizedUsername,
-          cpf: cpf,
+          cpf,
           birth_date: birthDate,
           avatar_url: avatarUrl.trim(),
-        },
+        }),
       });
 
-      if (error) {
-        alert('Erro ao salvar perfil: ' + error.message);
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        profile?: UserProfile;
+      };
+
+      if (!response.ok || !payload.profile) {
+        alert('Erro ao salvar perfil: ' + (payload.error || 'Erro desconhecido.'));
         return;
       }
 
-      if (data.user) {
-        setUser(data.user);
-        setCpf(data.user.user_metadata?.cpf || cpf);
-        setBirthDate(data.user.user_metadata?.birth_date || birthDate);
-      }
+      setUsername(payload.profile.username || normalizedUsername);
+      setCpf(payload.profile.cpf || cpf);
+      setCpfConfirmation(payload.profile.cpf || cpf);
+      setBirthDate(payload.profile.birth_date || birthDate);
+      setAvatarUrl(payload.profile.avatar_url || avatarUrl.trim());
+      setUserRole(payload.profile.role || userRole);
+      setUser((currentUser) => {
+        if (!currentUser) return currentUser;
+
+        return {
+          ...currentUser,
+          user_metadata: {
+            ...(currentUser.user_metadata || {}),
+            username: payload.profile?.username || normalizedUsername,
+            cpf: payload.profile?.cpf || cpf,
+            birth_date: payload.profile?.birth_date || birthDate,
+            avatar_url: payload.profile?.avatar_url || avatarUrl.trim(),
+          },
+        } as User;
+      });
 
       alert('Perfil atualizado com sucesso!');
       setProfileNotice(null);
@@ -1573,7 +1645,7 @@ function UsuariosPageContent() {
                     <div className="px-5 py-4">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300/80">CPF para saque</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{user?.user_metadata?.cpf || 'Não definido'}</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{cpf || user?.user_metadata?.cpf || 'Não definido'}</p>
                         <p className="mt-1 text-xs leading-5 text-blue-100/65">O valor solicitado será enviado para o CPF cadastrado na sua conta.</p>
                       </div>
 
@@ -2353,7 +2425,7 @@ function UsuariosPageContent() {
                   <div className="mt-4 grid gap-3 rounded-[22px] border border-white/8 bg-black/20 p-3 text-sm text-blue-100/75">
                     <div className="flex items-center justify-between gap-3">
                       <span>CPF para recebimento</span>
-                      <span className="font-semibold text-white">{user?.user_metadata?.cpf || 'Não definido'}</span>
+                      <span className="font-semibold text-white">{cpf || user?.user_metadata?.cpf || 'Não definido'}</span>
                     </div>
                     <p className="text-xs leading-5 text-slate-400">
                       O valor aprovado será enviado para o CPF cadastrado na conta.

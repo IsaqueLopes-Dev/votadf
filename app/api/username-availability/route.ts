@@ -37,6 +37,22 @@ export async function GET(request: Request) {
   }
 
   try {
+    const { data: existingProfile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('username', username)
+      .neq('id', excludeUserId || '00000000-0000-0000-0000-000000000000')
+      .limit(1)
+      .maybeSingle();
+
+    if (profileError) {
+      return NextResponse.json({ available: false, reason: profileError.message }, { status: 500 });
+    }
+
+    if (existingProfile) {
+      return NextResponse.json({ available: false, reason: 'taken' });
+    }
+
     let page = 1;
     const perPage = 100;
 
