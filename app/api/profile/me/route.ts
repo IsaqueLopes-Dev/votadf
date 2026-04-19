@@ -14,6 +14,7 @@ type ProfileUpdatePayload = {
   cpf?: unknown;
   birth_date?: unknown;
   avatar_url?: unknown;
+  identity_confirmed?: unknown;
 };
 
 export async function GET(request: Request) {
@@ -46,6 +47,10 @@ export async function POST(request: Request) {
   const cpf = String(body.cpf || '').trim();
   const birthDate = String(body.birth_date || '').trim();
   const avatarUrl = String(body.avatar_url || '').trim();
+  const identityConfirmed = body.identity_confirmed === true;
+  const currentMetadata = (context.user.user_metadata || {}) as Record<string, unknown>;
+  const identityConfirmedAt = String(currentMetadata.identity_confirmed_at || '').trim();
+  const isIdentityLocked = Boolean(identityConfirmedAt);
 
   if (!username || !isValidUsername(username)) {
     return NextResponse.json({ error: 'Nome de usuario invalido.' }, { status: 400 });
@@ -67,9 +72,20 @@ export async function POST(request: Request) {
       String(currentBirthDateProfile?.birth_date || '').trim() ||
       String(context.user.user_metadata?.birth_date || '').trim();
 
-    if (currentBirthDate && currentBirthDate !== birthDate) {
+    const currentCpf =
+      String(currentPublicUser?.cpf || '').trim() ||
+      String(context.user.user_metadata?.cpf || '').trim();
+
+    if (isIdentityLocked && currentBirthDate && currentBirthDate !== birthDate) {
       return NextResponse.json(
         { error: 'Data de nascimento ja cadastrada. So admin pode alterar.' },
+        { status: 403 }
+      );
+    }
+
+    if (isIdentityLocked && currentCpf && currentCpf !== cpf) {
+      return NextResponse.json(
+        { error: 'CPF ja confirmado. So admin pode alterar esse dado.' },
         { status: 403 }
       );
     }
@@ -90,14 +106,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Esse nome de usuario ja esta em uso.' }, { status: 409 });
     }
 
-    const { profile } = await syncUnifiedProfile(context.adminSupabase, context.user, {
+    const { profile, user } = await syncUnifiedProfile(context.adminSupabase, context.user, {
       username,
       cpf,
       birth_date: birthDate,
       avatar_url: avatarUrl,
     });
 
-    return NextResponse.json({ profile });
+    let nextIdentityConfirmedAt = identityConfirmedAt;
+
+    if (!identityConfirmedAt && identityConfirmed) {
+      nextIdentityConfirmedAt = new Date().toISOString();
+      const nextUserMetadata = {
+        ...(user.user_metadata || {}),
+        identity_confirmed_at: nextIdentityConfirmedAt,
+      };
+
+      const { data, error } = await context.adminSupabase.auth.admin.updateUserById(user.id, {
+        user_metadata: nextUserMetadata,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    }
+
+    return NextResponse.json({ profile, identityConfirmedAt: nextIdentityConfirmedAt || null });
   } catch (error: unknown) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao salvar perfil.' },

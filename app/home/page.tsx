@@ -232,6 +232,7 @@ function UsuariosPageContent() {
   const [cpf, setCpf] = useState('');
   const [cpfConfirmation, setCpfConfirmation] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [confirmIdentityLock, setConfirmIdentityLock] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -569,8 +570,7 @@ function UsuariosPageContent() {
     }
   };
 
-  // Só bloqueia se birth_date já estiver preenchido
-  const identityLocked = Boolean(String(birthDate || user?.user_metadata?.birth_date || '').trim());
+  const identityLocked = Boolean(String(user?.user_metadata?.identity_confirmed_at || '').trim());
 
   const hasRequiredBetProfile = (currentUser: User | null) => {
     return Boolean(
@@ -1451,10 +1451,8 @@ function UsuariosPageContent() {
         return;
       }
 
-
       if (identityLocked) {
-        // Se a data de nascimento já foi preenchida, não permite alteração
-        alert('A data de nascimento já foi definida. Somente o admin pode alterar esse dado.');
+        alert('CPF e data de nascimento ja confirmados. Somente o admin pode alterar esses dados.');
         return;
       }
 
@@ -1479,12 +1477,14 @@ function UsuariosPageContent() {
           cpf,
           birth_date: birthDate,
           avatar_url: avatarUrl.trim(),
+          identity_confirmed: confirmIdentityLock,
         }),
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         profile?: UserProfile;
+        identityConfirmedAt?: string | null;
       };
 
       if (!response.ok || !payload.profile) {
@@ -1509,11 +1509,17 @@ function UsuariosPageContent() {
             cpf: payload.profile?.cpf || cpf,
             birth_date: payload.profile?.birth_date || birthDate,
             avatar_url: payload.profile?.avatar_url || avatarUrl.trim(),
+            identity_confirmed_at: payload.identityConfirmedAt || currentUser.user_metadata?.identity_confirmed_at,
           },
         } as User;
       });
 
-      alert('Perfil atualizado com sucesso!');
+      setConfirmIdentityLock(false);
+      alert(
+        payload.identityConfirmedAt
+          ? 'Perfil atualizado e dados pessoais confirmados com sucesso!'
+          : 'Perfil atualizado com sucesso! Voce ainda pode revisar CPF e data antes de confirmar o bloqueio.'
+      );
       setProfileNotice(null);
       setProfileOpen(false);
     } catch (profileError: unknown) {
@@ -2079,9 +2085,9 @@ function UsuariosPageContent() {
                     <label htmlFor="profile-cpf" className="mb-1 block text-xs font-medium text-zinc-300 sm:text-sm">
                       CPF
                     </label>
-                    <input
-                      id="profile-cpf"
-                      type="text"
+                      <input
+                        id="profile-cpf"
+                        type="text"
                       inputMode="numeric"
                       value={cpf}
                       onChange={(e) => setCpf(formatCpf(e.target.value))}
@@ -2089,8 +2095,8 @@ function UsuariosPageContent() {
                       required
                       disabled={identityLocked}
                       className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-[#0f1115] disabled:text-zinc-500"
-                    />
-                  </div>
+                      />
+                    </div>
 
                   {!identityLocked && (
                     <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
@@ -2124,6 +2130,24 @@ function UsuariosPageContent() {
                       className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm disabled:cursor-not-allowed disabled:text-zinc-500"
                     />
                   </div>
+
+                  {!identityLocked ? (
+                    <label className="flex items-start gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100 sm:text-sm">
+                      <input
+                        type="checkbox"
+                        checked={confirmIdentityLock}
+                        onChange={(event) => setConfirmIdentityLock(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-white/20 bg-[#0f1115] text-amber-400 focus:ring-amber-400"
+                      />
+                      <span>
+                        Confirmo que meu CPF e minha data de nascimento estao corretos. Depois disso, esses dados serao bloqueados e so o admin podera alterar.
+                      </span>
+                    </label>
+                  ) : (
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-emerald-200 sm:text-sm">
+                      CPF e data de nascimento confirmados. Para alterar esses dados, entre em contato com o admin.
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 pt-1.5 sm:pt-2">
                     <button
