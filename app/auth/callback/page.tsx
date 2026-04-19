@@ -11,6 +11,8 @@ function AuthCallbackContent() {
   const supabase = useMemo(() => getSupabaseClient(), []);
   const next = searchParams?.get('next') || '';
   const code = searchParams?.get('code') || '';
+  const tokenHash = searchParams?.get('token_hash') || '';
+  const type = searchParams?.get('type') || '';
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +35,27 @@ function AuthCallbackContent() {
 
           if (exchangeError) {
             setError(exchangeError.message);
+            return;
+          }
+        }
+
+        if (tokenHash && type) {
+          const { error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as
+              | 'signup'
+              | 'invite'
+              | 'magiclink'
+              | 'recovery'
+              | 'email_change'
+              | 'email'
+              | 'sms',
+          });
+
+          if (!mounted) return;
+
+          if (verifyError) {
+            setError(verifyError.message);
             return;
           }
         }
@@ -86,7 +109,7 @@ function AuthCallbackContent() {
     return () => {
       mounted = false;
     };
-  }, [code, next, router, supabase.auth]);
+  }, [code, next, router, supabase.auth, tokenHash, type]);
 
   return (
     <div

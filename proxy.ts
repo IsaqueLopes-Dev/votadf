@@ -1,22 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const hasSupabaseSessionCookie = (request: NextRequest) => {
-  return request.cookies.getAll().some((cookie) => {
-    const name = cookie.name.toLowerCase();
-    return name.startsWith('sb-') && name.includes('auth-token');
-  });
-};
-
 export function proxy(request: NextRequest) {
-  const { pathname, search } = request.nextUrl;
-
-  if (!hasSupabaseSessionCookie(request)) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
-  }
-
+  // Admin permission is validated server-side in the admin APIs.
+  // The browser Supabase client persists auth client-side, so
+  // cookie-based edge redirects would bounce valid admins back to /login.
   return NextResponse.next();
 }
 

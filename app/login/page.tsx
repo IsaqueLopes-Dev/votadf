@@ -511,7 +511,7 @@ function LoginPageContent() {
           {isSignUp ? 'Cadastrar com Google' : 'Entrar com Google'}
         </button>
 
-        {!isSignUp && !isRecoverySession && (
+        {!isSignUp && !isRecoverySession && !isAdminLoginFlow && (
           <button
             type="button"
             style={{
@@ -522,11 +522,7 @@ function LoginPageContent() {
             onClick={() => void handleMagicLink()}
             disabled={loading || sendingMagicLink}
           >
-            {sendingMagicLink
-              ? 'Enviando link...'
-              : isAdminLoginFlow
-                ? 'Receber link de acesso admin'
-                : 'Entrar com link por e-mail'}
+            {sendingMagicLink ? 'Enviando link...' : 'Entrar com link por e-mail'}
           </button>
         )}
       </form>
