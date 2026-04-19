@@ -221,6 +221,9 @@ const getDisplayedOdd = (value: string) => {
   return `${value}x`;
 };
 
+const getCardDescription = (value: string) =>
+  value.replace(/^faça sua votação!\s*/i, '').replace(/^faca sua votacao!\s*/i, '').trim();
+
 const getCategoryLabel = (categoria: string) => {
   return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
 };
@@ -2679,7 +2682,7 @@ function UsuariosPageContent() {
                       </div>
 
                       <h3 className="mb-2 text-sm font-semibold text-white">{votacao.titulo}</h3>
-                      <p className="mb-4 line-clamp-3 text-sm leading-6 text-zinc-400">{metadata.descricaoLimpa}</p>
+                      <p className="mb-4 line-clamp-3 text-sm leading-6 text-zinc-400">{getCardDescription(metadata.descricaoLimpa)}</p>
                       <p className="mb-4 text-xs text-zinc-400">
                         Encerra em:{' '}
                         {metadata.encerramentoAposta
