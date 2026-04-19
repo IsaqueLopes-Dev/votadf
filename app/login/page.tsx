@@ -124,6 +124,13 @@ function LoginPageContent() {
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username: normalizedUsername,
+            cpf,
+            birth_date: birthDate,
+          },
+        },
       });
       if (signUpError) {
         setError(signUpError.message);
@@ -131,14 +138,7 @@ function LoginPageContent() {
         return;
       }
 
-      await supabase.from('users').insert([
-        {
-          email,
-          username: normalizedUsername,
-          cpf,
-          birth_date: birthDate,
-        },
-      ]);
+
 
       setIsSignUp(false);
       setEmail('');
@@ -147,7 +147,58 @@ function LoginPageContent() {
       setUsername('');
       setCpf('');
       setBirthDate('');
-      alert('Cadastro realizado! Verifique seu e-mail.');
+      setShowConfirmEmail(true);
+      const [showConfirmEmail, setShowConfirmEmail] = useState(false);
+      {showConfirmEmail && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0,0,0,0.65)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <div style={{
+            background: '#181f2a',
+            borderRadius: 16,
+            boxShadow: '0 8px 32px #0008',
+            padding: '36px 32px',
+            minWidth: 320,
+            maxWidth: '90vw',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 16,
+          }}>
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24"><rect width="24" height="24" rx="12" fill="#00c3ff" fillOpacity="0.12"/><path d="M7 8.5V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v.5m-10 0V16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8.5m-10 0 5.553 4.162a2 2 0 0 0 2.894 0L19 8.5" stroke="#00c3ff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <div style={{ color: '#fff', fontWeight: 600, fontSize: 20, textAlign: 'center', fontFamily: 'Poppins, Segoe UI, Arial, sans-serif' }}>
+              Confirme seu email e faça login
+            </div>
+            <button
+              style={{
+                marginTop: 8,
+                background: '#00c3ff',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '10px 24px',
+                fontWeight: 600,
+                fontSize: 16,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px #00c3ff33',
+                transition: 'background 0.2s',
+              }}
+              onClick={() => setShowConfirmEmail(false)}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
