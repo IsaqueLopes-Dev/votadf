@@ -19,16 +19,28 @@ function LoginPageContent() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [cpf, setCpf] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [showConfirmEmail, setShowConfirmEmail] = useState(false);
+  const [isRecoverySession, setIsRecoverySession] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = getSupabaseClient();
   const next = searchParams?.get('next') || '/home';
+  const isResetMode = searchParams?.get('reset') === '1';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hashParams.get('type') === 'recovery') {
+      setIsRecoverySession(true);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -38,7 +50,9 @@ function LoginPageContent() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (mounted && session) {
+      if (!mounted) return;
+
+      if (session && !isResetMode && !isRecoverySession) {
         router.replace(next);
       }
     };
@@ -50,8 +64,17 @@ function LoginPageContent() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoverySession(true);
+        setError(null);
+        setNotice('Digite sua nova senha para concluir a recuperação.');
+        return;
+      }
+
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-        router.replace(next);
+        if (!isResetMode && !isRecoverySession) {
+          router.replace(next);
+        }
       }
     });
 
@@ -59,12 +82,13 @@ function LoginPageContent() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [next, router, supabase.auth]);
+  }, [isRecoverySession, isResetMode, next, router, supabase.auth]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
 
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -89,17 +113,18 @@ function LoginPageContent() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setNotice(null);
 
     const normalizedUsername = username.startsWith('@') ? username : `@${username.replace(/^@+/, '')}`;
 
     if (password !== confirmPassword) {
-      setError('As senhas nao coincidem.');
+      setError('As senhas não coincidem.');
       setLoading(false);
       return;
     }
 
     if (!normalizedUsername.startsWith('@') || normalizedUsername.length < 4) {
-      setError('O nome de usuario deve comecar com @');
+      setError('O nome de usuário deve começar com @');
       setLoading(false);
       return;
     }
@@ -112,7 +137,7 @@ function LoginPageContent() {
         .maybeSingle();
 
       if (userEmail) {
-        setError('Ja existe um usuario com este e-mail.');
+        setError('Já existe um usuário com este e-mail.');
         setLoading(false);
         return;
       }
@@ -124,7 +149,7 @@ function LoginPageContent() {
         .maybeSingle();
 
       if (userName) {
-        setError('Ja existe um usuario com este nome de usuario.');
+        setError('Já existe um usuário com este nome de usuário.');
         setLoading(false);
         return;
       }
@@ -165,6 +190,7 @@ function LoginPageContent() {
   const handleGoogle = async () => {
     setLoading(true);
     setError(null);
+    setNotice(null);
 
     try {
       const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(next)}`;
@@ -187,6 +213,255 @@ function LoginPageContent() {
       setLoading(false);
     }
   };
+
+  const handleSendRecoveryEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    if (!email.trim()) {
+      setError('Informe seu e-mail para recuperar a senha.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const redirectTo = `${window.location.origin}/login?reset=1`;
+      const { error: recoveryError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+
+      if (recoveryError) {
+        setError(recoveryError.message);
+        return;
+      }
+
+      setNotice('Enviamos um link de recuperação para o seu e-mail.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Não foi possível enviar o e-mail de recuperação.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    if (!password || !confirmPassword) {
+      setError('Preencha e confirme a nova senha.');
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
+      setNotice('Senha alterada com sucesso. Agora você já pode entrar.');
+      setPassword('');
+      setConfirmPassword('');
+      setIsRecoverySession(false);
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, document.title, '/login');
+      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Não foi possível atualizar a senha.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderPrimaryForm = () => {
+    if (isRecoverySession) {
+      return (
+        <form style={styles.form} onSubmit={handleUpdatePassword} autoComplete="on">
+          <input
+            type="password"
+            placeholder="Nova senha"
+            style={styles.input}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            disabled={loading}
+          />
+          <input
+            type="password"
+            placeholder="Confirme a nova senha"
+            style={styles.input}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            disabled={loading}
+          />
+          <button style={styles.loginButton} type="submit" disabled={loading}>
+            {loading ? 'Salvando...' : 'Alterar senha'}
+          </button>
+        </form>
+      );
+    }
+
+    if (isResetMode) {
+      return (
+        <form style={styles.form} onSubmit={handleSendRecoveryEmail} autoComplete="on">
+          <input
+            type="email"
+            placeholder="E-mail"
+            style={styles.input}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+            disabled={loading}
+          />
+          <button style={styles.loginButton} type="submit" disabled={loading}>
+            {loading ? 'Enviando...' : 'Enviar recuperação'}
+          </button>
+        </form>
+      );
+    }
+
+    return (
+      <form style={styles.form} onSubmit={isSignUp ? handleSignUp : handleLogin} autoComplete="on">
+        {isSignUp && (
+          <>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <span
+                style={{
+                  position: 'absolute',
+                  left: 10,
+                  top: 10,
+                  color: '#00c3ff',
+                  fontSize: 22,
+                  fontWeight: 700,
+                  fontFamily: '"Poppins", "Segoe UI", Arial, sans-serif',
+                  textShadow: '0 2px 8px #00334444',
+                  pointerEvents: 'none',
+                  zIndex: 2,
+                  lineHeight: '1',
+                  height: 28,
+                  display: 'flex',
+                  alignItems: 'center',
+                  letterSpacing: '0.5px',
+                  userSelect: 'none',
+                }}
+              >
+                @
+              </span>
+              <input
+                id="username-input"
+                type="text"
+                placeholder="nome de usuário"
+                style={{ ...styles.input, paddingLeft: 44 }}
+                value={username.replace(/^@+/, '')}
+                onChange={(e) => {
+                  setUsername(e.target.value.replace(/@/g, ''));
+                }}
+                autoComplete="username"
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <input
+              type="text"
+              placeholder="CPF"
+              style={styles.input}
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              autoComplete="off"
+              required
+              disabled={loading}
+              maxLength={14}
+            />
+
+            <input
+              type="date"
+              placeholder="Data de nascimento"
+              style={styles.input}
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              autoComplete="bday"
+              required
+              disabled={loading}
+            />
+          </>
+        )}
+
+        <input
+          type="email"
+          placeholder="E-mail"
+          style={styles.input}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+          required
+          disabled={loading}
+        />
+
+        <input
+          type="password"
+          placeholder="Senha"
+          style={styles.input}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete={isSignUp ? 'new-password' : 'current-password'}
+          required
+          disabled={loading}
+        />
+
+        {isSignUp && (
+          <input
+            type="password"
+            placeholder="Confirme a senha"
+            style={styles.input}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            required
+            disabled={loading}
+          />
+        )}
+
+        <button style={styles.loginButton} type="submit" disabled={loading}>
+          {loading ? (isSignUp ? 'Criando...' : 'Entrando...') : isSignUp ? 'Criar conta' : 'Entrar'}
+        </button>
+
+        <button type="button" style={styles.googleButton} onClick={handleGoogle} disabled={loading}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" style={{ width: 18 }} alt="Google" />
+          {isSignUp ? 'Cadastrar com Google' : 'Entrar com Google'}
+        </button>
+      </form>
+    );
+  };
+
+  const pageTitle = isRecoverySession
+    ? 'Defina sua nova senha'
+    : isResetMode
+      ? 'Recupere sua senha'
+      : isSignUp
+        ? 'Criar conta'
+        : 'Acesse sua conta para continuar';
+
+  const subtitle = isRecoverySession
+    ? 'Escolha uma nova senha para voltar ao seu acesso.'
+    : isResetMode
+      ? 'Informe seu e-mail para receber o link de recuperação.'
+      : 'Antecipe resultados. Tome decisões com confiança.';
 
   return (
     <div style={styles.container}>
@@ -235,15 +510,7 @@ function LoginPageContent() {
                 pointerEvents: 'none',
               }}
             />
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 14,
-                position: 'relative',
-                zIndex: 1,
-              }}
-            >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
               <div
                 style={{
                   width: 58,
@@ -284,7 +551,7 @@ function LoginPageContent() {
                     marginBottom: 6,
                   }}
                 >
-                  Cadastro concluido
+                  Cadastro concluído
                 </div>
                 <div
                   style={{
@@ -295,7 +562,7 @@ function LoginPageContent() {
                     fontFamily: 'Poppins, Segoe UI, Arial, sans-serif',
                   }}
                 >
-                  Confirme seu e-mail e faca login
+                  Confirme seu e-mail e faça login
                 </div>
               </div>
             </div>
@@ -309,7 +576,7 @@ function LoginPageContent() {
                 zIndex: 1,
               }}
             >
-              Enviamos um link de confirmacao para o e-mail informado. Depois de validar sua conta, volte para entrar e
+              Enviamos um link de confirmação para o e-mail informado. Depois de validar sua conta, volte para entrar e
               acessar a plataforma.
             </p>
             <div
@@ -325,7 +592,7 @@ function LoginPageContent() {
                 zIndex: 1,
               }}
             >
-              Se nao encontrar a mensagem, confira tambem a caixa de spam ou promocoes.
+              Se não encontrar a mensagem, confira também a caixa de spam ou promoções.
             </div>
             <button
               style={{
@@ -380,12 +647,12 @@ function LoginPageContent() {
               marginTop: -6,
             }}
           >
-            Previsao
+            Previsão
           </span>
         </div>
 
-        <div style={styles.subtitle}>Antecipe resultados. Tome decisoes com confianca.</div>
-        <h2 style={styles.title}>{isSignUp ? 'Criar conta' : 'Acesse sua conta para continuar'}</h2>
+        <div style={styles.subtitle}>{subtitle}</div>
+        <h2 style={styles.title}>{pageTitle}</h2>
 
         {error && (
           <div
@@ -402,177 +669,63 @@ function LoginPageContent() {
           </div>
         )}
 
-        <form style={styles.form} onSubmit={isSignUp ? handleSignUp : handleLogin} autoComplete="on">
-          {isSignUp && (
-            <>
-              <div style={{ position: 'relative', width: '100%' }}>
-                <span
-                  style={{
-                    position: 'absolute',
-                    left: 10,
-                    top: 10,
-                    color: '#00c3ff',
-                    fontSize: 22,
-                    fontWeight: 700,
-                    fontFamily: '"Poppins", "Segoe UI", Arial, sans-serif',
-                    textShadow: '0 2px 8px #00334444',
-                    pointerEvents: 'none',
-                    zIndex: 2,
-                    lineHeight: '1',
-                    height: 28,
-                    display: 'flex',
-                    alignItems: 'center',
-                    letterSpacing: '0.5px',
-                    userSelect: 'none',
+        {notice && (
+          <div
+            style={{
+              color: '#c6f6ff',
+              background: 'rgba(3, 105, 161, 0.18)',
+              border: '1px solid rgba(56, 189, 248, 0.28)',
+              borderRadius: 10,
+              padding: 10,
+              marginBottom: 16,
+              fontSize: 13,
+            }}
+          >
+            {notice}
+          </div>
+        )}
+
+        {renderPrimaryForm()}
+
+        {!isResetMode && !isRecoverySession && (
+          <div style={{ ...styles.link, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
+            {isSignUp ? (
+              <>
+                <span style={{ color: '#9ca3af' }}>Já tem conta?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setError(null);
+                    setNotice(null);
                   }}
+                  style={styles.inlineAction}
                 >
-                  @
-                </span>
-                <input
-                  id="username-input"
-                  type="text"
-                  placeholder="nome de usuario"
-                  style={{ ...styles.input, paddingLeft: 44 }}
-                  value={username.replace(/^@+/, '')}
-                  onChange={(e) => {
-                    setUsername(e.target.value.replace(/@/g, ''));
+                  Fazer login
+                </button>
+              </>
+            ) : (
+              <>
+                <span style={{ color: '#9ca3af' }}>Não tem conta?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setError(null);
+                    setNotice(null);
                   }}
-                  autoComplete="username"
-                  required
-                  disabled={loading}
-                />
-              </div>
+                  style={styles.inlineAction}
+                >
+                  Criar conta
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
-              <input
-                type="text"
-                placeholder="CPF"
-                style={styles.input}
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-                autoComplete="off"
-                required
-                disabled={loading}
-                maxLength={14}
-              />
-
-              <input
-                type="date"
-                placeholder="Data de nascimento"
-                style={styles.input}
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                autoComplete="bday"
-                required
-                disabled={loading}
-              />
-            </>
-          )}
-
-          <input
-            type="email"
-            placeholder="E-mail"
-            style={styles.input}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="username"
-            required
-            disabled={loading}
-          />
-
-          <input
-            type="password"
-            placeholder="Senha"
-            style={styles.input}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={isSignUp ? 'new-password' : 'current-password'}
-            required
-            disabled={loading}
-          />
-
-          {isSignUp && (
-            <input
-              type="password"
-              placeholder="Confirme a senha"
-              style={styles.input}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-              disabled={loading}
-            />
-          )}
-
-          <button style={styles.loginButton} type="submit" disabled={loading}>
-            {loading ? (isSignUp ? 'Criando...' : 'Entrar') : (isSignUp ? 'Criar conta' : 'Entrar')}
-          </button>
-
-          <button type="button" style={styles.googleButton} onClick={handleGoogle} disabled={loading}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" style={{ width: 18 }} alt="Google" />
-            {isSignUp ? 'Cadastrar com Google' : 'Entrar com Google'}
-          </button>
-        </form>
-
-        <div style={{ ...styles.link, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
-          {isSignUp ? (
-            <>
-              <span style={{ color: '#9ca3af' }}>Ja tem conta?</span>
-              <button
-                type="button"
-                onClick={() => setIsSignUp(false)}
-                style={{
-                  color: '#00c3ff',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 0,
-                  font: 'inherit',
-                  textDecoration: 'underline',
-                  outline: 'none',
-                  transition: 'color 0.2s',
-                }}
-                onFocus={(e) => (e.currentTarget.style.color = '#0099cc')}
-                onBlur={(e) => (e.currentTarget.style.color = '#00c3ff')}
-                onMouseOver={(e) => (e.currentTarget.style.color = '#0099cc')}
-                onMouseOut={(e) => (e.currentTarget.style.color = '#00c3ff')}
-                tabIndex={0}
-              >
-                Fazer login
-              </button>
-            </>
-          ) : (
-            <>
-              <span style={{ color: '#9ca3af' }}>Nao tem conta?</span>
-              <button
-                type="button"
-                onClick={() => setIsSignUp(true)}
-                style={{
-                  color: '#00c3ff',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 0,
-                  font: 'inherit',
-                  textDecoration: 'underline',
-                  outline: 'none',
-                  transition: 'color 0.2s',
-                }}
-                onFocus={(e) => (e.currentTarget.style.color = '#0099cc')}
-                onBlur={(e) => (e.currentTarget.style.color = '#00c3ff')}
-                onMouseOver={(e) => (e.currentTarget.style.color = '#0099cc')}
-                onMouseOut={(e) => (e.currentTarget.style.color = '#00c3ff')}
-                tabIndex={0}
-              >
-                Criar conta
-              </button>
-            </>
-          )}
-        </div>
-
-        {!isSignUp && (
+        {!isSignUp && !isRecoverySession && (
           <div style={styles.link}>
-            <Link href="/login?reset=1">Esqueceu a senha?</Link>
+            {isResetMode ? <Link href="/login">Voltar para o login</Link> : <Link href="/login?reset=1">Esqueceu a senha?</Link>}
           </div>
         )}
       </div>
@@ -681,5 +834,16 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: 13,
     color: '#9ca3af',
     textAlign: 'center',
+  },
+  inlineAction: {
+    color: '#00c3ff',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
+    font: 'inherit',
+    textDecoration: 'underline',
+    outline: 'none',
+    transition: 'color 0.2s',
   },
 };
