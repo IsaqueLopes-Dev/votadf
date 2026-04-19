@@ -9,11 +9,20 @@ function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const supabase = useMemo(() => getSupabaseClient(), []);
-  const next = searchParams?.get('next') || '/home';
+  const next = searchParams?.get('next') || '';
   const code = searchParams?.get('code') || '';
 
   useEffect(() => {
     let mounted = true;
+
+    const getResolvedNext = () => {
+      if (typeof window === 'undefined') {
+        return next || '/home';
+      }
+
+      const storedNext = window.sessionStorage.getItem('post_login_redirect') || '';
+      return next || storedNext || '/home';
+    };
 
     const finishAuth = async () => {
       try {
@@ -41,7 +50,10 @@ function AuthCallbackContent() {
         }
 
         if (session) {
-          router.replace(next);
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.removeItem('post_login_redirect');
+          }
+          router.replace(getResolvedNext());
           return;
         }
 
@@ -51,7 +63,10 @@ function AuthCallbackContent() {
           if (!mounted) return;
 
           if (currentSession && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
-            router.replace(next);
+            if (typeof window !== 'undefined') {
+              window.sessionStorage.removeItem('post_login_redirect');
+            }
+            router.replace(getResolvedNext());
           }
         });
 

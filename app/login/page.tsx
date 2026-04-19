@@ -219,6 +219,10 @@ function LoginPageContent() {
     setNotice(null);
 
     try {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('post_login_redirect', next);
+      }
+
       const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
       const { error: googleError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
