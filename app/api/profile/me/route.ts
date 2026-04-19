@@ -17,6 +17,8 @@ type ProfileUpdatePayload = {
   identity_confirmed?: unknown;
 };
 
+const normalizeCpfDigits = (value: string) => value.replace(/\D/g, '');
+
 export async function GET(request: Request) {
   const context = await getAuthenticatedProfileContext(request);
 
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as ProfileUpdatePayload;
   const username = normalizeUsername(String(body.username || ''));
-  const cpf = String(body.cpf || '').trim();
+  const cpf = normalizeCpfDigits(String(body.cpf || ''));
   const birthDate = String(body.birth_date || '').trim();
   const avatarUrl = String(body.avatar_url || '').trim();
   const identityConfirmed = body.identity_confirmed === true;
@@ -53,15 +55,15 @@ export async function POST(request: Request) {
   const isIdentityLocked = Boolean(identityConfirmedAt);
 
   if (!username || !isValidUsername(username)) {
-    return NextResponse.json({ error: 'Nome de usuario invalido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Nome de usuário inválido.' }, { status: 400 });
   }
 
   if (!cpf) {
-    return NextResponse.json({ error: 'CPF obrigatorio.' }, { status: 400 });
+    return NextResponse.json({ error: 'CPF obrigatório.' }, { status: 400 });
   }
 
   if (!birthDate || !isValidBirthDate(birthDate)) {
-    return NextResponse.json({ error: 'Data de nascimento invalida.' }, { status: 400 });
+    return NextResponse.json({ error: 'Data de nascimento inválida.' }, { status: 400 });
   }
 
   try {
@@ -73,8 +75,8 @@ export async function POST(request: Request) {
       String(context.user.user_metadata?.birth_date || '').trim();
 
     const currentCpf =
-      String(currentPublicUser?.cpf || '').trim() ||
-      String(context.user.user_metadata?.cpf || '').trim();
+      normalizeCpfDigits(String(currentPublicUser?.cpf || '').trim()) ||
+      normalizeCpfDigits(String(context.user.user_metadata?.cpf || '').trim());
 
     if (isIdentityLocked && currentBirthDate && currentBirthDate !== birthDate) {
       return NextResponse.json(
@@ -103,7 +105,25 @@ export async function POST(request: Request) {
     }
 
     if (existingUser) {
-      return NextResponse.json({ error: 'Esse nome de usuario ja esta em uso.' }, { status: 409 });
+      return NextResponse.json({ error: 'Esse nome de usuário já está em uso.' }, { status: 409 });
+    }
+
+    const { data: existingCpfUsers, error: cpfError } = await context.adminSupabase
+      .from('users')
+      .select('id, cpf')
+      .neq('id', context.user.id)
+      .not('cpf', 'is', null);
+
+    if (cpfError) {
+      throw new Error(cpfError.message);
+    }
+
+    const cpfAlreadyInUse = existingCpfUsers?.some(
+      (user) => normalizeCpfDigits(String(user.cpf || '')) === cpf
+    );
+
+    if (cpfAlreadyInUse) {
+      return NextResponse.json({ error: 'Já existe um usuário com este CPF.' }, { status: 409 });
     }
 
     const { profile, user } = await syncUnifiedProfile(context.adminSupabase, context.user, {
@@ -122,7 +142,7 @@ export async function POST(request: Request) {
         identity_confirmed_at: nextIdentityConfirmedAt,
       };
 
-      const { data, error } = await context.adminSupabase.auth.admin.updateUserById(user.id, {
+      const { error } = await context.adminSupabase.auth.admin.updateUserById(user.id, {
         user_metadata: nextUserMetadata,
       });
 

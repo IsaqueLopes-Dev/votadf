@@ -16,6 +16,21 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const normalizeCpfDigits = (value: string) => value.replace(/\D/g, '');
+
+const findUserByNormalizedCpf = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  normalizedCpf: string
+) => {
+  const { data, error } = await supabase.from('users').select('id, cpf').not('cpf', 'is', null);
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.find((user) => normalizeCpfDigits(String(user.cpf || '')) === normalizedCpf) || null;
+};
+
 const resolvePostLoginPath = (candidate: string | null | undefined) => {
   const normalized = String(candidate || '').trim();
 
@@ -163,6 +178,8 @@ function LoginPageContent() {
     setNotice(null);
 
     const normalizedUsername = username.startsWith('@') ? username : `@${username.replace(/^@+/, '')}`;
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedCpf = normalizeCpfDigits(cpf);
 
     if (password !== confirmPassword) {
       setError('As senhas não coincidem.');
@@ -180,7 +197,7 @@ function LoginPageContent() {
       const { data: userEmail } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email)
+        .eq('email', normalizedEmail)
         .maybeSingle();
 
       if (userEmail) {
@@ -201,20 +218,38 @@ function LoginPageContent() {
         return;
       }
 
+      const userCpf = await findUserByNormalizedCpf(supabase, normalizedCpf);
+
+      if (userCpf) {
+        setError('Já existe um usuário com este CPF.');
+        setLoading(false);
+        return;
+      }
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
             username: normalizedUsername,
-            cpf,
+            cpf: normalizedCpf,
             birth_date: birthDate,
           },
         },
       });
 
       if (signUpError) {
-        setError(signUpError.message);
+        const normalizedMessage = String(signUpError.message || '').toLowerCase();
+
+        if (
+          normalizedMessage.includes('already registered') ||
+          normalizedMessage.includes('already been registered') ||
+          normalizedMessage.includes('user already registered')
+        ) {
+          setError('Já existe um usuário com este e-mail.');
+        } else {
+          setError(signUpError.message);
+        }
         setLoading(false);
         return;
       }
@@ -228,7 +263,7 @@ function LoginPageContent() {
           },
           body: JSON.stringify({
             username: normalizedUsername,
-            cpf,
+            cpf: normalizedCpf,
             birth_date: birthDate,
             avatar_url: '',
           }),
@@ -512,7 +547,6 @@ function LoginPageContent() {
           <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" style={{ width: 18 }} alt="Google" />
           {isSignUp ? 'Cadastrar com Google' : 'Entrar com Google'}
         </button>
-
       </form>
     );
   };

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getAuthenticatedUnifiedProfileContext } from '../../profile/utils';
 
 const COMMENT_PREFIX = '__bet_comment__:';
 const COMMENT_RETENTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -15,15 +16,6 @@ type CommentRow = {
   created_at: string;
 };
 
-const getBearerToken = (request: Request) => {
-  const auth = request.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
-};
-
-const getAnonSupabase = () =>
-  createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
-
 const getAdminSupabase = () => {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -33,16 +25,6 @@ const getAdminSupabase = () => {
   }
 
   return createClient(supabaseUrl, serviceRole);
-};
-
-const getDisplayName = (user: User) => {
-  const fromMetadata = String(user.user_metadata?.username || '').trim();
-  if (fromMetadata) return fromMetadata;
-
-  const email = String(user.email || '').trim();
-  if (!email.includes('@')) return '@usuario';
-
-  return `@${email.split('@')[0]}`;
 };
 
 const getCommentPrefix = (votacaoId: string) => `${COMMENT_PREFIX}${votacaoId}:`;
@@ -68,35 +50,25 @@ const cleanupOldComments = async (supabaseAdmin: SupabaseClient) => {
 };
 
 const resolveAuthenticatedUser = async (request: Request) => {
-  const token = getBearerToken(request);
+  const context = await getAuthenticatedUnifiedProfileContext(request);
 
-  if (!token) {
-    return { error: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) };
+  if ('error' in context) {
+    return { error: NextResponse.json({ error: context.error }, { status: context.status }) };
   }
 
-  const anonSupabase = getAnonSupabase();
-  const {
-    data: { user },
-    error,
-  } = await anonSupabase.auth.getUser(token);
-
-  if (error || !user) {
-    return { error: NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 }) };
-  }
-
-  return { user };
+  return context;
 };
 
 export async function GET(request: Request) {
   const votacaoId = new URL(request.url).searchParams.get('votacaoId')?.trim() || '';
 
   if (!votacaoId) {
-    return NextResponse.json({ error: 'votacaoId é obrigatório.' }, { status: 400 });
+    return NextResponse.json({ error: 'votacaoId Ã© obrigatÃ³rio.' }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuração de comentários.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuraÃ§Ã£o de comentÃ¡rios.' }, { status: 500 });
   }
 
   await cleanupOldComments(supabaseAdmin);
@@ -132,7 +104,7 @@ export async function GET(request: Request) {
   }
 
   if (error) {
-    return NextResponse.json({ error: 'Não foi possível carregar os comentários.' }, { status: 500 });
+    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel carregar os comentÃ¡rios.' }, { status: 500 });
   }
 
   const comments = (data || [])
@@ -150,36 +122,36 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as { votacaoId?: string; message?: string };
   } catch {
-    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload invÃ¡lido.' }, { status: 400 });
   }
 
   const votacaoId = String(body.votacaoId || '').trim();
   const message = String(body.message || '').trim();
 
   if (!votacaoId) {
-    return NextResponse.json({ error: 'votacaoId é obrigatório.' }, { status: 400 });
+    return NextResponse.json({ error: 'votacaoId Ã© obrigatÃ³rio.' }, { status: 400 });
   }
 
   if (!message) {
-    return NextResponse.json({ error: 'Digite um comentário.' }, { status: 400 });
+    return NextResponse.json({ error: 'Digite um comentÃ¡rio.' }, { status: 400 });
   }
 
   if (message.length > MAX_COMMENT_LENGTH) {
-    return NextResponse.json({ error: `O comentário pode ter no máximo ${MAX_COMMENT_LENGTH} caracteres.` }, { status: 400 });
+    return NextResponse.json({ error: `O comentÃ¡rio pode ter no mÃ¡ximo ${MAX_COMMENT_LENGTH} caracteres.` }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuração de comentários.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuraÃ§Ã£o de comentÃ¡rios.' }, { status: 500 });
   }
 
   await cleanupOldComments(supabaseAdmin);
 
   const payload = {
     user_id: authResult.user.id,
-    username: getDisplayName(authResult.user),
+    username: authResult.profile.username || '@usuario',
     message: buildStoredMessage(votacaoId, message),
-    avatar_url: String(authResult.user.user_metadata?.avatar_url || '').trim(),
+    avatar_url: authResult.profile.avatar_url,
   };
 
   const withAvatarInsert = await supabaseAdmin
@@ -215,12 +187,12 @@ export async function POST(request: Request) {
   }
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Não foi possível publicar o comentário.' }, { status: 500 });
+    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel publicar o comentÃ¡rio.' }, { status: 500 });
   }
 
   const parsedComment = parseStoredComment(data, votacaoId);
   if (!parsedComment) {
-    return NextResponse.json({ error: 'Não foi possível processar o comentário.' }, { status: 500 });
+    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel processar o comentÃ¡rio.' }, { status: 500 });
   }
 
   return NextResponse.json({ comment: parsedComment });

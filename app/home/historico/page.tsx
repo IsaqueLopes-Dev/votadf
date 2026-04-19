@@ -194,7 +194,7 @@ export default function HistoricoMobilePage() {
                       </div>
                       <div className="rounded-2xl bg-slate-50 p-3">
                         <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Odd</p>
-                        <p className="mt-2 text-lg font-bold text-slate-900">{bet.odd.toFixed(2)}</p>
+                        <p className="mt-2 text-lg font-bold text-slate-900">{bet.odd.toFixed(2)}x</p>
                       </div>
                       <div className="rounded-2xl bg-slate-50 p-3">
                         <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Retorno potencial</p>

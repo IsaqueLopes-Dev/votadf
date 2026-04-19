@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient, type User } from '@supabase/supabase-js';
 import BottomNavigation from '../../components/bottom-navigation';
@@ -14,6 +14,11 @@ type ChatMessageItem = {
   created_at: string;
 };
 
+type UserProfile = {
+  username: string;
+  avatar_url: string;
+};
+
 export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -21,15 +26,20 @@ export default function ChatPage() {
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const router = useRouter();
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const supabase = useMemo(
+    () =>
+      createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      ),
+    []
   );
 
-  const loadMessages = async () => {
+  const loadMessages = useEffectEvent(async () => {
     try {
       const {
         data: { session },
@@ -51,16 +61,16 @@ export default function ChatPage() {
       const payload = (await response.json()) as { messages?: ChatMessageItem[]; error?: string };
 
       if (!response.ok) {
-        setError(payload.error || 'Não foi possível carregar o chat.');
+        setError(payload.error || 'Nao foi possivel carregar o chat.');
         return;
       }
 
       setMessages(Array.isArray(payload.messages) ? payload.messages : []);
       setError(null);
     } catch {
-      setError('Não foi possível carregar o chat.');
+      setError('Nao foi possivel carregar o chat.');
     }
-  };
+  });
 
   useEffect(() => {
     const run = async () => {
@@ -69,13 +79,38 @@ export default function ChatPage() {
           data: { user },
         } = await supabase.auth.getUser();
         setUser(user);
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          const profileResponse = await fetch('/api/profile/me', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            cache: 'no-store',
+          }).catch(() => null);
+
+          const profilePayload = profileResponse
+            ? ((await profileResponse.json().catch(() => ({}))) as {
+                profile?: UserProfile;
+              })
+            : null;
+
+          if (profileResponse?.ok && profilePayload?.profile) {
+            setProfile(profilePayload.profile);
+          }
+        }
+
         await loadMessages();
       } finally {
         setLoading(false);
       }
     };
+
     void run();
-  }, [router]);
+  }, [supabase.auth]);
 
   useEffect(() => {
     if (!user) return;
@@ -103,9 +138,9 @@ export default function ChatPage() {
     const optimisticMessage: ChatMessageItem = {
       id: `tmp-${Date.now()}`,
       user_id: String(user.id || ''),
-      username: String(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '@usuario')),
+      username: String(profile?.username || user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '@usuario')),
       message,
-      avatar_url: String(user.user_metadata?.avatar_url || ''),
+      avatar_url: String(profile?.avatar_url || user.user_metadata?.avatar_url || ''),
       created_at: new Date().toISOString(),
     };
 
@@ -118,7 +153,7 @@ export default function ChatPage() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        setError('Sessão expirada. Faça login novamente.');
+        setError('Sessao expirada. Faca login novamente.');
         setMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
         return;
       }
@@ -135,14 +170,16 @@ export default function ChatPage() {
       const payload = (await response.json()) as { message?: ChatMessageItem; error?: string };
 
       if (!response.ok) {
-        setError(payload.error || 'Não foi possível enviar a mensagem.');
+        setError(payload.error || 'Nao foi possivel enviar a mensagem.');
         setMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
         return;
       }
 
-      setMessages((prev) => prev.map((item) => (item.id === optimisticMessage.id ? (payload.message as ChatMessageItem) : item)));
+      setMessages((prev) =>
+        prev.map((item) => (item.id === optimisticMessage.id ? (payload.message as ChatMessageItem) : item))
+      );
     } catch {
-      setError('Não foi possível enviar a mensagem.');
+      setError('Nao foi possivel enviar a mensagem.');
       setMessages((prev) => prev.filter((item) => item.id !== optimisticMessage.id));
     } finally {
       setSending(false);
@@ -245,7 +282,7 @@ export default function ChatPage() {
               }
             }}
             maxLength={280}
-            placeholder={user ? 'Digite sua mensagem' : 'Faça login para conversar'}
+            placeholder={user ? 'Digite sua mensagem' : 'Faca login para conversar'}
             className="h-12 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500/50 focus:bg-white/[0.08]"
             disabled={!user}
           />
@@ -260,7 +297,7 @@ export default function ChatPage() {
         </div>
         {!user && (
           <div className="mx-auto max-w-4xl px-3 pt-2 text-center text-blue-300 text-xs">
-            Faça login para enviar mensagens no chat.
+            Faca login para enviar mensagens no chat.
           </div>
         )}
       </div>

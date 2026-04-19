@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getAuthenticatedUnifiedProfileContext } from '../../profile/utils';
 
 const RETENTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_MESSAGE_LENGTH = 280;
@@ -15,15 +16,6 @@ type ChatMessageRow = {
   created_at: string;
 };
 
-const getBearerToken = (request: Request) => {
-  const auth = request.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
-};
-
-const getAnonSupabase = () =>
-  createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || '', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
-
 const getAdminSupabase = () => {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -35,39 +27,19 @@ const getAdminSupabase = () => {
   return createClient(supabaseUrl, serviceRole);
 };
 
-const getDisplayName = (user: User) => {
-  const fromMetadata = String(user.user_metadata?.username || '').trim();
-  if (fromMetadata) return fromMetadata;
-
-  const email = String(user.email || '').trim();
-  if (!email.includes('@')) return '@usuario';
-
-  return `@${email.split('@')[0]}`;
-};
-
 const cleanupOldMessages = async (supabaseAdmin: SupabaseClient) => {
   const cutoff = new Date(Date.now() - RETENTION_WINDOW_MS).toISOString();
   await supabaseAdmin.from('live_chat_messages').delete().lt('created_at', cutoff);
 };
 
 const resolveAuthenticatedUser = async (request: Request) => {
-  const token = getBearerToken(request);
+  const context = await getAuthenticatedUnifiedProfileContext(request);
 
-  if (!token) {
-    return { error: NextResponse.json({ error: 'Não autenticado.' }, { status: 401 }) };
+  if ('error' in context) {
+    return { error: NextResponse.json({ error: context.error }, { status: context.status }) };
   }
 
-  const anonSupabase = getAnonSupabase();
-  const {
-    data: { user },
-    error,
-  } = await anonSupabase.auth.getUser(token);
-
-  if (error || !user) {
-    return { error: NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 }) };
-  }
-
-  return { user };
+  return context;
 };
 
 export async function GET(request: Request) {
@@ -76,7 +48,7 @@ export async function GET(request: Request) {
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuração de chat.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuraÃ§Ã£o de chat.' }, { status: 500 });
   }
 
   await cleanupOldMessages(supabaseAdmin);
@@ -113,7 +85,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Não foi possível carregar o chat. Verifique se a tabela live_chat_messages existe no Supabase.',
+          'NÃ£o foi possÃ­vel carregar o chat. Verifique se a tabela live_chat_messages existe no Supabase.',
       },
       { status: 500 }
     );
@@ -132,7 +104,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as { message?: string };
   } catch {
-    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload invÃ¡lido.' }, { status: 400 });
   }
 
   const message = String(body.message || '').trim();
@@ -141,21 +113,21 @@ export async function POST(request: Request) {
   }
 
   if (message.length > MAX_MESSAGE_LENGTH) {
-    return NextResponse.json({ error: `A mensagem pode ter no máximo ${MAX_MESSAGE_LENGTH} caracteres.` }, { status: 400 });
+    return NextResponse.json({ error: `A mensagem pode ter no mÃ¡ximo ${MAX_MESSAGE_LENGTH} caracteres.` }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuração de chat.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuraÃ§Ã£o de chat.' }, { status: 500 });
   }
 
   await cleanupOldMessages(supabaseAdmin);
 
   const payload = {
     user_id: authResult.user.id,
-    username: getDisplayName(authResult.user),
+    username: authResult.profile.username || '@usuario',
     message,
-    avatar_url: String(authResult.user.user_metadata?.avatar_url || '').trim(),
+    avatar_url: authResult.profile.avatar_url,
   };
 
   const withAvatarInsert = await supabaseAdmin
@@ -194,7 +166,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          'Não foi possível enviar a mensagem. Verifique se a tabela live_chat_messages existe no Supabase.',
+          'NÃ£o foi possÃ­vel enviar a mensagem. Verifique se a tabela live_chat_messages existe no Supabase.',
       },
       { status: 500 }
     );

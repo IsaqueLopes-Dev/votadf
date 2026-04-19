@@ -192,11 +192,11 @@ function AuthCallbackContent() {
         timeoutId = window.setTimeout(() => {
           subscription.unsubscribe();
           if (!mounted) return;
-          setError('Nao foi possivel concluir o login com Google. Tente novamente.');
+          setError('Não foi possível concluir o login com Google. Tente novamente.');
         }, 8000);
       } catch (callbackError) {
         if (!mounted) return;
-        setError(callbackError instanceof Error ? callbackError.message : 'Nao foi possivel concluir o login.');
+        setError(callbackError instanceof Error ? callbackError.message : 'Não foi possível concluir o login.');
       }
     };
 
@@ -240,7 +240,7 @@ function AuthCallbackContent() {
       >
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Concluindo login</h1>
         <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6, color: '#cbd5e1' }}>
-          Estamos finalizando o acesso com Google e redirecionando voce.
+          Estamos finalizando o acesso com Google e redirecionando você.
         </p>
         {error ? (
           <div

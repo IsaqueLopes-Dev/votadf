@@ -1,16 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
+import { getAuthenticatedUnifiedProfileContext } from '../../profile/utils';
 
 const toNumber = (value: unknown) => {
   const amount = Number(value);
   return Number.isFinite(amount) ? amount : 0;
-};
-
-const getBearerToken = (request: Request) => {
-  const auth = request.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
 };
 
 const getErrorMessage = (error: unknown, fallback: string) => {
@@ -22,56 +16,38 @@ const getErrorMessage = (error: unknown, fallback: string) => {
 };
 
 export async function GET(request: Request) {
-  const token = getBearerToken(request);
-
-  if (!token) {
-    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
+  const context = await getAuthenticatedUnifiedProfileContext(request);
+  if ('error' in context) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
-  const anonSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
-
-  const {
-    data: { user },
-    error: userError,
-  } = await anonSupabase.auth.getUser(token);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 });
-  }
-
+  const { user, adminSupabase } = context;
   const { searchParams } = new URL(request.url);
   const paymentIdParam = searchParams.get('paymentId') || '';
   const paymentId = Number(paymentIdParam);
 
   if (!paymentIdParam || !Number.isFinite(paymentId)) {
-    return NextResponse.json({ error: 'paymentId inválido.' }, { status: 400 });
+    return NextResponse.json({ error: 'paymentId invÃ¡lido.' }, { status: 400 });
   }
 
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
   if (!accessToken) {
-    return NextResponse.json({ error: 'MERCADO_PAGO_ACCESS_TOKEN não configurado.' }, { status: 500 });
+    return NextResponse.json({ error: 'MERCADO_PAGO_ACCESS_TOKEN nÃ£o configurado.' }, { status: 500 });
   }
 
   const mpClient = new MercadoPagoConfig({ accessToken });
   const paymentApi = new Payment(mpClient);
-  const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-  );
 
   try {
     const payment = await paymentApi.get({ id: paymentId });
 
     if (payment.external_reference !== user.id) {
-      return NextResponse.json({ error: 'Pagamento não pertence ao usuário.' }, { status: 403 });
+      return NextResponse.json({ error: 'Pagamento nÃ£o pertence ao usuÃ¡rio.' }, { status: 403 });
     }
 
     let creditedNow = false;
     if (payment.status === 'approved') {
-      const { data: fetchedUser, error: userFetchError } = await supabaseAdmin.auth.admin.getUserById(user.id);
+      const { data: fetchedUser, error: userFetchError } = await adminSupabase.auth.admin.getUserById(user.id);
 
       if (!userFetchError && fetchedUser?.user) {
         const currentMetadata = fetchedUser.user.user_metadata || {};
@@ -108,7 +84,7 @@ export async function GET(request: Request) {
             deposit_history: nextDepositHistory,
           };
 
-          const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+          const { error: updateError } = await adminSupabase.auth.admin.updateUserById(user.id, {
             user_metadata: updatedMetadata,
           });
 

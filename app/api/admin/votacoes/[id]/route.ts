@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { ensureAdminRequest } from '../../utils';
 
 const META_PREFIX = '__meta__:';
+const SPORTS_OPTION_LABELS = ['CASA', 'X', 'FORA'] as const;
 
 type PollCategory =
   | 'politica'
@@ -150,7 +151,7 @@ const validatePayload = (payload: VotingPayload) => {
   const title = String(payload.title || '').trim();
   const description = String(payload.description || '').trim();
   const category = normalizeCategory(payload.category);
-  const pollType = normalizePollType(payload.pollType);
+  const pollType = category === 'esportes' ? 'opcoes-livres' : normalizePollType(payload.pollType);
   const closesAt = String(payload.closesAt || '').trim();
   const isActive = payload.isActive === false ? false : true;
   const result = String(payload.result || '').trim();
@@ -173,9 +174,26 @@ const validatePayload = (payload: VotingPayload) => {
     return { error: 'Adicione pelo menos duas opções.' };
   }
 
+  if (category === 'esportes') {
+    if (options.length !== 3) {
+      return { error: 'Votações de esportes devem ter exatamente três opções: CASA, X e FORA.' };
+    }
+
+    const labels = options.map((option) => option.label.toUpperCase());
+    const isValidSportsStructure = SPORTS_OPTION_LABELS.every((label, index) => labels[index] === label);
+
+    if (!isValidSportsStructure) {
+      return { error: 'A categoria esportes exige as opções na ordem CASA, X e FORA.' };
+    }
+
+    if (result && !SPORTS_OPTION_LABELS.includes(result.toUpperCase() as (typeof SPORTS_OPTION_LABELS)[number])) {
+      return { error: 'Para esportes, o resultado vencedor deve ser CASA, X ou FORA.' };
+    }
+  }
+
   const serializedOptions = options.map((option) =>
     JSON.stringify({
-      label: option.label,
+      label: category === 'esportes' ? option.label.toUpperCase() : option.label,
       imageUrl: option.imageUrl,
       odds: option.odds,
       oddsNao: option.oddsNao,
@@ -190,9 +208,15 @@ const validatePayload = (payload: VotingPayload) => {
       pollType,
       closesAt,
       isActive,
-      result,
+      result: category === 'esportes' ? result.toUpperCase() : result,
       serializedOptions,
-      descricao: buildDescricao({ description, category, pollType, closesAt, result }),
+      descricao: buildDescricao({
+        description,
+        category,
+        pollType,
+        closesAt,
+        result: category === 'esportes' ? result.toUpperCase() : result,
+      }),
     },
   };
 };

@@ -67,6 +67,19 @@ const isMissingColumnError = (message: string) => {
   );
 };
 
+const isMissingProfilesSchemaError = (message: string) => {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('profiles') &&
+    (
+      normalized.includes('does not exist') ||
+      normalized.includes('could not find') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('column')
+    )
+  );
+};
+
 export const normalizeUsername = (value: string) => {
   const withoutSpaces = value.replace(/\s+/g, '');
   if (!withoutSpaces) return '';
@@ -175,6 +188,9 @@ export const readBirthDateProfile = async (
     .maybeSingle();
 
   if (error && !String(error.message || '').toLowerCase().includes('0 rows')) {
+    if (isMissingProfilesSchemaError(String(error.message || ''))) {
+      return null;
+    }
     throw new Error(error.message);
   }
 
@@ -298,6 +314,15 @@ export const syncUnifiedProfile = async (
       .upsert({ id: user.id, birth_date: nextProfile.birth_date }, { onConflict: 'id' });
 
     if (error) {
+      if (isMissingProfilesSchemaError(String(error.message || ''))) {
+        const updatedUserWithoutProfileRow = await updateAuthMetadata(supabaseAdmin, user, nextProfile);
+        const syncedPublicUserWithoutProfileRow = await readPublicUserProfile(supabaseAdmin, user.id);
+
+        return {
+          user: updatedUserWithoutProfileRow,
+          profile: buildUnifiedProfile(updatedUserWithoutProfileRow, syncedPublicUserWithoutProfileRow, null),
+        };
+      }
       throw new Error(error.message);
     }
   }

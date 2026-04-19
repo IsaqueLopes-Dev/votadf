@@ -88,6 +88,12 @@ type UserProfile = {
   role: string;
 };
 
+type ProfileNotice = {
+  tone: 'success' | 'error' | 'warning';
+  title: string;
+  message: string;
+};
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -210,7 +216,10 @@ const getRealBetCount = (counts: BetCountsMap, votacaoId: string, candidateLabel
   return counts[votacaoId]?.[normalizeCandidate(candidateLabel)] || 0;
 };
 
-const getDisplayedOdd = (value: string) => (value === '' ? '-' : value);
+const getDisplayedOdd = (value: string) => {
+  if (value === '') return '-';
+  return `${value}x`;
+};
 
 const getCategoryLabel = (categoria: string) => {
   return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
@@ -244,7 +253,7 @@ function UsuariosPageContent() {
   const [avatarOffsetX, setAvatarOffsetX] = useState(0);
   const [avatarOffsetY, setAvatarOffsetY] = useState(0);
   const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
-  const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [profileNotice, setProfileNotice] = useState<ProfileNotice | null>(null);
   const [balanceMenuOpen, setBalanceMenuOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState(0);
@@ -844,7 +853,7 @@ function UsuariosPageContent() {
       return;
     }
 
-    const currentBalance = Number(user?.user_metadata?.balance ?? user?.user_metadata?.saldo ?? 0);
+    const currentBalance = Number(user.user_metadata?.balance ?? user.user_metadata?.saldo ?? 0);
     if (!Number.isFinite(currentBalance) || amount > currentBalance) {
       setBetFeedback('Saldo insuficiente para essa aposta.');
       return;
@@ -1516,15 +1525,25 @@ function UsuariosPageContent() {
       });
 
       setConfirmIdentityLock(false);
-      alert(
+      setProfileNotice(
         payload.identityConfirmedAt
-          ? 'Perfil atualizado e dados pessoais confirmados com sucesso!'
-          : 'Perfil atualizado com sucesso! Voce ainda pode revisar CPF e data antes de confirmar o bloqueio.'
+          ? {
+              tone: 'success',
+              title: 'Dados confirmados',
+              message: 'Perfil atualizado e dados pessoais confirmados com sucesso.',
+            }
+          : {
+              tone: 'success',
+              title: 'Perfil atualizado',
+              message: 'Você ainda pode revisar CPF e data de nascimento antes de confirmar o bloqueio.',
+            }
       );
-      setProfileNotice(null);
-      setProfileOpen(false);
     } catch (profileError: unknown) {
-      alert('Erro ao salvar perfil: ' + getErrorMessage(profileError, 'Erro desconhecido.'));
+      setProfileNotice({
+        tone: 'error',
+        title: 'Não foi possível salvar',
+        message: getErrorMessage(profileError, 'Erro desconhecido.'),
+      });
     } finally {
       setSavingProfile(false);
     }
@@ -1548,9 +1567,6 @@ function UsuariosPageContent() {
   const parsedBetAmount = Number(betAmount.replace(',', '.'));
   const potentialReturn = Number.isFinite(parsedBetAmount) && parsedBetAmount > 0 && betModal
     ? parsedBetAmount * betModal.odd
-    : 0;
-  const potentialProfit = Number.isFinite(parsedBetAmount) && parsedBetAmount > 0
-    ? Math.max(potentialReturn - parsedBetAmount, 0)
     : 0;
   const parsedWithdrawAmount = Number(withdrawAmount.replace(',', '.'));
   const filteredVotacoes = votacoesAtivas.filter((votacao) => {
@@ -1603,6 +1619,55 @@ function UsuariosPageContent() {
       className="relative min-h-screen overflow-hidden"
       style={loginBgStyle}
     >
+      {profileNotice && (
+        <div className="pointer-events-none fixed inset-x-0 top-4 z-[70] flex justify-center px-4">
+          <div
+            className={`pointer-events-auto w-full max-w-md rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur ${
+              profileNotice.tone === 'success'
+                ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-50'
+                : profileNotice.tone === 'error'
+                  ? 'border-rose-400/30 bg-rose-500/12 text-rose-50'
+                  : 'border-amber-400/30 bg-amber-500/12 text-amber-50'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+                  profileNotice.tone === 'success'
+                    ? 'bg-emerald-400/20 text-emerald-200'
+                    : profileNotice.tone === 'error'
+                      ? 'bg-rose-400/20 text-rose-200'
+                      : 'bg-amber-400/20 text-amber-200'
+                }`}
+              >
+                {profileNotice.tone === 'success' ? (
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-7.25 7.25a1 1 0 01-1.414 0l-3.75-3.75a1 1 0 111.414-1.414l3.043 3.043 6.543-6.543a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10A8 8 0 112 10a8 8 0 0116 0zm-7-4a1 1 0 10-2 0v4a1 1 0 002 0V6zm-1 8a1.25 1.25 0 100-2.5A1.25 1.25 0 0010 14z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">{profileNotice.title}</p>
+                <p className="mt-1 text-xs leading-5 opacity-90 sm:text-sm">{profileNotice.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProfileNotice(null)}
+                className="rounded-full p-1 text-white/70 transition hover:bg-white/10 hover:text-white"
+                aria-label="Fechar aviso"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-blue-500/40 bg-blue-600/95 shadow-md backdrop-blur" style={{ fontFamily: 'var(--font-poppins), sans-serif' }}>
         <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-10 sm:py-4" style={{maxWidth: 1200, margin: '0 auto'}}>
@@ -1617,7 +1682,7 @@ function UsuariosPageContent() {
               <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{marginTop: 0, fontFamily: 'inherit', textAlign: 'center'}}>Previsão</span>
             </div>
           </div>
-          <div className="relative flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap sm:gap-3 min-w-0">
+          <div className="relative flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap sm:gap-3 min-w-0">
             {/* Saldo */}
               <button
                 type="button"
@@ -1627,7 +1692,7 @@ function UsuariosPageContent() {
                   setBetHistoryOpen(false);
                   setDepositOpen(false);
                 }}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/15 bg-white/12 px-3 py-1.5 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.65)] transition hover:bg-white/20 sm:flex-none sm:px-4 sm:py-2"
+                className="flex min-w-0 flex-none items-center gap-1.5 rounded-full border border-white/15 bg-white/12 px-2.5 py-1.5 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.65)] transition hover:bg-white/20 sm:flex-none sm:gap-2 sm:px-4 sm:py-2"
               >
                 <span className="hidden h-7 w-7 items-center justify-center rounded-full bg-white/12 sm:flex">
                   <svg className="h-3.5 w-3.5 text-blue-100" viewBox="0 0 20 20" fill="currentColor">
@@ -1637,7 +1702,7 @@ function UsuariosPageContent() {
                 </span>
                 <span className="text-left leading-none">
                   <span className="hidden sm:block text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100/75">Saldo</span>
-                  <span className="text-xs sm:text-sm font-semibold text-white">
+                  <span className="text-[11px] sm:text-sm font-semibold text-white">
                     {formattedUserBalance}
                   </span>
                 </span>
@@ -1716,7 +1781,7 @@ function UsuariosPageContent() {
                 setBalanceMenuOpen(false);
                 resetPixState();
               }}
-              className="flex-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-blue-600 shadow-sm transition hover:bg-blue-50 active:scale-95 sm:flex-none sm:px-4 sm:py-2 sm:text-sm shrink-0"
+              className="flex-none rounded-full bg-white px-2.5 py-1.5 text-[11px] font-bold text-blue-600 shadow-sm transition hover:bg-blue-50 active:scale-95 sm:flex-none sm:px-4 sm:py-2 sm:text-sm shrink-0"
             >
               Depositar
             </button>
@@ -1816,7 +1881,7 @@ function UsuariosPageContent() {
                           </div>
 
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-cyan-900 pt-4 mt-2">
-                            <span className="text-xs text-cyan-400">Cotação <span className="font-bold text-cyan-200">{bet.odd.toFixed(2)}</span></span>
+                            <span className="text-xs text-cyan-400">Cotação <span className="font-bold text-cyan-200">{bet.odd.toFixed(2)}x</span></span>
                             <span
                               className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold shadow-lg tracking-tight ${
                                 bet.status === 'ganhou'
@@ -1956,13 +2021,6 @@ function UsuariosPageContent() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
-
-                {profileNotice && (
-                  <div className="mb-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-200 sm:mb-4 sm:text-sm">
-                    {profileNotice}
-                  </div>
-                )}
-
                 <form onSubmit={handleSaveProfile} className="space-y-2.5 sm:space-y-4">
                   <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
                     <div className="flex items-center gap-3">
@@ -2779,38 +2837,48 @@ function UsuariosPageContent() {
           </section>
 
           {betModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-3 backdrop-blur-sm">
-              <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_32px_90px_-44px_rgba(15,23,42,0.55)]">
-                <div className="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_58%,#22c55e_100%)] px-5 pb-5 pt-5 text-white">
-                  <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-50">
-                    Confirmar aposta
-                  </div>
-                  <p className="mt-3 text-lg font-bold text-white">{betModal.votacaoTitulo}</p>
-                  <p className="mt-1 text-sm text-blue-50/85">Revise os dados antes de confirmar sua posição.</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/86 p-4 backdrop-blur-md">
+              <div className="flex w-full max-w-[25rem] flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#08111f] shadow-[0_32px_100px_rgba(2,6,23,0.72)] sm:max-w-[28rem] sm:rounded-[32px]">
+                <div className="bg-[linear-gradient(145deg,#07111f_0%,#0f1f3d_42%,#0a84b7_100%)] px-5 pb-4 pt-4 text-white sm:px-6 sm:pb-5 sm:pt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBetModal(null);
+                      setBetAmount('');
+                      setBetFeedback(null);
+                    }}
+                    className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-50 transition hover:bg-white/15"
+                  >
+                    Voltar
+                  </button>
+                  <p className="mt-2 text-lg font-semibold leading-tight text-white sm:mt-3 sm:text-[1.65rem]">{betModal.votacaoTitulo}</p>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-blue-50/90">Revise os dados antes de confirmar sua posição.</p>
                 </div>
 
-                <div className="overflow-y-auto bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-5">
-                  <div className="-mt-10 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_18px_45px_-30px_rgba(15,23,42,0.4)]">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Seleção</p>
-                    <div className="mt-2 flex items-center gap-2.5">
-                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="max-h-[58vh] overflow-y-auto bg-[linear-gradient(180deg,#eff5fc_0%,#ffffff_18%,#f7fbff_100%)] p-3.5 sm:max-h-[56vh] sm:p-4">
+                  <div className="-mt-8 rounded-[24px] border border-white/90 bg-white p-3.5 shadow-[0_26px_60px_-34px_rgba(15,23,42,0.45)] sm:-mt-10 sm:rounded-[28px] sm:p-4">
+                    <div className="mt-2.5 flex items-center gap-3">
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-[18px] border border-slate-200 bg-slate-50 shadow-sm sm:h-16 sm:w-16 sm:rounded-[20px]">
                         {betModal.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={betModal.imageUrl} alt={betModal.candidato} className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-sm font-bold text-cyan-700">{betModal.candidato.slice(0, 1).toUpperCase()}</span>
+                          <span className="text-base font-bold text-cyan-700 sm:text-lg">{betModal.candidato.slice(0, 1).toUpperCase()}</span>
                         )}
                       </div>
-                      <p className="text-base font-bold text-slate-900">{betModal.candidato}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Escolha confirmada</p>
+                        <p className="mt-1 text-base font-semibold leading-tight text-slate-950 sm:text-lg">{betModal.candidato}</p>
+                      </div>
                     </div>
-                    <div className="mt-3 inline-flex rounded-2xl bg-emerald-50 px-3 py-1.5 text-xs font-extrabold tabular-nums text-emerald-700">
-                      {betModal.odd.toFixed(2)}
+                    <div className="mt-3 inline-flex rounded-[16px] border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-extrabold tabular-nums text-emerald-800 sm:rounded-[18px] sm:px-3.5 sm:py-1.5 sm:text-sm">
+                      {betModal.odd.toFixed(2)}x
                     </div>
                   </div>
 
-                  <label className="mt-5 block text-sm font-semibold text-slate-700">Valor da aposta</label>
-                  <div className="mt-2 flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:border-blue-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-100">
-                    <span className="text-sm font-bold text-blue-700">R$</span>
+                  <label className="mt-4 block text-sm font-semibold text-slate-800 sm:mt-5">Valor da aposta</label>
+                  <div className="mt-2.5 flex items-center rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] focus-within:border-cyan-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-100 sm:py-3.5">
+                    <span className="text-sm font-bold text-cyan-700 sm:text-base">R$</span>
                     <input
                       type="number"
                       min="1"
@@ -2818,77 +2886,28 @@ function UsuariosPageContent() {
                       value={betAmount}
                       onChange={(event) => setBetAmount(event.target.value)}
                       placeholder="Ex: 25"
-                      className="w-full border-0 bg-transparent px-2 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                      className="w-full border-0 bg-transparent px-3 text-base font-semibold text-slate-950 outline-none placeholder:text-slate-400 sm:text-lg"
                     />
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {[10, 25, 50, 100].map((value) => {
-                      const disabled = value > Math.max(userBalance, 0);
-                      const currentValue = Number(betAmount.replace(',', '.'));
-                      const isActive = Number.isFinite(currentValue) && currentValue === value;
-
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setBetAmount(String(value))}
-                          disabled={disabled}
-                          className={`rounded-2xl border px-2.5 py-2 text-xs font-bold tabular-nums transition ${
-                            disabled
-                              ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
-                              : isActive
-                                ? 'border-blue-500 bg-blue-600 text-white shadow-sm'
-                                : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50'
-                          }`}
-                        >
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value)}
-                        </button>
-                      );
-                    })}
-
-                    {userBalance > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setBetAmount(String(Math.floor(userBalance * 100) / 100))}
-                        className="col-span-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-4"
-                      >
-                        Usar saldo máximo
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="mt-4 grid gap-2 rounded-[24px] border border-slate-200 bg-white p-4 text-xs shadow-[0_16px_35px_-28px_rgba(15,23,42,0.45)] sm:text-sm">
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Saldo disponível</span>
-                      <span className="font-semibold text-slate-900">{formattedUserBalance}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Retorno estimado</span>
-                      <span className="font-bold tabular-nums text-cyan-700">
+                  <div className="mt-4 grid gap-2.5 rounded-[22px] border border-slate-200 bg-[#f8fbff] p-3 text-sm shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] sm:rounded-[24px] sm:p-4">
+                    <div className="rounded-[18px] border border-cyan-200 bg-cyan-50 px-3.5 py-3 shadow-sm">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-700">Retorno estimado</span>
+                      <span className="mt-1.5 block text-base font-bold tabular-nums text-cyan-900 sm:text-lg">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialReturn)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-slate-600">
-                      <span>Lucro potencial</span>
-                      <span className="font-bold tabular-nums text-blue-700">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialProfit)}
-                      </span>
-                    </div>
-                    <p className="pt-1 text-[11px] text-slate-500">
-                      Cálculo: valor apostado x cotação. Lucro = retorno total - valor apostado.
-                    </p>
                   </div>
 
                   {betFeedback && (
-                    <p className={`mt-4 rounded-2xl px-4 py-3 text-sm font-medium ${
+                    <p className={`mt-4 rounded-[18px] px-4 py-2.5 text-sm font-medium ${
                       betFeedback.includes('sucesso') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
                     }`}>
                       {betFeedback}
                     </p>
                   )}
 
-                  <div className="mt-5 flex gap-3">
+                  <div className="mt-4 flex gap-3 sm:mt-5">
                     <button
                       type="button"
                       onClick={() => {
@@ -2896,7 +2915,7 @@ function UsuariosPageContent() {
                         setBetAmount('');
                         setBetFeedback(null);
                       }}
-                      className="flex-1 rounded-full border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                     >
                       Cancelar
                     </button>
@@ -2904,7 +2923,7 @@ function UsuariosPageContent() {
                       type="button"
                       onClick={() => void handlePlaceBet()}
                       disabled={placingBet}
-                      className="flex-1 rounded-full bg-[linear-gradient(135deg,#2563eb_0%,#06b6d4_55%,#22c55e_100%)] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:brightness-105 disabled:opacity-60"
+                      className="flex-1 rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#0f5ae0_42%,#0ea5a4_100%)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_35px_-20px_rgba(14,116,144,0.8)] transition hover:brightness-105 disabled:opacity-60"
                     >
                       {placingBet ? 'Enviando...' : 'Confirmar aposta'}
                     </button>

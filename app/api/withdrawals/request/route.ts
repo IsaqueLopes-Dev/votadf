@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getAuthenticatedUnifiedProfileContext } from '../../profile/utils';
 
 const MIN_WITHDRAWAL = 50;
-
-const getBearerToken = (request: Request) => {
-  const auth = request.headers.get('authorization') || '';
-  if (!auth.toLowerCase().startsWith('bearer ')) return null;
-  return auth.slice(7).trim();
-};
 
 const toNumber = (value: unknown) => {
   const num = Number(value);
@@ -15,56 +9,34 @@ const toNumber = (value: unknown) => {
 };
 
 export async function POST(request: Request) {
-  const token = getBearerToken(request);
-
-  if (!token) {
-    return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-  }
-
   let body: { amount?: number };
   try {
     body = (await request.json()) as { amount?: number };
   } catch {
-    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
+    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel ler a solicitaÃ§Ã£o.' }, { status: 400 });
   }
 
   const requestedAmount = toNumber(body.amount);
   if (requestedAmount < MIN_WITHDRAWAL) {
-    return NextResponse.json({ error: `Valor mínimo para saque é R$ ${MIN_WITHDRAWAL}.` }, { status: 400 });
+    return NextResponse.json({ error: `Valor mÃ­nimo para saque Ã© R$ ${MIN_WITHDRAWAL}.` }, { status: 400 });
   }
 
-  const anonSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-  );
-
-  const {
-    data: { user },
-    error: userError,
-  } = await anonSupabase.auth.getUser(token);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Sessão inválida.' }, { status: 401 });
+  const context = await getAuthenticatedUnifiedProfileContext(request);
+  if ('error' in context) {
+    return NextResponse.json({ error: context.error }, { status: context.status });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const { user, adminSupabase, profile } = context;
+  const cpf = profile.cpf;
 
-  if (!supabaseUrl || !serviceRole) {
-    return NextResponse.json({ error: 'Servidor sem configuração de saque.' }, { status: 500 });
-  }
-
-  const cpf = String(user.user_metadata?.cpf || '').trim();
   if (!cpf) {
-    return NextResponse.json({ error: 'CPF não cadastrado. Atualize seu perfil antes de sacar.' }, { status: 400 });
+    return NextResponse.json({ error: 'CPF nÃ£o cadastrado. Atualize seu perfil antes de sacar.' }, { status: 400 });
   }
 
   const currentBalance = toNumber(user.user_metadata?.balance ?? user.user_metadata?.saldo);
   if (requestedAmount > currentBalance) {
     return NextResponse.json({ error: 'Saldo insuficiente para este saque.' }, { status: 400 });
   }
-
-  const adminSupabase = createClient(supabaseUrl, serviceRole);
 
   const existingRequests = Array.isArray(user.user_metadata?.withdrawal_requests)
     ? user.user_metadata.withdrawal_requests
@@ -93,13 +65,13 @@ export async function POST(request: Request) {
 
   if (updateError || !updated.user) {
     return NextResponse.json(
-      { error: updateError?.message || 'Não foi possível registrar o saque.' },
+      { error: updateError?.message || 'NÃ£o foi possÃ­vel registrar o saque.' },
       { status: 500 }
     );
   }
 
   return NextResponse.json({
-    message: 'Solicitação de saque enviada com sucesso.',
+    message: 'SolicitaÃ§Ã£o de saque enviada com sucesso.',
     withdrawal: {
       amount: requestedAmount,
       cpf,
