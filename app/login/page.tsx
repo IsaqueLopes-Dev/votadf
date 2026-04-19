@@ -24,6 +24,7 @@ function LoginPageContent() {
   const [username, setUsername] = useState('');
   const [cpf, setCpf] = useState('');
   const [birthDate, setBirthDate] = useState('');
+  const [showConfirmEmail, setShowConfirmEmail] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = getSupabaseClient();
@@ -64,15 +65,18 @@ function LoginPageContent() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
     try {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
       if (signInError) {
         setError(signInError.message);
         return;
       }
+
       router.push(next);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro desconhecido'));
@@ -89,23 +93,26 @@ function LoginPageContent() {
     const normalizedUsername = username.startsWith('@') ? username : `@${username.replace(/^@+/, '')}`;
 
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem.');
+      setError('As senhas nao coincidem.');
       setLoading(false);
       return;
     }
+
     if (!normalizedUsername.startsWith('@') || normalizedUsername.length < 4) {
-      setError('O nome de usuário deve começar com @');
+      setError('O nome de usuario deve comecar com @');
       setLoading(false);
       return;
     }
+
     try {
       const { data: userEmail } = await supabase
         .from('users')
         .select('id')
         .eq('email', email)
         .maybeSingle();
+
       if (userEmail) {
-        setError('Já existe um usuário com este e-mail.');
+        setError('Ja existe um usuario com este e-mail.');
         setLoading(false);
         return;
       }
@@ -115,8 +122,9 @@ function LoginPageContent() {
         .select('id')
         .eq('username', normalizedUsername)
         .maybeSingle();
+
       if (userName) {
-        setError('Já existe um usuário com este nome de usuário.');
+        setError('Ja existe um usuario com este nome de usuario.');
         setLoading(false);
         return;
       }
@@ -132,13 +140,12 @@ function LoginPageContent() {
           },
         },
       });
+
       if (signUpError) {
         setError(signUpError.message);
         setLoading(false);
         return;
       }
-
-
 
       setIsSignUp(false);
       setEmail('');
@@ -148,57 +155,6 @@ function LoginPageContent() {
       setCpf('');
       setBirthDate('');
       setShowConfirmEmail(true);
-      const [showConfirmEmail, setShowConfirmEmail] = useState(false);
-      {showConfirmEmail && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0,0,0,0.65)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <div style={{
-            background: '#181f2a',
-            borderRadius: 16,
-            boxShadow: '0 8px 32px #0008',
-            padding: '36px 32px',
-            minWidth: 320,
-            maxWidth: '90vw',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 16,
-          }}>
-            <svg width="48" height="48" fill="none" viewBox="0 0 24 24"><rect width="24" height="24" rx="12" fill="#00c3ff" fillOpacity="0.12"/><path d="M7 8.5V8a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v.5m-10 0V16a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V8.5m-10 0 5.553 4.162a2 2 0 0 0 2.894 0L19 8.5" stroke="#00c3ff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <div style={{ color: '#fff', fontWeight: 600, fontSize: 20, textAlign: 'center', fontFamily: 'Poppins, Segoe UI, Arial, sans-serif' }}>
-              Confirme seu email e faça login
-            </div>
-            <button
-              style={{
-                marginTop: 8,
-                background: '#00c3ff',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '10px 24px',
-                fontWeight: 600,
-                fontSize: 16,
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px #00c3ff33',
-                transition: 'background 0.2s',
-              }}
-              onClick={() => setShowConfirmEmail(false)}
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
@@ -209,6 +165,7 @@ function LoginPageContent() {
   const handleGoogle = async () => {
     setLoading(true);
     setError(null);
+
     try {
       const redirectTo = `${window.location.origin}/login?next=${encodeURIComponent(next)}`;
       const { error: googleError } = await supabase.auth.signInWithOAuth({
@@ -220,7 +177,10 @@ function LoginPageContent() {
           },
         },
       });
-      if (googleError) setError(googleError.message);
+
+      if (googleError) {
+        setError(googleError.message);
+      }
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro desconhecido'));
     } finally {
@@ -230,6 +190,167 @@ function LoginPageContent() {
 
   return (
     <div style={styles.container}>
+      {showConfirmEmail && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(3, 7, 18, 0.72)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            backdropFilter: 'blur(14px)',
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: 440,
+              borderRadius: 28,
+              border: '1px solid rgba(255,255,255,0.09)',
+              background:
+                'linear-gradient(145deg, rgba(10,15,26,0.96) 0%, rgba(17,24,39,0.96) 55%, rgba(8,15,28,0.98) 100%)',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+              padding: '36px 32px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              gap: 18,
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: '-30% auto auto 55%',
+                width: 240,
+                height: 240,
+                background: 'radial-gradient(circle, rgba(0,195,255,0.22) 0%, rgba(0,195,255,0) 72%)',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              <div
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 18,
+                  background: 'linear-gradient(135deg, rgba(0,195,255,0.22), rgba(0,153,204,0.1))',
+                  border: '1px solid rgba(0,195,255,0.18)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="28" height="28" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M4 7.75A2.75 2.75 0 0 1 6.75 5h10.5A2.75 2.75 0 0 1 20 7.75v8.5A2.75 2.75 0 0 1 17.25 19H6.75A2.75 2.75 0 0 1 4 16.25v-8.5Z"
+                    stroke="#00c3ff"
+                    strokeWidth="1.6"
+                  />
+                  <path
+                    d="m5.5 7 5.47 4.38a1.65 1.65 0 0 0 2.06 0L18.5 7"
+                    stroke="#7dd3fc"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div>
+                <div
+                  style={{
+                    color: '#7dd3fc',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Cadastro concluido
+                </div>
+                <div
+                  style={{
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 24,
+                    lineHeight: 1.2,
+                    fontFamily: 'Poppins, Segoe UI, Arial, sans-serif',
+                  }}
+                >
+                  Confirme seu e-mail e faca login
+                </div>
+              </div>
+            </div>
+            <p
+              style={{
+                margin: 0,
+                color: 'rgba(226,232,240,0.78)',
+                fontSize: 14,
+                lineHeight: 1.65,
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              Enviamos um link de confirmacao para o e-mail informado. Depois de validar sua conta, volte para entrar e
+              acessar a plataforma.
+            </p>
+            <div
+              style={{
+                borderRadius: 18,
+                border: '1px solid rgba(125,211,252,0.14)',
+                background: 'rgba(9, 15, 28, 0.55)',
+                padding: '14px 16px',
+                color: '#cbd5e1',
+                fontSize: 13,
+                lineHeight: 1.6,
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              Se nao encontrar a mensagem, confira tambem a caixa de spam ou promocoes.
+            </div>
+            <button
+              style={{
+                marginTop: 4,
+                background: 'linear-gradient(135deg, #00c3ff, #0099cc)',
+                color: '#03111f',
+                border: 'none',
+                borderRadius: 16,
+                padding: '14px 18px',
+                fontWeight: 700,
+                fontSize: 15,
+                cursor: 'pointer',
+                boxShadow: '0 16px 32px rgba(0, 195, 255, 0.18)',
+                transition: 'transform 0.2s, filter 0.2s',
+                position: 'relative',
+                zIndex: 1,
+              }}
+              onClick={() => setShowConfirmEmail(false)}
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={styles.card}>
         <div style={{ ...styles.logo, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <Image
@@ -239,18 +360,48 @@ function LoginPageContent() {
             height={44}
             style={{ height: 44, width: 44, objectFit: 'contain', marginBottom: 2 }}
           />
-          <span style={{ color: '#00c3ff', fontWeight: 700, fontSize: 22, fontFamily: 'Poppins, Segoe UI, Arial, sans-serif', letterSpacing: 0 }}>Votaai</span>
-          <span style={{ color: '#9ca3af', fontWeight: 500, fontSize: 13, fontFamily: 'Poppins, Segoe UI, Arial, sans-serif', marginTop: -6 }}>Previsão</span>
+          <span
+            style={{
+              color: '#00c3ff',
+              fontWeight: 700,
+              fontSize: 22,
+              fontFamily: 'Poppins, Segoe UI, Arial, sans-serif',
+              letterSpacing: 0,
+            }}
+          >
+            Votaai
+          </span>
+          <span
+            style={{
+              color: '#9ca3af',
+              fontWeight: 500,
+              fontSize: 13,
+              fontFamily: 'Poppins, Segoe UI, Arial, sans-serif',
+              marginTop: -6,
+            }}
+          >
+            Previsao
+          </span>
         </div>
-        <div style={styles.subtitle}>
-          Antecipe resultados. Tome decisões com confiança.
-        </div>
+
+        <div style={styles.subtitle}>Antecipe resultados. Tome decisoes com confianca.</div>
         <h2 style={styles.title}>{isSignUp ? 'Criar conta' : 'Acesse sua conta para continuar'}</h2>
+
         {error && (
-          <div style={{ color: '#f87171', background: '#2a1515', borderRadius: 10, padding: 10, marginBottom: 16, fontSize: 13 }}>
+          <div
+            style={{
+              color: '#f87171',
+              background: '#2a1515',
+              borderRadius: 10,
+              padding: 10,
+              marginBottom: 16,
+              fontSize: 13,
+            }}
+          >
             {error}
           </div>
         )}
+
         <form style={styles.form} onSubmit={isSignUp ? handleSignUp : handleLogin} autoComplete="on">
           {isSignUp && (
             <>
@@ -280,7 +431,7 @@ function LoginPageContent() {
                 <input
                   id="username-input"
                   type="text"
-                  placeholder="nome de usuário"
+                  placeholder="nome de usuario"
                   style={{ ...styles.input, paddingLeft: 44 }}
                   value={username.replace(/^@+/, '')}
                   onChange={(e) => {
@@ -291,6 +442,7 @@ function LoginPageContent() {
                   disabled={loading}
                 />
               </div>
+
               <input
                 type="text"
                 placeholder="CPF"
@@ -302,6 +454,7 @@ function LoginPageContent() {
                 disabled={loading}
                 maxLength={14}
               />
+
               <input
                 type="date"
                 placeholder="Data de nascimento"
@@ -314,6 +467,7 @@ function LoginPageContent() {
               />
             </>
           )}
+
           <input
             type="email"
             placeholder="E-mail"
@@ -324,6 +478,7 @@ function LoginPageContent() {
             required
             disabled={loading}
           />
+
           <input
             type="password"
             placeholder="Senha"
@@ -334,6 +489,7 @@ function LoginPageContent() {
             required
             disabled={loading}
           />
+
           {isSignUp && (
             <input
               type="password"
@@ -346,28 +502,22 @@ function LoginPageContent() {
               disabled={loading}
             />
           )}
+
           <button style={styles.loginButton} type="submit" disabled={loading}>
             {loading ? (isSignUp ? 'Criando...' : 'Entrar') : (isSignUp ? 'Criar conta' : 'Entrar')}
           </button>
-          <button
-            type="button"
-            style={styles.googleButton}
-            onClick={handleGoogle}
-            disabled={loading}
-          >
+
+          <button type="button" style={styles.googleButton} onClick={handleGoogle} disabled={loading}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png"
-              style={{ width: 18 }}
-              alt="Google"
-            />
+            <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" style={{ width: 18 }} alt="Google" />
             {isSignUp ? 'Cadastrar com Google' : 'Entrar com Google'}
           </button>
         </form>
+
         <div style={{ ...styles.link, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4 }}>
           {isSignUp ? (
             <>
-              <span style={{ color: '#9ca3af' }}>Já tem conta?</span>
+              <span style={{ color: '#9ca3af' }}>Ja tem conta?</span>
               <button
                 type="button"
                 onClick={() => setIsSignUp(false)}
@@ -393,7 +543,7 @@ function LoginPageContent() {
             </>
           ) : (
             <>
-              <span style={{ color: '#9ca3af' }}>Não tem conta?</span>
+              <span style={{ color: '#9ca3af' }}>Nao tem conta?</span>
               <button
                 type="button"
                 onClick={() => setIsSignUp(true)}
@@ -419,6 +569,7 @@ function LoginPageContent() {
             </>
           )}
         </div>
+
         {!isSignUp && (
           <div style={styles.link}>
             <Link href="/login?reset=1">Esqueceu a senha?</Link>
@@ -445,8 +596,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#111111',
-    backgroundImage:
-      'linear-gradient(32deg, rgba(8,8,8,0.74) 30px, transparent)',
+    backgroundImage: 'linear-gradient(32deg, rgba(8,8,8,0.74) 30px, transparent)',
     backgroundSize: '60px 60px',
     backgroundPosition: '-5px -5px',
     fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
