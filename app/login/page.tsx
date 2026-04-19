@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
-const DEFAULT_POST_LOGIN_PATH = '/usuarios';
+const DEFAULT_POST_LOGIN_PATH = '/home';
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof Error && error.message) {
