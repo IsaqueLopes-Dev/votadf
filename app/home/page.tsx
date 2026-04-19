@@ -2251,9 +2251,6 @@ function UsuariosPageContent() {
                     </button>
                   ))}
                 </div>
-                <p className="px-4 pb-4 text-xs leading-5 text-slate-400">
-                  O deposito minimo e de R$ 10. Acima disso, voce pode depositar quanto quiser.
-                </p>
               </div>
 
               {/* Avisos */}
