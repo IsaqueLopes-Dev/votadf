@@ -112,6 +112,19 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
+const parseJsonSafely = async <T,>(response: Response): Promise<T | null> => {
+  const raw = await response.text();
+  if (!raw.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+};
+
 const normalizePollCategory = (value: unknown): PollCategory => {
   if (value === 'futebol' || value === 'esportes') return 'esportes';
   if (value === 'politica' || value === 'entretenimento' || value === 'financeiro' || value === 'celebridades' || value === 'criptomoedas') {
@@ -956,10 +969,20 @@ function UsuariosPageContent() {
         body: JSON.stringify({ amount: depositAmount }),
       });
 
-      const payload = await response.json();
+      const payload = await parseJsonSafely<{
+        error?: string;
+        paymentId?: string | number;
+        qrCode?: string;
+        qrCodeBase64?: string;
+      }>(response);
 
       if (!response.ok) {
         setPixStatusMessage(payload?.error || 'Não foi possível gerar o PIX.');
+        return;
+      }
+
+      if (!payload?.paymentId) {
+        setPixStatusMessage('A resposta do PIX veio vazia. Tente novamente.');
         return;
       }
 
@@ -1120,13 +1143,16 @@ function UsuariosPageContent() {
           },
         });
 
-        const payload = await response.json();
+        const payload = await parseJsonSafely<{
+          error?: string;
+          status?: string;
+        }>(response);
 
         if (!response.ok || !active) {
           return;
         }
 
-        if (payload.status === 'approved') {
+        if (payload?.status === 'approved') {
           setPixStatusMessage('Pagamento confirmado! Seu saldo foi atualizado.');
           await refreshAuthenticatedUser();
           await loadFinancialHistory();
