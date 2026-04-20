@@ -44,6 +44,7 @@ type VotingRecord = {
   descricao: string;
   opcoes: string[];
   ativa: boolean;
+  created_at: string;
 };
 
 type BetHistoryItem = {
