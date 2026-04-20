@@ -56,7 +56,7 @@ export async function GET(request: Request) {
   const withAvatarQuery = await supabaseAdmin
     .from('live_chat_messages')
     .select('id, user_id, username, message, avatar_url, created_at')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(MAX_MESSAGES);
 
   let data = withAvatarQuery.data as ChatMessageRow[] | null;
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     const fallbackQuery = await supabaseAdmin
       .from('live_chat_messages')
       .select('id, user_id, username, message, created_at')
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(MAX_MESSAGES);
 
     if (fallbackQuery.error) {
@@ -91,7 +91,9 @@ export async function GET(request: Request) {
     );
   }
 
-  const messages = ((data || []) as ChatMessageRow[]).filter((item) => !item.message.startsWith(COMMENT_PREFIX));
+  const messages = ((data || []) as ChatMessageRow[])
+    .filter((item) => !item.message.startsWith(COMMENT_PREFIX))
+    .reverse();
 
   return NextResponse.json({ messages });
 }
