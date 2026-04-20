@@ -229,7 +229,7 @@ const getCategoryLabel = (categoria: string) => {
   return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
 };
 
-const DESCRIPTION_PREVIEW_LENGTH = 220;
+const DESCRIPTION_PREVIEW_LENGTH = 60;
 
 function UsuariosPageContent() {
   type BetModalState = {
