@@ -6,7 +6,7 @@ import { getSupabaseClient } from '../utils/supabaseClient';
 const BASELINE_ONLINE_COUNT = 366;
 
 const getPresenceTotal = (state: Record<string, unknown>) =>
-  Object.values(state).reduce((total, value) => {
+  Object.values(state).reduce<number>((total, value) => {
     if (Array.isArray(value)) {
       return total + value.length;
     }
