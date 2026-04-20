@@ -28,6 +28,16 @@ type PollOption = {
   oddsNao: string;
 };
 
+type PollOptionLike = Partial<
+  PollOption & {
+    image_url: string;
+    image: string;
+    avatarUrl: string;
+    candidato: string;
+    name: string;
+  }
+>;
+
 type VotingRecord = {
   id: string;
   titulo: string;
@@ -159,42 +169,33 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
   };
 };
 
+const readPollOptionRecord = (option: PollOptionLike): PollOption => ({
+  label: String(option.label || option.candidato || option.name || '').trim(),
+  imageUrl: String(option.imageUrl || option.image_url || option.image || option.avatarUrl || '').trim(),
+  odds: option.odds != null && Number.isFinite(Number(option.odds)) ? String(option.odds) : '',
+  oddsNao: option.oddsNao != null && Number.isFinite(Number(option.oddsNao)) ? String(option.oddsNao) : '',
+});
+
 const parsePollOption = (option: unknown): PollOption => {
-  if (typeof option !== 'string') {
-    return { label: '', imageUrl: '', odds: '', oddsNao: '' };
+  if (option && typeof option === 'object') {
+    return readPollOptionRecord(option as PollOptionLike);
   }
 
-  try {
-    const parsed = JSON.parse(option) as Partial<
-      PollOption & { odds: number | null; oddsNao: number | null; image_url: string; image: string; avatarUrl: string }
-    >;
-    if (typeof parsed.label === 'string') {
+  if (typeof option === 'string') {
+    try {
+      const parsed = JSON.parse(option) as PollOptionLike;
+      return readPollOptionRecord(parsed);
+    } catch {
       return {
-        label: parsed.label,
-        imageUrl:
-          typeof parsed.imageUrl === 'string'
-            ? parsed.imageUrl
-            : typeof parsed.image_url === 'string'
-              ? parsed.image_url
-              : typeof parsed.image === 'string'
-                ? parsed.image
-                : typeof parsed.avatarUrl === 'string'
-                  ? parsed.avatarUrl
-                  : '',
-        odds: parsed.odds != null && Number.isFinite(Number(parsed.odds)) ? String(parsed.odds) : '',
-        oddsNao: parsed.oddsNao != null && Number.isFinite(Number(parsed.oddsNao)) ? String(parsed.oddsNao) : '',
+        label: option,
+        imageUrl: '',
+        odds: '',
+        oddsNao: '',
       };
     }
-  } catch {
-    // Compatibilidade com opções antigas em texto puro.
   }
 
-  return {
-    label: option,
-    imageUrl: '',
-    odds: '',
-    oddsNao: '',
-  };
+  return { label: '', imageUrl: '', odds: '', oddsNao: '' };
 };
 
 const getDeterministicHash = (value: string) => {
@@ -227,6 +228,8 @@ const getCardDescription = (value: string) =>
 const getCategoryLabel = (categoria: string) => {
   return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
 };
+
+const DESCRIPTION_PREVIEW_LENGTH = 220;
 
 function UsuariosPageContent() {
   type BetModalState = {
@@ -296,6 +299,7 @@ function UsuariosPageContent() {
   const [commentDraftByVotingId, setCommentDraftByVotingId] = useState<Record<string, string>>({});
   const [commentStatusByVotingId, setCommentStatusByVotingId] = useState<Record<string, string | null>>({});
   const [loadingCommentsByVotingId, setLoadingCommentsByVotingId] = useState<Record<string, boolean>>({});
+  const [expandedDescriptionByVotingId, setExpandedDescriptionByVotingId] = useState<Record<string, boolean>>({});
   const router = useRouter();
   const searchParams = useSearchParams();
   const avatarPreviewRef = useRef<HTMLDivElement | null>(null);
@@ -2661,6 +2665,22 @@ function UsuariosPageContent() {
                   const metadata = parsePollMetadata(votacao.descricao);
                   const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
                   const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= Date.now();
+                  const description = getCardDescription(metadata.descricaoLimpa);
+                  const isDescriptionExpanded = Boolean(expandedDescriptionByVotingId[votacao.id]);
+                  const shouldCollapseDescription = description.length > DESCRIPTION_PREVIEW_LENGTH;
+                  const displayedDescription =
+                    shouldCollapseDescription && !isDescriptionExpanded
+                      ? `${description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
+                      : description;
+                  const parsedOptions = Array.isArray(votacao.opcoes)
+                    ? votacao.opcoes.map((opcao) => parsePollOption(opcao)).filter((option) => option.label || option.odds)
+                    : [];
+                  const votes = parsedOptions.map((option, idx) => {
+                    const baseVotes = getSimulatedBaseBets(votacao.id, option, idx);
+                    const realVotes = getRealBetCount(betCounts, votacao.id, option.label);
+                    return baseVotes + realVotes;
+                  });
+                  const totalVotes = votes.reduce((acc, current) => acc + current, 0);
 
                   return (
                     <div key={votacao.id} className="min-h-[180px] rounded-2xl border border-white/10 bg-[#171b22] p-4 shadow-md transition-all duration-200 hover:-translate-y-1 hover:border-green-500/30 hover:shadow-[0_0_25px_rgba(34,197,94,0.08)]">
@@ -2682,7 +2702,23 @@ function UsuariosPageContent() {
                       </div>
 
                       <h3 className="mb-2 text-sm font-semibold text-white">{votacao.titulo}</h3>
-                      <p className="mb-4 line-clamp-3 text-sm leading-6 text-zinc-400">{getCardDescription(metadata.descricaoLimpa)}</p>
+                      <div className="mb-4">
+                        <p className="text-sm leading-6 text-zinc-400">{displayedDescription}</p>
+                        {shouldCollapseDescription && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedDescriptionByVotingId((current) => ({
+                                ...current,
+                                [votacao.id]: !current[votacao.id],
+                              }))
+                            }
+                            className="mt-2 text-xs font-semibold text-green-400 transition hover:text-green-300"
+                          >
+                            {isDescriptionExpanded ? 'Mostrar menos' : 'Ler tudo'}
+                          </button>
+                        )}
+                      </div>
                       <p className="mb-4 text-xs text-zinc-400">
                         Encerra em:{' '}
                         {metadata.encerramentoAposta
@@ -2690,72 +2726,62 @@ function UsuariosPageContent() {
                           : 'Não definido'}
                       </p>
 
-                      {metadata.tipo === 'enquete-candidatos' ? (
+                      {parsedOptions.length > 0 ? (
                         <div className="space-y-2.5">
-                          {Array.isArray(votacao.opcoes) && (() => {
-                            const parsedOptions = votacao.opcoes.map((candidato) => parsePollOption(candidato));
-                            const votes = parsedOptions.map((option, idx) => {
-                              const baseVotes = getSimulatedBaseBets(votacao.id, option, idx);
-                              const realVotes = getRealBetCount(betCounts, votacao.id, option.label);
-                              return baseVotes + realVotes;
-                            });
-                            const totalVotes = votes.reduce((acc, current) => acc + current, 0);
+                          {parsedOptions.map((parsedOption, idx) => {
+                            const percent = totalVotes > 0 ? Math.max(1, Math.round((votes[idx] / totalVotes) * 100)) : 0;
+                            const optionInitial = parsedOption.label.slice(0, 1).toUpperCase() || '?';
 
-                            return parsedOptions.map((parsedOption, idx) => {
-                              const percent = totalVotes > 0 ? Math.max(1, Math.round((votes[idx] / totalVotes) * 100)) : 0;
-
-                              return (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => openBetModal(votacao, parsedOption)}
-                                  disabled={isBetClosed}
-                                  className="w-full rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-left transition-all duration-200 hover:border-green-500/20 hover:bg-[#151a22] disabled:cursor-not-allowed disabled:opacity-55"
-                                >
-                                  <div className="flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-3">
-                                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
-                                        {parsedOption.imageUrl ? (
-                                          // eslint-disable-next-line @next/next/no-img-element
-                                          <img src={parsedOption.imageUrl} alt={parsedOption.label} className="h-full w-full object-cover" />
-                                        ) : (
-                                          <span className="text-xs font-semibold text-white">{parsedOption.label.slice(0, 1).toUpperCase()}</span>
-                                        )}
-                                      </div>
-                                      <span className="text-sm font-semibold text-white">{parsedOption.label}</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
-                                        {getDisplayedOdd(parsedOption.odds)}
-                                      </span>
-                                      <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400">
-                                        {percent}%
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
-                                    <div
-                                      className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
-                                      style={{ width: `${percent}%` }}
-                                    />
-                                  </div>
-                                  <p className="mt-2 text-[11px] text-zinc-400">{votes[idx]} apostas</p>
-                                </button>
-                              );
-                            });
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {Array.isArray(votacao.opcoes) && votacao.opcoes.map((opcao, idx) => {
-                            const parsedOption = parsePollOption(opcao);
                             return (
-                              <span key={idx} className="inline-flex items-center gap-2 rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
-                                {parsedOption.label}
-                              </span>
+                              <button
+                                key={`${votacao.id}-${parsedOption.label || idx}`}
+                                type="button"
+                                onClick={() => openBetModal(votacao, parsedOption)}
+                                disabled={isBetClosed || parsedOption.odds === ''}
+                                className="w-full rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-left transition-all duration-200 hover:border-green-500/20 hover:bg-[#151a22] disabled:cursor-not-allowed disabled:opacity-55"
+                              >
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
+                                      {parsedOption.imageUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                          src={parsedOption.imageUrl}
+                                          alt={parsedOption.label || `Opção ${idx + 1}`}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <span className="text-xs font-semibold text-white">{optionInitial}</span>
+                                      )}
+                                    </div>
+                                    <span className="truncate text-sm font-semibold text-white">
+                                      {parsedOption.label || `Opção ${idx + 1}`}
+                                    </span>
+                                  </div>
+                                  <div className="flex shrink-0 gap-2">
+                                    <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
+                                      {getDisplayedOdd(parsedOption.odds)}
+                                    </span>
+                                    <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400">
+                                      {percent}%
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
+                                  <div
+                                    className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                                <p className="mt-2 text-[11px] text-zinc-400">{votes[idx]} apostas</p>
+                              </button>
                             );
                           })}
                         </div>
+                      ) : (
+                        <p className="rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-xs text-zinc-400">
+                          Nenhuma opção disponível para esta votação no momento.
+                        </p>
                       )}
 
                       <div className="mt-4 border-t border-white/10 pt-4">
