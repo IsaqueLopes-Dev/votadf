@@ -17,13 +17,19 @@ export async function GET(request: Request) {
   try {
     const users = await listAllAuthUsers(supabaseAdmin);
     const userIds = users.map((user) => user.id);
-    const { data: roles, error: rolesError } = userIds.length
-      ? await supabaseAdmin.from('users').select('id, role').in('id', userIds)
+    const profileRolesResult = userIds.length
+      ? await supabaseAdmin.from('profiles').select('id, role').in('id', userIds)
       : { data: [], error: null };
+    const legacyRolesResult =
+      profileRolesResult.error && userIds.length
+        ? await supabaseAdmin.from('users').select('id, role').in('id', userIds)
+        : { data: [], error: null };
 
-    if (rolesError) {
-      throw new Error(rolesError.message);
+    if (profileRolesResult.error && legacyRolesResult.error) {
+      throw new Error(legacyRolesResult.error.message);
     }
+
+    const roles = profileRolesResult.error ? legacyRolesResult.data : profileRolesResult.data;
 
     const roleByUserId = new Map(
       (roles || []).map((row) => [String(row.id), String(row.role || 'user')])

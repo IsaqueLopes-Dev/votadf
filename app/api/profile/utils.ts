@@ -34,13 +34,31 @@ type AuthErrorContext = {
 };
 
 const PROFILE_SELECT_VARIANTS = [
+  'id, updated_at, email, username, full_name, cpf, birth_date, avatar_url, role',
+  'id, email, username, cpf, birth_date, avatar_url, role',
+  'id, username, birth_date, avatar_url',
+  'id, username, birth_date',
+  'id, username',
+  'id',
+] as const;
+
+const LEGACY_USER_SELECT_VARIANTS = [
   'id, email, username, cpf, birth_date, avatar_url, role',
   'id, email, username, cpf, birth_date, role',
   'id, email, username, role',
   'id, role',
 ] as const;
 
-const USER_UPSERT_VARIANTS = [
+const PROFILE_UPSERT_VARIANTS = [
+  ['id', 'updated_at', 'email', 'username', 'full_name', 'cpf', 'birth_date', 'avatar_url', 'role'],
+  ['id', 'updated_at', 'email', 'username', 'cpf', 'birth_date', 'avatar_url', 'role'],
+  ['id', 'username', 'birth_date', 'avatar_url'],
+  ['id', 'username', 'birth_date'],
+  ['id', 'username'],
+  ['id'],
+] as const;
+
+const LEGACY_USER_UPSERT_VARIANTS = [
   ['id', 'email', 'username', 'cpf', 'birth_date', 'avatar_url'],
   ['id', 'email', 'username', 'cpf', 'birth_date'],
   ['id', 'email', 'username'],
@@ -160,6 +178,22 @@ export const readPublicUserProfile = async (
 ) => {
   for (const select of PROFILE_SELECT_VARIANTS) {
     const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select(select)
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!error) {
+      return data as PublicUserRow;
+    }
+
+    if (!isMissingProfilesSchemaError(String(error.message || ''))) {
+      throw new Error(error.message);
+    }
+  }
+
+  for (const select of LEGACY_USER_SELECT_VARIANTS) {
+    const { data, error } = await supabaseAdmin
       .from('users')
       .select(select)
       .eq('id', userId)
@@ -227,14 +261,38 @@ const upsertPublicUserProfile = async (
 ) => {
   const source: Record<string, string> = {
     id: profile.id,
+    updated_at: new Date().toISOString(),
     email: profile.email,
     username: profile.username,
+    full_name: profile.username,
     cpf: profile.cpf,
     birth_date: profile.birth_date,
     avatar_url: profile.avatar_url,
+    role: profile.role,
   };
 
-  for (const fields of USER_UPSERT_VARIANTS) {
+  let primaryUpserted = false;
+
+  for (const fields of PROFILE_UPSERT_VARIANTS) {
+    const payload = Object.fromEntries(
+      fields.map((field) => [field, source[field]])
+    );
+
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (!error) {
+      primaryUpserted = true;
+      break;
+    }
+
+    if (!isMissingProfilesSchemaError(String(error.message || ''))) {
+      throw new Error(error.message);
+    }
+  }
+
+  for (const fields of LEGACY_USER_UPSERT_VARIANTS) {
     const payload = Object.fromEntries(
       fields.map((field) => [field, source[field]])
     );
@@ -244,13 +302,15 @@ const upsertPublicUserProfile = async (
       .upsert(payload, { onConflict: 'id' });
 
     if (!error) {
-      return;
+      return primaryUpserted;
     }
 
     if (!isMissingColumnError(String(error.message || ''))) {
       throw new Error(error.message);
     }
   }
+
+  return primaryUpserted;
 };
 
 const updateAuthMetadata = async (
@@ -307,25 +367,6 @@ export const syncUnifiedProfile = async (
   };
 
   await upsertPublicUserProfile(supabaseAdmin, nextProfile);
-
-  if (nextProfile.birth_date) {
-    const { error } = await supabaseAdmin
-      .from('profiles')
-      .upsert({ id: user.id, birth_date: nextProfile.birth_date }, { onConflict: 'id' });
-
-    if (error) {
-      if (isMissingProfilesSchemaError(String(error.message || ''))) {
-        const updatedUserWithoutProfileRow = await updateAuthMetadata(supabaseAdmin, user, nextProfile);
-        const syncedPublicUserWithoutProfileRow = await readPublicUserProfile(supabaseAdmin, user.id);
-
-        return {
-          user: updatedUserWithoutProfileRow,
-          profile: buildUnifiedProfile(updatedUserWithoutProfileRow, syncedPublicUserWithoutProfileRow, null),
-        };
-      }
-      throw new Error(error.message);
-    }
-  }
 
   const updatedUser = await updateAuthMetadata(supabaseAdmin, user, nextProfile);
   const syncedPublicUser = await readPublicUserProfile(supabaseAdmin, user.id);

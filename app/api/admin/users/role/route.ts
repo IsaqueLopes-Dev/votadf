@@ -28,10 +28,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Você não pode remover seu próprio acesso admin.' }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin.from('users').upsert({ id: userId, role }, { onConflict: 'id' });
+  const profileResult = await supabaseAdmin
+    .from('profiles')
+    .upsert({ id: userId, role, updated_at: new Date().toISOString() }, { onConflict: 'id' });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const legacyResult = await supabaseAdmin
+    .from('users')
+    .upsert({ id: userId, role }, { onConflict: 'id' });
+
+  if (profileResult.error && legacyResult.error) {
+    return NextResponse.json({ error: profileResult.error.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, role });

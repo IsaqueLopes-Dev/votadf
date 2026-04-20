@@ -37,17 +37,28 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { data: existingProfile, error: profileError } = await supabaseAdmin
-      .from('users')
+    const profileResult = await supabaseAdmin
+      .from('profiles')
       .select('id')
       .eq('username', username)
       .neq('id', excludeUserId || '00000000-0000-0000-0000-000000000000')
       .limit(1)
       .maybeSingle();
+    const legacyResult = profileResult.error
+      ? await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('username', username)
+          .neq('id', excludeUserId || '00000000-0000-0000-0000-000000000000')
+          .limit(1)
+          .maybeSingle()
+      : { data: null, error: null };
 
-    if (profileError) {
-      return NextResponse.json({ available: false, reason: profileError.message }, { status: 500 });
+    if (profileResult.error && legacyResult.error) {
+      return NextResponse.json({ available: false, reason: profileResult.error.message }, { status: 500 });
     }
+
+    const existingProfile = profileResult.error ? legacyResult.data : profileResult.data;
 
     if (existingProfile) {
       return NextResponse.json({ available: false, reason: 'taken' });

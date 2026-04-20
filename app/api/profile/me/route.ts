@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
+  getAdminSupabase,
   getAuthenticatedProfileContext,
   isValidBirthDate,
   isValidUsername,
@@ -18,6 +19,66 @@ type ProfileUpdatePayload = {
 };
 
 const normalizeCpfDigits = (value: string) => value.replace(/\D/g, '');
+type AdminSupabase = ReturnType<typeof getAdminSupabase>;
+
+const findExistingUsername = async (
+  supabaseAdmin: AdminSupabase,
+  username: string,
+  currentUserId: string
+) => {
+  const profileResult = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .neq('id', currentUserId)
+    .limit(1)
+    .maybeSingle();
+
+  if (!profileResult.error) {
+    return profileResult.data;
+  }
+
+  const legacyResult = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('username', username)
+    .neq('id', currentUserId)
+    .limit(1)
+    .maybeSingle();
+
+  if (legacyResult.error) {
+    throw new Error(legacyResult.error.message);
+  }
+
+  return legacyResult.data;
+};
+
+const listExistingCpfUsers = async (
+  supabaseAdmin: AdminSupabase,
+  currentUserId: string
+) => {
+  const profileResult = await supabaseAdmin
+    .from('profiles')
+    .select('id, cpf')
+    .neq('id', currentUserId)
+    .not('cpf', 'is', null);
+
+  if (!profileResult.error) {
+    return profileResult.data || [];
+  }
+
+  const legacyResult = await supabaseAdmin
+    .from('users')
+    .select('id, cpf')
+    .neq('id', currentUserId)
+    .not('cpf', 'is', null);
+
+  if (legacyResult.error) {
+    throw new Error(legacyResult.error.message);
+  }
+
+  return legacyResult.data || [];
+};
 
 export async function GET(request: Request) {
   const context = await getAuthenticatedProfileContext(request);
@@ -92,31 +153,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existingUser, error: usernameError } = await context.adminSupabase
-      .from('users')
-      .select('id')
-      .eq('username', username)
-      .neq('id', context.user.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (usernameError) {
-      throw new Error(usernameError.message);
-    }
+    const existingUser = await findExistingUsername(context.adminSupabase, username, context.user.id);
 
     if (existingUser) {
       return NextResponse.json({ error: 'Esse nome de usuário já está em uso.' }, { status: 409 });
     }
 
-    const { data: existingCpfUsers, error: cpfError } = await context.adminSupabase
-      .from('users')
-      .select('id, cpf')
-      .neq('id', context.user.id)
-      .not('cpf', 'is', null);
-
-    if (cpfError) {
-      throw new Error(cpfError.message);
-    }
+    const existingCpfUsers = await listExistingCpfUsers(context.adminSupabase, context.user.id);
 
     const cpfAlreadyInUse = existingCpfUsers?.some(
       (user) => normalizeCpfDigits(String(user.cpf || '')) === cpf

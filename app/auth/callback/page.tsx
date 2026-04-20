@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { consumePendingSignupProfile, savePendingSignupProfile } from '../../utils/pending-signup-profile';
 import { getSupabaseClient } from '../../utils/supabaseClient';
 
 const DEFAULT_POST_LOGIN_PATH = '/home';
@@ -67,14 +68,46 @@ function AuthCallbackContent() {
       }
     };
 
-    const syncProfile = async (accessToken: string) => {
-      await fetch('/api/profile/me', {
+    const syncProfile = async (accessToken: string, userEmail?: string | null) => {
+      const pendingProfile = consumePendingSignupProfile(String(userEmail || ''));
+
+      const response = await fetch('/api/profile/me', {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
         cache: 'no-store',
       }).catch(() => null);
+
+      if (!response?.ok) {
+        if (pendingProfile) {
+          savePendingSignupProfile(pendingProfile);
+        }
+
+        return;
+      }
+
+      if (!pendingProfile) {
+        return;
+      }
+
+      const profileResponse = await fetch('/api/profile/me', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          username: pendingProfile.username,
+          cpf: pendingProfile.cpf,
+          birth_date: pendingProfile.birth_date,
+          avatar_url: '',
+        }),
+      }).catch(() => null);
+
+      if (!profileResponse?.ok) {
+        savePendingSignupProfile(pendingProfile);
+      }
     };
 
     const normalizeHashSession = async () => {
@@ -131,7 +164,7 @@ function AuthCallbackContent() {
       if (!mounted) return false;
       if (!session?.access_token) return false;
 
-      await syncProfile(session.access_token);
+      await syncProfile(session.access_token, session.user?.email);
 
       if (!mounted) return true;
 
@@ -180,7 +213,7 @@ function AuthCallbackContent() {
           if (event !== 'SIGNED_IN' && event !== 'TOKEN_REFRESHED' && event !== 'INITIAL_SESSION') return;
 
           void (async () => {
-            await syncProfile(currentSession.access_token);
+            await syncProfile(currentSession.access_token, currentSession.user?.email);
 
             if (!mounted) return;
 

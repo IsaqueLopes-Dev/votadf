@@ -372,12 +372,17 @@ function UsuariosPageContent() {
           }
         }
 
-        const { data: profile } = await supabase
-          .from('users')
+        const profileResult = await supabase
+          .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single();
-        const roleProfile = profile as { role?: string | null } | null;
+        const legacyResult = profileResult.error
+          ? await supabase.from('users').select('role').eq('id', user.id).single()
+          : { data: null };
+        const roleProfile = (profileResult.error ? legacyResult.data : profileResult.data) as
+          | { role?: string | null }
+          | null;
         setUserRole(roleProfile?.role || null);
       } else {
         setUserRole(null);

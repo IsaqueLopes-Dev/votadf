@@ -4,6 +4,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  consumePendingSignupProfile,
+  savePendingSignupProfile,
+} from '../utils/pending-signup-profile';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
 const DEFAULT_POST_LOGIN_PATH = '/home';
@@ -27,13 +31,16 @@ const findUserByNormalizedCpf = async (
   supabase: ReturnType<typeof getSupabaseClient>,
   normalizedCpf: string
 ) => {
-  const { data, error } = await supabase.from('users').select('id, cpf').not('cpf', 'is', null);
+  const profileResult = await supabase.from('profiles').select('id, cpf').not('cpf', 'is', null);
+  const legacyResult = profileResult.error
+    ? await supabase.from('users').select('id, cpf').not('cpf', 'is', null)
+    : { data: [], error: null };
 
-  if (error) {
-    throw error;
+  if (profileResult.error && legacyResult.error) {
+    throw profileResult.error;
   }
 
-  const users = (data || []) as UserCpfRow[];
+  const users = ((profileResult.error ? legacyResult.data : profileResult.data) || []) as UserCpfRow[];
   return users.find((user) => normalizeCpfDigits(String(user.cpf || '')) === normalizedCpf) || null;
 };
 
@@ -75,6 +82,31 @@ function LoginPageContent() {
   const next = resolvePostLoginPath(searchParams?.get('next'));
   const isResetMode = searchParams?.get('reset') === '1';
   const shouldSwitchAccount = searchParams?.get('switch') === '1';
+
+  const completePendingSignupProfile = async (accessToken?: string | null, userEmail?: string | null) => {
+    if (!accessToken || !userEmail) return;
+
+    const pendingProfile = consumePendingSignupProfile(userEmail);
+    if (!pendingProfile) return;
+
+    const response = await fetch('/api/profile/me', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        username: pendingProfile.username,
+        cpf: pendingProfile.cpf,
+        birth_date: pendingProfile.birth_date,
+        avatar_url: '',
+      }),
+    }).catch(() => null);
+
+    if (!response?.ok) {
+      savePendingSignupProfile(pendingProfile);
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -159,7 +191,7 @@ function LoginPageContent() {
     setNotice(null);
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -169,6 +201,7 @@ function LoginPageContent() {
         return;
       }
 
+      await completePendingSignupProfile(signInData.session?.access_token, signInData.user?.email);
       router.push(next);
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Erro desconhecido'));
@@ -200,11 +233,19 @@ function LoginPageContent() {
     }
 
     try {
-      const { data: userEmail } = await supabase
-        .from('users')
+      const emailProfileResult = await supabase
+        .from('profiles')
         .select('id')
         .eq('email', normalizedEmail)
         .maybeSingle();
+      const emailLegacyResult = emailProfileResult.error
+        ? await supabase
+            .from('users')
+            .select('id')
+            .eq('email', normalizedEmail)
+            .maybeSingle()
+        : { data: null, error: null };
+      const userEmail = emailProfileResult.error ? emailLegacyResult.data : emailProfileResult.data;
 
       if (userEmail) {
         setError('Já existe um usuário com este e-mail.');
@@ -212,11 +253,19 @@ function LoginPageContent() {
         return;
       }
 
-      const { data: userName } = await supabase
-        .from('users')
+      const usernameProfileResult = await supabase
+        .from('profiles')
         .select('id')
         .eq('username', normalizedUsername)
         .maybeSingle();
+      const usernameLegacyResult = usernameProfileResult.error
+        ? await supabase
+            .from('users')
+            .select('id')
+            .eq('username', normalizedUsername)
+            .maybeSingle()
+        : { data: null, error: null };
+      const userName = usernameProfileResult.error ? usernameLegacyResult.data : usernameProfileResult.data;
 
       if (userName) {
         setError('Já existe um usuário com este nome de usuário.');
@@ -260,6 +309,13 @@ function LoginPageContent() {
         return;
       }
 
+      savePendingSignupProfile({
+        email: normalizedEmail,
+        username: normalizedUsername,
+        cpf: normalizedCpf,
+        birth_date: birthDate,
+      });
+
       if (signUpData.session?.access_token) {
         await fetch('/api/profile/me', {
           method: 'POST',
@@ -273,7 +329,13 @@ function LoginPageContent() {
             birth_date: birthDate,
             avatar_url: '',
           }),
-        }).catch(() => null);
+        })
+          .then(async (response) => {
+            if (response.ok) {
+              consumePendingSignupProfile(normalizedEmail);
+            }
+          })
+          .catch(() => null);
       }
 
       setIsSignUp(false);

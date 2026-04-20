@@ -26,6 +26,33 @@ const getAdminEmails = () => {
   );
 };
 
+const readRoleRecord = async (
+  supabaseAdmin: ReturnType<typeof getAdminSupabase>,
+  userId: string
+) => {
+  const profileResult = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (!profileResult.error) {
+    return profileResult.data as { role?: string | null } | null;
+  }
+
+  const legacyResult = await supabaseAdmin
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (legacyResult.error) {
+    throw new Error(legacyResult.error.message);
+  }
+
+  return legacyResult.data as { role?: string | null } | null;
+};
+
 export const getBearerToken = (request: Request) => {
   const auth = request.headers.get('authorization') || '';
 
@@ -51,7 +78,7 @@ export const ensureAdminRequest = async (request: Request) => {
   if (!token) {
     return {
       errorResponse: NextResponse.json(
-        { error: 'Não autenticado.' },
+        { error: 'NÃ£o autenticado.' },
         { status: 401 }
       ),
     };
@@ -67,22 +94,20 @@ export const ensureAdminRequest = async (request: Request) => {
   if (error || !user) {
     return {
       errorResponse: NextResponse.json(
-        { error: 'Usuário não autenticado.' },
+        { error: 'UsuÃ¡rio nÃ£o autenticado.' },
         { status: 401 }
       ),
     };
   }
 
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
+  let profile: { role?: string | null } | null = null;
 
-  if (profileError) {
+  try {
+    profile = await readRoleRecord(supabaseAdmin, user.id);
+  } catch {
     return {
       errorResponse: NextResponse.json(
-        { error: 'Erro ao validar permissões.' },
+        { error: 'Erro ao validar permissÃµes.' },
         { status: 500 }
       ),
     };
@@ -94,7 +119,7 @@ export const ensureAdminRequest = async (request: Request) => {
   if (!isEmailAdmin && !profile) {
     return {
       errorResponse: NextResponse.json(
-        { error: 'Usuário não encontrado na base de permissões.' },
+        { error: 'UsuÃ¡rio nÃ£o encontrado na base de permissÃµes.' },
         { status: 403 }
       ),
     };
@@ -157,5 +182,5 @@ export const getUserDisplayName = (
 ) => {
   const username = String(metadata?.username || '').trim();
   if (username) return username;
-  return email || 'Sem identificação';
+  return email || 'Sem identificaÃ§Ã£o';
 };
