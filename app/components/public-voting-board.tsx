@@ -327,8 +327,8 @@ export default function PublicVotingBoard({
         const rightMetadata = parsePollMetadata(right.descricao);
         const leftCloseAtMs = leftMetadata.encerramentoAposta ? new Date(leftMetadata.encerramentoAposta).getTime() : NaN;
         const rightCloseAtMs = rightMetadata.encerramentoAposta ? new Date(rightMetadata.encerramentoAposta).getTime() : NaN;
-        const leftClosed = Number.isFinite(leftCloseAtMs) && leftCloseAtMs <= nowTimestamp;
-        const rightClosed = Number.isFinite(rightCloseAtMs) && rightCloseAtMs <= nowTimestamp;
+        const leftClosed = left.ativa === false || (Number.isFinite(leftCloseAtMs) && leftCloseAtMs <= nowTimestamp);
+        const rightClosed = right.ativa === false || (Number.isFinite(rightCloseAtMs) && rightCloseAtMs <= nowTimestamp);
 
         if (leftClosed !== rightClosed) {
           return leftClosed ? 1 : -1;
@@ -610,7 +610,7 @@ export default function PublicVotingBoard({
           {filteredVotacoes.map((votacao) => {
             const metadata = parsePollMetadata(votacao.descricao);
             const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
-            const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= Date.now();
+            const isBetClosed = votacao.ativa === false || (Number.isFinite(closeAtMs) && closeAtMs <= Date.now());
             const description = getCardDescription(metadata.descricaoLimpa);
             const isDescriptionExpanded = Boolean(expandedDescriptionByVotingId[votacao.id]);
             const shouldCollapseDescription = description.length > DESCRIPTION_PREVIEW_LENGTH;

@@ -42,7 +42,6 @@ async function getVotacoesAtivas() {
     const { data, error } = await supabase
       .from('votacoes')
       .select('id, titulo, descricao, opcoes, ativa, created_at')
-      .eq('ativa', true)
       .order('created_at', { ascending: false });
 
     if (error) {
