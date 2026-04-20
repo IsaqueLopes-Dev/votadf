@@ -802,11 +802,11 @@ export default function AdminVotacoesPage() {
           </div>
         </section>
 
-        <section className="rounded-[34px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(245,247,250,0.97))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.18)] sm:p-6">
+        <section className="rounded-[34px] border border-cyan-500/10 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_30%),linear-gradient(180deg,rgba(10,14,24,0.98),rgba(15,23,42,0.98))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.28)] sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Mercados cadastrados</h2>
-              <p className="mt-1 text-sm text-slate-600">Gerencie publicação, edição e remoção das votações criadas.</p>
+              <h2 className="text-2xl font-semibold tracking-tight text-white">Mercados cadastrados</h2>
+              <p className="mt-1 text-sm text-slate-300">Gerencie publicação, edição e remoção das votações criadas.</p>
             </div>
 
             <div className="flex gap-2">
@@ -822,7 +822,7 @@ export default function AdminVotacoesPage() {
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     filter === option.value
                       ? 'bg-cyan-600 text-white'
-                      : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      : 'border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.08]'
                   }`}
                 >
                   {option.label}
@@ -835,7 +835,7 @@ export default function AdminVotacoesPage() {
 
           <div className="mt-6 space-y-4">
             {filteredVotacoes.length === 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-slate-300">
                 Nenhuma votação encontrada para o filtro atual.
               </div>
             )}
