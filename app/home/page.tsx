@@ -112,16 +112,16 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return fallback;
 };
 
-const parseJsonSafely = async <T,>(response: Response): Promise<T | null> => {
+const parseApiResponse = async <T,>(response: Response): Promise<{ data: T | null; rawText: string }> => {
   const raw = await response.text();
   if (!raw.trim()) {
-    return null;
+    return { data: null, rawText: '' };
   }
 
   try {
-    return JSON.parse(raw) as T;
+    return { data: JSON.parse(raw) as T, rawText: raw };
   } catch {
-    return null;
+    return { data: null, rawText: raw };
   }
 };
 
@@ -969,7 +969,7 @@ function UsuariosPageContent() {
         body: JSON.stringify({ amount: depositAmount }),
       });
 
-      const payload = await parseJsonSafely<{
+      const { data: payload, rawText } = await parseApiResponse<{
         error?: string;
         paymentId?: string | number;
         qrCode?: string;
@@ -977,7 +977,12 @@ function UsuariosPageContent() {
       }>(response);
 
       if (!response.ok) {
-        setPixStatusMessage(payload?.error || 'Não foi possível gerar o PIX.');
+        const fallbackMessage =
+          rawText.trim() && !rawText.trim().startsWith('<')
+            ? rawText.trim()
+            : `Não foi possível gerar o PIX. (${response.status})`;
+
+        setPixStatusMessage(payload?.error || fallbackMessage);
         return;
       }
 
@@ -1143,7 +1148,7 @@ function UsuariosPageContent() {
           },
         });
 
-        const payload = await parseJsonSafely<{
+        const { data: payload } = await parseApiResponse<{
           error?: string;
           status?: string;
         }>(response);
