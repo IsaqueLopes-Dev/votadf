@@ -63,12 +63,12 @@ export async function GET(request: Request) {
   const votacaoId = new URL(request.url).searchParams.get('votacaoId')?.trim() || '';
 
   if (!votacaoId) {
-    return NextResponse.json({ error: 'votacaoId Ã© obrigatÃ³rio.' }, { status: 400 });
+    return NextResponse.json({ error: 'votacaoId é obrigatório.' }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuraÃ§Ã£o de comentÃ¡rios.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuração de comentários.' }, { status: 500 });
   }
 
   await cleanupOldComments(supabaseAdmin);
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
   }
 
   if (error) {
-    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel carregar os comentÃ¡rios.' }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível carregar os comentários.' }, { status: 500 });
   }
 
   const comments = (data || [])
@@ -122,27 +122,27 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as { votacaoId?: string; message?: string };
   } catch {
-    return NextResponse.json({ error: 'Payload invÃ¡lido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
   }
 
   const votacaoId = String(body.votacaoId || '').trim();
   const message = String(body.message || '').trim();
 
   if (!votacaoId) {
-    return NextResponse.json({ error: 'votacaoId Ã© obrigatÃ³rio.' }, { status: 400 });
+    return NextResponse.json({ error: 'votacaoId é obrigatório.' }, { status: 400 });
   }
 
   if (!message) {
-    return NextResponse.json({ error: 'Digite um comentÃ¡rio.' }, { status: 400 });
+    return NextResponse.json({ error: 'Digite um comentário.' }, { status: 400 });
   }
 
   if (message.length > MAX_COMMENT_LENGTH) {
-    return NextResponse.json({ error: `O comentÃ¡rio pode ter no mÃ¡ximo ${MAX_COMMENT_LENGTH} caracteres.` }, { status: 400 });
+    return NextResponse.json({ error: `O comentário pode ter no máximo ${MAX_COMMENT_LENGTH} caracteres.` }, { status: 400 });
   }
 
   const supabaseAdmin = getAdminSupabase();
   if (!supabaseAdmin) {
-    return NextResponse.json({ error: 'Servidor sem configuraÃ§Ã£o de comentÃ¡rios.' }, { status: 500 });
+    return NextResponse.json({ error: 'Servidor sem configuração de comentários.' }, { status: 500 });
   }
 
   await cleanupOldComments(supabaseAdmin);
@@ -187,12 +187,12 @@ export async function POST(request: Request) {
   }
 
   if (error || !data) {
-    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel publicar o comentÃ¡rio.' }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível publicar o comentário.' }, { status: 500 });
   }
 
   const parsedComment = parseStoredComment(data, votacaoId);
   if (!parsedComment) {
-    return NextResponse.json({ error: 'NÃ£o foi possÃ­vel processar o comentÃ¡rio.' }, { status: 500 });
+    return NextResponse.json({ error: 'Não foi possível processar o comentário.' }, { status: 500 });
   }
 
   return NextResponse.json({ comment: parsedComment });

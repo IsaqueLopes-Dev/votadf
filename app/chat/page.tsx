@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient, type User } from '@supabase/supabase-js';
+import OnlineIndicator from '../components/online-indicator';
 import BottomNavigation from '../../components/bottom-navigation';
 
 type ChatMessageItem = {
@@ -200,6 +201,9 @@ export default function ChatPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-green-400">Conversa ao vivo</p>
             </div>
             <h1 className="mt-1 text-xl font-bold text-white">Chat</h1>
+            <div className="mt-3">
+              <OnlineIndicator />
+            </div>
           </div>
           <button
             type="button"

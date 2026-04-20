@@ -6,7 +6,7 @@ import AuthenticatedHomeRedirect from './authenticated-home-redirect';
 
 const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
-  { value: 'politica', label: 'Politica' },
+  { value: 'politica', label: 'Política' },
   { value: 'entretenimento', label: 'Entretenimento' },
   { value: 'esportes', label: 'Esportes' },
   { value: 'financeiro', label: 'Financeiro' },
@@ -120,14 +120,13 @@ export default async function PublicMarketsPage({
         </div>
       </header>
 
-      <main className="flex w-full flex-1 flex-col items-center px-3 py-8 pb-28 sm:px-2 sm:py-10">
+      <main className="flex w-full flex-1 flex-col items-center px-3 py-8 pb-28 sm:px-2 sm:py-10 lg:pb-56">
         <h1 className="mb-2 text-center text-2xl font-bold text-white sm:text-3xl">Mercado de previsão</h1>
         <p className="mb-6 max-w-2xl text-center text-sm leading-6 text-cyan-200 sm:text-base">
           Acompanhe as votações e aposte no candidato que você acredita.
           <br />
           Odds definidas e atualizadas em tempo real.
         </p>
-
         <div className="w-full">
           <PublicVotingBoard
             categories={[...CATEGORY_OPTIONS]}

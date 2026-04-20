@@ -1623,7 +1623,7 @@ function UsuariosPageContent() {
   };
   return (
     <div
-      className="relative min-h-screen overflow-hidden"
+      className="relative min-h-screen overflow-x-hidden"
       style={loginBgStyle}
     >
       {profileNotice && (
@@ -2254,10 +2254,10 @@ function UsuariosPageContent() {
       <main
         className={
           depositOpen
-            ? 'min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 py-6 pb-24 sm:py-10 sm:pb-28'
+            ? 'min-h-screen bg-gradient-to-b from-blue-600 to-blue-50 py-6 pb-24 sm:py-10 sm:pb-28 lg:pb-56'
             : withdrawOpen
-              ? 'flex min-h-screen w-full items-start justify-center px-3 py-6 pb-24 sm:px-6 sm:py-10 sm:pb-28'
-            : 'flex flex-1 flex-col items-center w-full px-2 py-10 pb-24 sm:pb-28'
+              ? 'flex min-h-screen w-full items-start justify-center px-3 py-6 pb-24 sm:px-6 sm:py-10 sm:pb-28 lg:pb-56'
+            : 'flex w-full flex-1 flex-col items-center px-2 py-10 pb-24 sm:pb-28 lg:pb-56'
         }
       >
         {depositOpen ? (
@@ -2635,7 +2635,7 @@ function UsuariosPageContent() {
             </div>
           </section>
 
-          <section>
+          <section className="pb-10 sm:pb-12 lg:pb-20">
             <div className="mb-6">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div />
@@ -2660,7 +2660,7 @@ function UsuariosPageContent() {
             )}
 
             {filteredVotacoes.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-1 items-stretch gap-4 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 lg:pb-12">
                 {filteredVotacoes.map((votacao) => {
                   const metadata = parsePollMetadata(votacao.descricao);
                   const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
@@ -2683,7 +2683,10 @@ function UsuariosPageContent() {
                   const totalVotes = votes.reduce((acc, current) => acc + current, 0);
 
                   return (
-                    <div key={votacao.id} className="min-h-[180px] rounded-2xl border border-white/10 bg-[#171b22] p-4 shadow-md transition-all duration-200 hover:-translate-y-1 hover:border-green-500/30 hover:shadow-[0_0_25px_rgba(34,197,94,0.08)]">
+                    <div
+                      key={votacao.id}
+                      className="flex h-full min-h-[420px] flex-col rounded-2xl border border-white/10 bg-[#171b22] p-4 shadow-md transition-all duration-200 hover:-translate-y-1 hover:border-green-500/30 hover:shadow-[0_0_25px_rgba(34,197,94,0.08)]"
+                    >
                       <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
                         <span className="text-xs text-zinc-400">
                           {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
@@ -2701,9 +2704,9 @@ function UsuariosPageContent() {
                         </span>
                       </div>
 
-                      <h3 className="mb-2 text-sm font-semibold text-white">{votacao.titulo}</h3>
+                      <h3 className="mb-2 break-words text-sm font-semibold text-white">{votacao.titulo}</h3>
                       <div className="mb-4">
-                        <p className="text-sm leading-6 text-zinc-400">{displayedDescription}</p>
+                        <p className="break-words text-sm leading-6 text-zinc-400">{displayedDescription}</p>
                         {shouldCollapseDescription && (
                           <button
                             type="button"
@@ -2726,6 +2729,7 @@ function UsuariosPageContent() {
                           : 'Não definido'}
                       </p>
 
+                      <div className="flex-1">
                       {parsedOptions.length > 0 ? (
                         <div className="space-y-2.5">
                           {parsedOptions.map((parsedOption, idx) => {
@@ -2740,7 +2744,7 @@ function UsuariosPageContent() {
                                 disabled={isBetClosed || parsedOption.odds === ''}
                                 className="w-full rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-left transition-all duration-200 hover:border-green-500/20 hover:bg-[#151a22] disabled:cursor-not-allowed disabled:opacity-55"
                               >
-                                <div className="flex items-center justify-between gap-3">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                   <div className="flex min-w-0 items-center gap-3">
                                     <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
                                       {parsedOption.imageUrl ? (
@@ -2758,7 +2762,7 @@ function UsuariosPageContent() {
                                       {parsedOption.label || `Opção ${idx + 1}`}
                                     </span>
                                   </div>
-                                  <div className="flex shrink-0 gap-2">
+                                  <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
                                     <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
                                       {getDisplayedOdd(parsedOption.odds)}
                                     </span>
@@ -2783,6 +2787,7 @@ function UsuariosPageContent() {
                           Nenhuma opção disponível para esta votação no momento.
                         </p>
                       )}
+                      </div>
 
                       <div className="mt-4 border-t border-white/10 pt-4">
                         <button
