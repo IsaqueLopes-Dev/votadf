@@ -315,15 +315,27 @@ export default function PublicVotingBoard({
   }, [commentsByVotingId, votacoes]);
 
   const filteredVotacoes = useMemo(() => {
-    return votacoes.filter((votacao) => {
-      const metadata = parsePollMetadata(votacao.descricao);
-      const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
-      const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= nowTimestamp;
+    return votacoes
+      .filter((votacao) => {
+        const metadata = parsePollMetadata(votacao.descricao);
 
-      if (isBetClosed) return false;
-      if (selectedCategory === 'todos') return true;
-      return metadata.categoria === selectedCategory;
-    });
+        if (selectedCategory === 'todos') return true;
+        return metadata.categoria === selectedCategory;
+      })
+      .sort((left, right) => {
+        const leftMetadata = parsePollMetadata(left.descricao);
+        const rightMetadata = parsePollMetadata(right.descricao);
+        const leftCloseAtMs = leftMetadata.encerramentoAposta ? new Date(leftMetadata.encerramentoAposta).getTime() : NaN;
+        const rightCloseAtMs = rightMetadata.encerramentoAposta ? new Date(rightMetadata.encerramentoAposta).getTime() : NaN;
+        const leftClosed = Number.isFinite(leftCloseAtMs) && leftCloseAtMs <= nowTimestamp;
+        const rightClosed = Number.isFinite(rightCloseAtMs) && rightCloseAtMs <= nowTimestamp;
+
+        if (leftClosed !== rightClosed) {
+          return leftClosed ? 1 : -1;
+        }
+
+        return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+      });
   }, [nowTimestamp, selectedCategory, votacoes]);
 
   const parsedBetAmount = Number(betAmount.replace(',', '.'));
@@ -589,8 +601,8 @@ export default function PublicVotingBoard({
         <div className="text-cyan-200 text-center py-8 rounded-xl bg-cyan-900/30 border border-cyan-700">
           <p>
             {selectedCategory === 'todos'
-              ? 'Nenhuma votação ativa no momento. Volte em breve!'
-              : `Nenhuma votação ativa na categoria ${getCategoryLabel(selectedCategory)}.`}
+              ? 'Nenhuma votação disponível no momento. Volte em breve!'
+              : `Nenhuma votação encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
           </p>
         </div>
       ) : (
