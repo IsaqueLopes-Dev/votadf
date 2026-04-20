@@ -1478,18 +1478,22 @@ function UsuariosPageContent() {
 
     try {
       const normalizedUsername = normalizeUsername(username);
+      const currentLockedCpf = cpfDigits(String(user?.user_metadata?.cpf || cpf || ''));
+      const currentLockedBirthDate = String(user?.user_metadata?.birth_date || birthDate || '').trim();
+      const nextCpf = identityLocked ? currentLockedCpf : cpf;
+      const nextBirthDate = identityLocked ? currentLockedBirthDate : birthDate;
 
       if (!isValidUsername(normalizedUsername)) {
         alert('Nome de usuário inválido. Use @ no início e não use espaços.');
         return;
       }
 
-      if (!isValidCpf(cpf)) {
+      if (!identityLocked && !isValidCpf(cpf)) {
         alert('CPF inválido.');
         return;
       }
 
-      if (!birthDate) {
+      if (!identityLocked && !birthDate) {
         alert('Data de nascimento obrigatória.');
         return;
       }
@@ -1499,8 +1503,14 @@ function UsuariosPageContent() {
         return;
       }
 
-      if (identityLocked) {
-        alert('CPF e data de nascimento ja confirmados. Somente o admin pode alterar esses dados.');
+      if (
+        identityLocked &&
+        (
+          (currentLockedCpf && cpfDigits(cpf) && cpfDigits(cpf) !== currentLockedCpf) ||
+          (currentLockedBirthDate && birthDate && birthDate !== currentLockedBirthDate)
+        )
+      ) {
+        alert('CPF e data de nascimento já confirmados. Somente o admin pode alterar esses dados.');
         return;
       }
 
@@ -1522,8 +1532,8 @@ function UsuariosPageContent() {
         },
         body: JSON.stringify({
           username: normalizedUsername,
-          cpf,
-          birth_date: birthDate,
+          cpf: nextCpf,
+          birth_date: nextBirthDate,
           avatar_url: avatarUrl.trim(),
           identity_confirmed: confirmIdentityLock,
         }),
@@ -1541,9 +1551,9 @@ function UsuariosPageContent() {
       }
 
       setUsername(payload.profile.username || normalizedUsername);
-      setCpf(payload.profile.cpf || cpf);
-      setCpfConfirmation(payload.profile.cpf || cpf);
-      setBirthDate(payload.profile.birth_date || birthDate);
+      setCpf(payload.profile.cpf || nextCpf);
+      setCpfConfirmation(payload.profile.cpf || nextCpf);
+      setBirthDate(payload.profile.birth_date || nextBirthDate);
       setAvatarUrl(payload.profile.avatar_url || avatarUrl.trim());
       setUserRole(payload.profile.role || userRole);
       setUser((currentUser) => {
@@ -1554,8 +1564,8 @@ function UsuariosPageContent() {
           user_metadata: {
             ...(currentUser.user_metadata || {}),
             username: payload.profile?.username || normalizedUsername,
-            cpf: payload.profile?.cpf || cpf,
-            birth_date: payload.profile?.birth_date || birthDate,
+            cpf: payload.profile?.cpf || nextCpf,
+            birth_date: payload.profile?.birth_date || nextBirthDate,
             avatar_url: payload.profile?.avatar_url || avatarUrl.trim(),
             identity_confirmed_at: payload.identityConfirmedAt || currentUser.user_metadata?.identity_confirmed_at,
           },
