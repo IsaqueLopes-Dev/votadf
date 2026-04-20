@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Nao foi possivel determinar a URL do site.' }, { status: 500 });
   }
 
-  const cpf = profile.cpf.replace(/\D/g, '');
+  const cpf = String(profile.cpf || '').replace(/\D/g, '');
   const mpClient = new MercadoPagoConfig({ accessToken });
   const paymentApi = new Payment(mpClient);
 
