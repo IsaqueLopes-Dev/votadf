@@ -3,6 +3,7 @@ import { ensureAdminRequest } from '../../utils';
 
 const META_PREFIX = '__meta__:';
 const SPORTS_OPTION_LABELS = ['CASA', 'X', 'FORA'] as const;
+const STORAGE_BUCKET = 'avatars';
 
 type PollCategory =
   | 'politica'
@@ -14,6 +15,7 @@ type PollCategory =
   | '';
 
 type PollType = 'opcoes-livres' | 'enquete-candidatos';
+type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
 type VotingOptionInput = {
   label?: unknown;
@@ -27,6 +29,7 @@ type VotingPayload = {
   description?: unknown;
   category?: unknown;
   pollType?: unknown;
+  openStatusLabel?: unknown;
   closesAt?: unknown;
   isActive?: unknown;
   result?: unknown;
@@ -51,6 +54,9 @@ const normalizeCategory = (value: unknown): PollCategory => {
 const normalizePollType = (value: unknown): PollType =>
   value === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres';
 
+const normalizeOpenStatusLabel = (value: unknown): OpenStatusLabel =>
+  value === 'em-aberto' ? 'em-aberto' : 'ao-vivo';
+
 const toOptionRecord = (option: VotingOptionInput) => {
   const label = String(option.label || '').trim();
   const imageUrl = String(option.imageUrl || '').trim();
@@ -60,22 +66,66 @@ const toOptionRecord = (option: VotingOptionInput) => {
   return { label, imageUrl, odds, oddsNao };
 };
 
+const getStoragePathFromPublicUrl = (imageUrl: string) => {
+  if (!imageUrl) return '';
+
+  try {
+    const parsedUrl = new URL(imageUrl);
+    const publicMarker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+    const signedMarker = `/storage/v1/object/sign/${STORAGE_BUCKET}/`;
+
+    if (parsedUrl.pathname.includes(publicMarker)) {
+      return decodeURIComponent(parsedUrl.pathname.split(publicMarker)[1] || '');
+    }
+
+    if (parsedUrl.pathname.includes(signedMarker)) {
+      return decodeURIComponent(parsedUrl.pathname.split(signedMarker)[1]?.split('/sign')[0] || '');
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+};
+
+const getVotingImagePaths = (row: Record<string, unknown>) => {
+  if (!Array.isArray(row.opcoes)) return [] as string[];
+
+  return row.opcoes
+    .map((option) => {
+      if (typeof option !== 'string') return '';
+
+      try {
+        const parsed = JSON.parse(option) as Record<string, unknown>;
+        return getStoragePathFromPublicUrl(
+          String(parsed.imageUrl || parsed.image_url || parsed.image || parsed.avatarUrl || '')
+        );
+      } catch {
+        return '';
+      }
+    })
+    .filter(Boolean);
+};
+
 const buildDescricao = ({
   description,
   category,
   pollType,
+  openStatusLabel,
   closesAt,
   result,
 }: {
   description: string;
   category: PollCategory;
   pollType: PollType;
+  openStatusLabel: OpenStatusLabel;
   closesAt: string;
   result: string;
 }) => {
   const metadata: Record<string, string> = {
     tipo: pollType,
     categoria: category,
+    statusAbertoLabel: openStatusLabel,
   };
 
   if (closesAt) {
@@ -93,6 +143,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
   const rawDescription = String(row.descricao || '');
   let category: PollCategory = '';
   let pollType: PollType = 'opcoes-livres';
+  let openStatusLabel: OpenStatusLabel = 'ao-vivo';
   let closesAt = '';
   let result = '';
   let cleanDescription = rawDescription;
@@ -106,6 +157,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
       const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as Record<string, unknown>;
       category = normalizeCategory(parsed.categoria);
       pollType = normalizePollType(parsed.tipo);
+      openStatusLabel = normalizeOpenStatusLabel(parsed.statusAbertoLabel || parsed.openStatusLabel);
       closesAt = String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim();
       result = String(parsed.resultadoVencedor || parsed.resultado || parsed.winner || '').trim();
     } catch {
@@ -139,6 +191,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
     description: cleanDescription,
     category,
     pollType,
+    openStatusLabel,
     closesAt,
     result,
     isActive: Boolean(row.ativa),
@@ -152,6 +205,7 @@ const validatePayload = (payload: VotingPayload) => {
   const description = String(payload.description || '').trim();
   const category = normalizeCategory(payload.category);
   const pollType = category === 'esportes' ? 'opcoes-livres' : normalizePollType(payload.pollType);
+  const openStatusLabel = normalizeOpenStatusLabel(payload.openStatusLabel);
   const closesAt = String(payload.closesAt || '').trim();
   const isActive = payload.isActive === false ? false : true;
   const result = String(payload.result || '').trim();
@@ -206,6 +260,7 @@ const validatePayload = (payload: VotingPayload) => {
       description,
       category,
       pollType,
+      openStatusLabel,
       closesAt,
       isActive,
       result: category === 'esportes' ? result.toUpperCase() : result,
@@ -214,6 +269,7 @@ const validatePayload = (payload: VotingPayload) => {
         description,
         category,
         pollType,
+        openStatusLabel,
         closesAt,
         result: category === 'esportes' ? result.toUpperCase() : result,
       }),
@@ -250,6 +306,19 @@ export async function PATCH(
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
 
+  const { data: existingVoting, error: existingVotingError } = await supabaseAdmin
+    .from('votacoes')
+    .select('opcoes')
+    .eq('id', id)
+    .single();
+
+  if (existingVotingError || !existingVoting) {
+    return NextResponse.json(
+      { error: existingVotingError?.message || 'Não foi possível localizar a votação.' },
+      { status: 404 }
+    );
+  }
+
   const { data, error } = await supabaseAdmin
     .from('votacoes')
     .update({
@@ -264,6 +333,27 @@ export async function PATCH(
 
   if (error || !data) {
     return NextResponse.json({ error: error?.message || 'Não foi possível atualizar a votação.' }, { status: 500 });
+  }
+
+  const previousPaths = getVotingImagePaths(existingVoting as Record<string, unknown>);
+  const nextPaths = validation.data.serializedOptions
+    .map((option) => {
+      try {
+        const parsed = JSON.parse(option) as Record<string, unknown>;
+        return getStoragePathFromPublicUrl(String(parsed.imageUrl || ''));
+      } catch {
+        return '';
+      }
+    })
+    .filter(Boolean);
+  const removedPaths = previousPaths.filter((path) => !nextPaths.includes(path));
+
+  if (removedPaths.length > 0) {
+    const { error: storageError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(removedPaths);
+
+    if (storageError) {
+      console.error('Erro ao remover imagens antigas da votação:', storageError.message);
+    }
   }
 
   return NextResponse.json({
@@ -288,11 +378,36 @@ export async function DELETE(
     return NextResponse.json({ error: 'ID da votação não informado.' }, { status: 400 });
   }
 
+  const { data: existingVoting, error: existingVotingError } = await supabaseAdmin
+    .from('votacoes')
+    .select('opcoes')
+    .eq('id', id)
+    .single();
+
+  if (existingVotingError || !existingVoting) {
+    return NextResponse.json(
+      { error: existingVotingError?.message || 'Não foi possível localizar a votação.' },
+      { status: 404 }
+    );
+  }
+
   const { error } = await supabaseAdmin.from('votacoes').delete().eq('id', id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  const imagePaths = getVotingImagePaths(existingVoting as Record<string, unknown>);
+  let warning = '';
+
+  if (imagePaths.length > 0) {
+    const { error: storageError } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(imagePaths);
+
+    if (storageError) {
+      warning = 'A votação foi excluída, mas não foi possível remover algumas imagens do storage.';
+      console.error('Erro ao remover imagens da votação excluída:', storageError.message);
+    }
+  }
+
+  return NextResponse.json({ success: true, warning });
 }

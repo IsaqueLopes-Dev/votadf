@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
+import UiverseLoader from '../../components/uiverse-loader';
 
 type BetStatus = 'aguardando' | 'ganhou' | 'perdeu';
 
@@ -330,9 +331,7 @@ export default function AdminApostasPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 text-sm text-slate-200 backdrop-blur-xl">
-          Carregando painel de apostas...
-        </div>
+        <UiverseLoader label="Carregando painel de apostas..." />
       </div>
     );
   }

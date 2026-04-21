@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient, type User } from '@supabase/supabase-js';
+import UiverseLoader from '../components/uiverse-loader';
 
 type DashboardResponse = {
   stats: {
@@ -106,9 +107,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="rounded-[28px] border border-white/10 bg-white/5 px-6 py-5 text-sm text-slate-200 backdrop-blur-xl">
-          Carregando painel admin...
-        </div>
+        <UiverseLoader label="Carregando painel admin..." />
       </div>
     );
   }

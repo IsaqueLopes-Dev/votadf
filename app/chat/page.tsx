@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient, type User } from '@supabase/supabase-js';
 import OnlineIndicator from '../components/online-indicator';
 import BottomNavigation from '../../components/bottom-navigation';
+import UiverseLoader from '../components/uiverse-loader';
 
 type ChatMessageItem = {
   id: string;
@@ -217,8 +218,8 @@ export default function ChatPage() {
 
       <main className="mx-auto flex min-h-[calc(100vh-73px)] w-full max-w-4xl flex-col px-3 pb-36 pt-4">
         {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-            Carregando mensagens...
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 text-sm text-slate-300">
+            <UiverseLoader label="Carregando mensagens..." />
           </div>
         ) : (
           <div className="flex-1 space-y-3 overflow-y-auto pb-4">

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import UiverseLoader from '../../components/uiverse-loader';
 
 type PollCategory =
   | 'politica'
@@ -15,6 +16,7 @@ type PollCategory =
   | 'criptomoedas';
 
 type PollType = 'opcoes-livres' | 'enquete-candidatos';
+type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
 type VotingOption = {
   label: string;
@@ -31,6 +33,7 @@ type VotingItem = {
   description: string;
   category: PollCategory;
   pollType: PollType;
+  openStatusLabel: OpenStatusLabel;
   closesAt: string;
   result: string;
   isActive: boolean;
@@ -90,6 +93,7 @@ const createInitialForm = () => ({
   description: '',
   category: 'politica' as PollCategory,
   pollType: 'enquete-candidatos' as PollType,
+  openStatusLabel: 'ao-vivo' as OpenStatusLabel,
   closesAt: '',
   result: '',
   isActive: true,
@@ -433,7 +437,11 @@ export default function AdminVotacoesPage() {
   };
 
   if (loading) {
-    return <div className="p-6 text-slate-600">Carregando votações...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <UiverseLoader label="Carregando votações..." />
+      </div>
+    );
   }
 
   return (
@@ -583,6 +591,26 @@ export default function AdminVotacoesPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-100">Rótulo da votação aberta</label>
+                  <select
+                    value={form.openStatusLabel}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, openStatusLabel: event.target.value as OpenStatusLabel }))
+                    }
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
+                  >
+                    <option value="ao-vivo" className="text-slate-900">
+                      Ao vivo
+                    </option>
+                    <option value="em-aberto" className="text-slate-900">
+                      Em aberto
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-100">Resultado vencedor</label>
                   {isSportsCategory ? (
@@ -861,6 +889,9 @@ export default function AdminVotacoesPage() {
                         <span className="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-300">
                           {item.pollType === 'enquete-candidatos' ? 'Enquete com candidatos' : 'Opções livres'}
                         </span>
+                        <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
+                          {item.openStatusLabel === 'em-aberto' ? 'Em aberto' : 'Ao vivo'}
+                        </span>
                       </div>
                       <h3 className="mt-3 text-lg font-semibold text-white">{item.title}</h3>
                       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{item.description}</p>
@@ -887,6 +918,7 @@ export default function AdminVotacoesPage() {
                             description: item.description,
                             category: item.category,
                             pollType: item.category === 'esportes' ? 'opcoes-livres' : item.pollType,
+                            openStatusLabel: item.openStatusLabel,
                             closesAt: item.closesAt ? item.closesAt.slice(0, 16) : '',
                             result: item.result,
                             isActive: item.isActive,

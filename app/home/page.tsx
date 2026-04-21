@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import CategoryCarousel from '../components/category-carousel';
 import BottomNavigation from '../../components/bottom-navigation';
+import UiverseLoader from '../components/uiverse-loader';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
 const META_PREFIX = '__meta__:';
@@ -20,6 +21,7 @@ const CATEGORY_OPTIONS = [
 
 type PollType = 'opcoes-livres' | 'enquete-candidatos';
 type PollCategory = 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas' | '';
+type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
 type PollOption = {
   label: string;
@@ -147,12 +149,18 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
       const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as {
         tipo?: PollType;
         categoria?: PollCategory;
+        statusAbertoLabel?: OpenStatusLabel;
+        openStatusLabel?: OpenStatusLabel;
         encerramentoAposta?: string;
         bettingClosesAt?: string;
       };
       return {
         tipo: parsed.tipo === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres',
         categoria: normalizePollCategory(parsed.categoria),
+        statusAbertoLabel:
+          parsed.statusAbertoLabel === 'em-aberto' || parsed.openStatusLabel === 'em-aberto'
+            ? 'em-aberto'
+            : 'ao-vivo',
         encerramentoAposta: String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim(),
         descricaoLimpa: cleanDescription,
       };
@@ -160,6 +168,7 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
       return {
         tipo: 'opcoes-livres' as const,
         categoria: '' as PollCategory,
+        statusAbertoLabel: 'ao-vivo' as OpenStatusLabel,
         encerramentoAposta: '',
         descricaoLimpa: cleanDescription,
       };
@@ -170,6 +179,7 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
     return {
       tipo: 'enquete-candidatos' as const,
       categoria: '' as PollCategory,
+      statusAbertoLabel: 'ao-vivo' as OpenStatusLabel,
       encerramentoAposta: '',
       descricaoLimpa: rawDescription.replace('__tipo__:enquete-candidatos\n', ''),
     };
@@ -178,6 +188,7 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
   return {
     tipo: 'opcoes-livres' as const,
     categoria: '' as PollCategory,
+    statusAbertoLabel: 'ao-vivo' as OpenStatusLabel,
     encerramentoAposta: '',
     descricaoLimpa: rawDescription,
   };
@@ -821,7 +832,11 @@ function UsuariosPageContent() {
             setAvatarUrl(user.user_metadata?.avatar_url || '');
           }
         }
-        await Promise.all([loadVotacoesAtivas(), loadBetHistory(), loadBetCounts(), loadChatMessages(true)]);
+        await Promise.all([loadVotacoesAtivas(), loadBetCounts()]);
+        setLoading(false);
+
+        void loadBetHistory();
+        void loadChatMessages(true);
 
         if (searchParams.get('deposit') === '1') {
           setDepositOpen(true);
@@ -1655,12 +1670,8 @@ function UsuariosPageContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#e5e7eb] animate-pulse">
-        <div className="flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full bg-blue-200 mb-4 animate-pulse" />
-          <div className="h-4 w-40 bg-blue-100 rounded mb-2 animate-pulse" />
-          <div className="h-4 w-24 bg-blue-100 rounded animate-pulse" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-[#111111]">
+        <UiverseLoader label="Carregando..." />
       </div>
     );
   }
@@ -2686,10 +2697,11 @@ function UsuariosPageContent() {
           <div className="w-full">
           <section className="mb-8 text-center text-white">
             <div>
-              <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Mercado de previsão</h2>
+              <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Mercados ativos</h2>
               <p className="mt-4 text-sm leading-7 text-cyan-200 sm:text-base">
-                Acompanhe as votações e aposte no candidato que você acredita.<br />
-                Entre em entretenimento, esportes, política, financeiro, celebridades ou cripto e participe das interações ao vivo.
+                Sua área logada agora usa a mesma leitura compacta da vitrine pública.
+                <br />
+                A home mostra o essencial e a página do mercado concentra os detalhes completos.
               </p>
             </div>
           </section>
@@ -2719,18 +2731,11 @@ function UsuariosPageContent() {
             )}
 
             {filteredVotacoes.length > 0 ? (
-              <div className="grid grid-cols-1 items-stretch gap-4 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 lg:pb-12">
+              <div className="grid grid-cols-1 items-stretch gap-4 pb-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 lg:pb-12">
                 {filteredVotacoes.map((votacao) => {
                   const metadata = parsePollMetadata(votacao.descricao);
                   const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
                   const isBetClosed = votacao.ativa === false || (Number.isFinite(closeAtMs) && closeAtMs <= Date.now());
-                  const description = getCardDescription(metadata.descricaoLimpa);
-                  const isDescriptionExpanded = Boolean(expandedDescriptionByVotingId[votacao.id]);
-                  const shouldCollapseDescription = description.length > DESCRIPTION_PREVIEW_LENGTH;
-                  const displayedDescription =
-                    shouldCollapseDescription && !isDescriptionExpanded
-                      ? `${description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
-                      : description;
                   const parsedOptions = Array.isArray(votacao.opcoes)
                     ? votacao.opcoes.map((opcao) => parsePollOption(opcao)).filter((option) => option.label || option.odds)
                     : [];
@@ -2740,72 +2745,81 @@ function UsuariosPageContent() {
                     return baseVotes + realVotes;
                   });
                   const totalVotes = votes.reduce((acc, current) => acc + current, 0);
+                  const coverImage = parsedOptions.find((option) => option.imageUrl)?.imageUrl || '';
+                  const footerStatus = isBetClosed
+                    ? 'Mercado encerrado'
+                    : Number.isFinite(closeAtMs)
+                      ? closeAtMs - nowTimestamp > 0
+                        ? closeAtMs - nowTimestamp < 60 * 60 * 1000
+                          ? `${Math.max(1, Math.floor((closeAtMs - nowTimestamp) / 60000))} min restantes`
+                          : closeAtMs - nowTimestamp < 24 * 60 * 60 * 1000
+                            ? `${Math.floor((closeAtMs - nowTimestamp) / (60 * 60 * 1000))}h restantes`
+                            : `${Math.floor((closeAtMs - nowTimestamp) / (24 * 60 * 60 * 1000))}d restantes`
+                        : 'Mercado encerrado'
+                      : metadata.statusAbertoLabel === 'em-aberto'
+                        ? 'Mercado em aberto'
+                        : 'Mercado ao vivo';
+                  const openStatusLabel = metadata.statusAbertoLabel === 'em-aberto' ? 'Em aberto' : 'Ao vivo';
 
                   return (
-                    <div
+                    <button
                       key={votacao.id}
-                      className="flex h-full min-h-[420px] flex-col rounded-2xl border border-white/10 bg-[#171b22] p-4 shadow-md transition-all duration-200 hover:-translate-y-1 hover:border-green-500/30 hover:shadow-[0_0_25px_rgba(34,197,94,0.08)]"
+                      type="button"
+                      onClick={() => router.push(`/mercados/${votacao.id}`)}
+                      className="group flex h-full min-h-[280px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,31,0.98)_0%,rgba(11,14,20,0.98)_100%)] p-4 text-left shadow-[0_24px_60px_-40px_rgba(15,23,42,0.9)] transition duration-200 hover:-translate-y-1 hover:border-cyan-400/35 hover:shadow-[0_30px_80px_-42px_rgba(6,182,212,0.4)]"
                     >
-                      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-                        <span className="text-xs text-zinc-400">
+                      <div className="mb-4 flex items-start justify-between gap-3">
+                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300">
                           {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
                         </span>
-                        <span className={`inline-flex items-center gap-2 text-xs font-semibold ${
-                          isBetClosed ? 'text-zinc-500' : 'text-yellow-400'
-                        }`}>
+                        <span
+                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                            isBetClosed
+                              ? 'bg-white/[0.05] text-zinc-400'
+                              : 'bg-red-600 text-white shadow-[0_10px_24px_-12px_rgba(220,38,38,0.9)]'
+                          }`}
+                        >
                           {!isBetClosed && (
                             <span className="relative flex h-2.5 w-2.5">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400/80" />
-                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-yellow-300" />
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
+                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
                             </span>
                           )}
-                          {isBetClosed ? 'ENCERRADA' : 'AO VIVO'}
+                          {isBetClosed ? 'Encerrado' : openStatusLabel}
                         </span>
                       </div>
 
-                      <h3 className="mb-2 break-words text-sm font-semibold text-white">{votacao.titulo}</h3>
-                      <div className="mb-4">
-                        <p className="break-words text-sm leading-6 text-zinc-400">{displayedDescription}</p>
-                        {shouldCollapseDescription && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setExpandedDescriptionByVotingId((current) => ({
-                                ...current,
-                                [votacao.id]: !current[votacao.id],
-                              }))
-                            }
-                            className="mt-2 text-xs font-semibold text-green-400 transition hover:text-green-300"
-                          >
-                            {isDescriptionExpanded ? 'Mostrar menos' : 'Ler tudo'}
-                          </button>
-                        )}
+                      <div className="mb-4 flex items-center gap-3">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-inner shadow-black/30">
+                          {coverImage ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={coverImage} alt={votacao.titulo} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-bold text-white">
+                              {parsedOptions[0]?.label?.slice(0, 1).toUpperCase() || '?'}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-sm font-semibold leading-6 text-white [display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                          {votacao.titulo}
+                        </h3>
                       </div>
-                      <p className="mb-4 text-xs text-zinc-400">
-                        Encerra em:{' '}
-                        {metadata.encerramentoAposta
-                          ? new Date(metadata.encerramentoAposta).toLocaleString('pt-BR')
-                          : 'Não definido'}
-                      </p>
 
-                      <div className="flex-1">
+                      <div className="flex-1 space-y-2.5">
                       {parsedOptions.length > 0 ? (
                         <div className="space-y-2.5">
-                          {parsedOptions.map((parsedOption, idx) => {
+                          {parsedOptions.slice(0, 3).map((parsedOption, idx) => {
                             const percent = totalVotes > 0 ? Math.max(1, Math.round((votes[idx] / totalVotes) * 100)) : 0;
                             const optionInitial = parsedOption.label.slice(0, 1).toUpperCase() || '?';
 
                             return (
-                              <button
+                              <div
                                 key={`${votacao.id}-${parsedOption.label || idx}`}
-                                type="button"
-                                onClick={() => openBetModal(votacao, parsedOption)}
-                                disabled={isBetClosed || parsedOption.odds === ''}
-                                className="w-full rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-left transition-all duration-200 hover:border-green-500/20 hover:bg-[#151a22] disabled:cursor-not-allowed disabled:opacity-55"
+                                className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
                               >
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-3">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
                                       {parsedOption.imageUrl ? (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img
@@ -2817,27 +2831,26 @@ function UsuariosPageContent() {
                                         <span className="text-xs font-semibold text-white">{optionInitial}</span>
                                       )}
                                     </div>
-                                    <span className="truncate text-sm font-semibold text-white">
+                                    <span className="truncate text-sm font-medium text-zinc-100">
                                       {parsedOption.label || `Opção ${idx + 1}`}
                                     </span>
                                   </div>
-                                  <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
-                                    <span className="rounded-full bg-green-500/20 px-2 py-1 text-xs text-green-400">
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <span className="rounded-full bg-cyan-500/12 px-2.5 py-1 text-[11px] font-semibold text-cyan-300">
                                       {getDisplayedOdd(parsedOption.odds)}
                                     </span>
-                                    <span className="rounded-full bg-red-500/20 px-2 py-1 text-xs text-red-400">
+                                    <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-white">
                                       {percent}%
                                     </span>
                                   </div>
                                 </div>
-                                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-black/30">
+                                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
                                   <div
-                                    className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-400"
+                                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
                                     style={{ width: `${percent}%` }}
                                   />
                                 </div>
-                                <p className="mt-2 text-[11px] text-zinc-400">{votes[idx]} apostas</p>
-                              </button>
+                              </div>
                             );
                           })}
                         </div>
@@ -2848,73 +2861,14 @@ function UsuariosPageContent() {
                       )}
                       </div>
 
-                      <div className="mt-4 border-t border-white/10 pt-4">
-                        <button
-                          type="button"
-                          onClick={() => void toggleComments(votacao.id)}
-                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-green-500/30 hover:bg-white/10"
-                        >
-                          <span>Comentários</span>
-                          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-zinc-300">
-                            {(commentsByVotingId[votacao.id] || []).length}
-                          </span>
-                        </button>
-
-                        {expandedCommentsId === votacao.id && (
-                          <div className="mt-3 space-y-3 rounded-2xl border border-white/10 bg-[#11151b] p-3">
-                            <div className="max-h-40 space-y-2 overflow-y-auto pr-1">
-                              {loadingCommentsByVotingId[votacao.id] ? (
-                                <p className="text-xs text-zinc-400">Carregando comentários...</p>
-                              ) : (commentsByVotingId[votacao.id] || []).length > 0 ? (
-                                (commentsByVotingId[votacao.id] || []).map((comment) => (
-                                  <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-semibold text-white">{comment.username}</span>
-                                      <span className="text-[11px] text-zinc-500">
-                                        {new Date(comment.created_at).toLocaleString('pt-BR')}
-                                      </span>
-                                    </div>
-                                    <p className="mt-1 text-xs leading-5 text-zinc-300">{comment.message}</p>
-                                  </div>
-                                ))
-                              ) : (
-                                <p className="text-xs text-zinc-400">Ainda não há comentários neste mercado.</p>
-                              )}
-                            </div>
-
-                            <div className="space-y-2">
-                              <textarea
-                                value={commentDraftByVotingId[votacao.id] || ''}
-                                onChange={(event) =>
-                                  setCommentDraftByVotingId((current) => ({
-                                    ...current,
-                                    [votacao.id]: event.target.value,
-                                  }))
-                                }
-                                rows={3}
-                                placeholder={user ? 'Compartilhe sua leitura desse mercado...' : 'Entre para comentar'}
-                                disabled={!user}
-                                className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 disabled:cursor-not-allowed disabled:opacity-60"
-                              />
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[11px] text-zinc-500">
-                                  {commentStatusByVotingId[votacao.id] || 'Comentários aparecem assim que o card for aberto.'}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => void submitComment(votacao.id)}
-                                  disabled={!user}
-                                  className="rounded-full bg-green-500 px-3 py-1.5 text-xs font-semibold text-[#0f1115] transition hover:bg-green-400 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  {user ? 'Comentar' : 'Entrar'}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                        <span className="text-xs text-zinc-400">{footerStatus}</span>
+                        <span className="text-xs font-semibold text-cyan-300 transition group-hover:text-cyan-200">
+                          Abrir mercado
+                        </span>
                       </div>
 
-                    </div>
+                    </button>
                   );
                 })}
               </div>

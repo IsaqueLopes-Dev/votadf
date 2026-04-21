@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import UiverseLoader from '../../components/uiverse-loader';
 
 type BetHistoryItem = {
   id: string;
@@ -138,7 +139,7 @@ export default function HistoricoMobilePage() {
         <div className="p-4 sm:p-6">
           {loading && (
             <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600">
-              Carregando histórico...
+              <UiverseLoader label="Carregando histórico..." />
             </div>
           )}
 

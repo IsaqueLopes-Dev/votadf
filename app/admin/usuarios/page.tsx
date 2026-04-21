@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '../../utils/supabaseClient';
+import UiverseLoader from '../../components/uiverse-loader';
 
 type UserRow = {
   id: string;
@@ -147,7 +148,11 @@ export default function UsuariosPage() {
   const adminCount = filteredUsers.filter((user) => user.role === 'admin').length;
 
   if (loading) {
-    return <div className="p-6 text-slate-300">Carregando usuários...</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <UiverseLoader label="Carregando usuários..." />
+      </div>
+    );
   }
 
   return (

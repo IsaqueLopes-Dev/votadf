@@ -14,6 +14,7 @@ type PollCategory =
   | '';
 
 type PollType = 'opcoes-livres' | 'enquete-candidatos';
+type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
 type VotingOptionInput = {
   label?: unknown;
@@ -27,6 +28,7 @@ type VotingPayload = {
   description?: unknown;
   category?: unknown;
   pollType?: unknown;
+  openStatusLabel?: unknown;
   closesAt?: unknown;
   isActive?: unknown;
   result?: unknown;
@@ -51,6 +53,9 @@ const normalizeCategory = (value: unknown): PollCategory => {
 const normalizePollType = (value: unknown): PollType =>
   value === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres';
 
+const normalizeOpenStatusLabel = (value: unknown): OpenStatusLabel =>
+  value === 'em-aberto' ? 'em-aberto' : 'ao-vivo';
+
 const toOptionRecord = (option: VotingOptionInput) => {
   const label = String(option.label || '').trim();
   const imageUrl = String(option.imageUrl || '').trim();
@@ -64,18 +69,21 @@ const buildDescricao = ({
   description,
   category,
   pollType,
+  openStatusLabel,
   closesAt,
   result,
 }: {
   description: string;
   category: PollCategory;
   pollType: PollType;
+  openStatusLabel: OpenStatusLabel;
   closesAt: string;
   result: string;
 }) => {
   const metadata: Record<string, string> = {
     tipo: pollType,
     categoria: category,
+    statusAbertoLabel: openStatusLabel,
   };
 
   if (closesAt) {
@@ -93,6 +101,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
   const rawDescription = String(row.descricao || '');
   let category: PollCategory = '';
   let pollType: PollType = 'opcoes-livres';
+  let openStatusLabel: OpenStatusLabel = 'ao-vivo';
   let closesAt = '';
   let result = '';
   let cleanDescription = rawDescription;
@@ -106,6 +115,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
       const parsed = JSON.parse(metaLine.replace(META_PREFIX, '')) as Record<string, unknown>;
       category = normalizeCategory(parsed.categoria);
       pollType = normalizePollType(parsed.tipo);
+      openStatusLabel = normalizeOpenStatusLabel(parsed.statusAbertoLabel || parsed.openStatusLabel);
       closesAt = String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim();
       result = String(parsed.resultadoVencedor || parsed.resultado || parsed.winner || '').trim();
     } catch {
@@ -139,6 +149,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
     description: cleanDescription,
     category,
     pollType,
+    openStatusLabel,
     closesAt,
     result,
     isActive: Boolean(row.ativa),
@@ -152,6 +163,7 @@ const validatePayload = (payload: VotingPayload) => {
   const description = String(payload.description || '').trim();
   const category = normalizeCategory(payload.category);
   const pollType = category === 'esportes' ? 'opcoes-livres' : normalizePollType(payload.pollType);
+  const openStatusLabel = normalizeOpenStatusLabel(payload.openStatusLabel);
   const closesAt = String(payload.closesAt || '').trim();
   const isActive = payload.isActive === false ? false : true;
   const result = String(payload.result || '').trim();
@@ -206,6 +218,7 @@ const validatePayload = (payload: VotingPayload) => {
       description,
       category,
       pollType,
+      openStatusLabel,
       closesAt,
       isActive,
       result: category === 'esportes' ? result.toUpperCase() : result,
@@ -214,6 +227,7 @@ const validatePayload = (payload: VotingPayload) => {
         description,
         category,
         pollType,
+        openStatusLabel,
         closesAt,
         result: category === 'esportes' ? result.toUpperCase() : result,
       }),
