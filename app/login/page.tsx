@@ -558,16 +558,31 @@ function LoginPageContent() {
               maxLength={14}
             />
 
-            <input
-              type="date"
-              placeholder="Data de nascimento"
-              style={styles.input}
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              autoComplete="bday"
-              required
-              disabled={loading}
-            />
+            <div style={{ width: '100%' }}>
+              <label
+                htmlFor="birth-date-input"
+                style={{
+                  display: 'block',
+                  marginBottom: 8,
+                  color: '#dbeafe',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: '"Poppins", "Segoe UI", Arial, sans-serif',
+                }}
+              >
+                Data de nascimento
+              </label>
+              <input
+                id="birth-date-input"
+                type="date"
+                style={styles.input}
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                autoComplete="bday"
+                required
+                disabled={loading}
+              />
+            </div>
           </>
         )}
 

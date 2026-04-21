@@ -366,29 +366,29 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
                         type="button"
                         onClick={() => void openBetModal(option)}
                         disabled={status.isClosed || option.odds === ''}
-                        className="w-full rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4 text-left transition hover:border-cyan-400/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="w-full rounded-[22px] border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-cyan-400/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-[24px] sm:px-4 sm:py-4"
                       >
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-center justify-between gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between">
                           <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#141a22]">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[#141a22] sm:h-12 sm:w-12 sm:rounded-2xl">
                               {option.imageUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={option.imageUrl} alt={option.label} className="h-full w-full object-cover" />
                               ) : (
-                                <span className="text-sm font-bold text-white">{option.label.slice(0, 1).toUpperCase()}</span>
+                                <span className="text-xs font-bold text-white sm:text-sm">{option.label.slice(0, 1).toUpperCase()}</span>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-base font-semibold text-white">{option.label}</p>
-                              <p className="mt-1 text-sm text-zinc-400">Odds {getDisplayedOdd(option.odds)}</p>
+                              <p className="truncate text-sm font-semibold text-white sm:text-base">{option.label}</p>
+                              <p className="mt-0.5 text-xs text-zinc-400 sm:mt-1 sm:text-sm">Odds {getDisplayedOdd(option.odds)}</p>
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-cyan-500/12 px-3 py-1.5 text-sm font-semibold text-cyan-300">
+                          <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                            <span className="rounded-full bg-cyan-500/12 px-2.5 py-1 text-xs font-semibold text-cyan-300 sm:px-3 sm:py-1.5 sm:text-sm">
                               {getDisplayedOdd(option.odds)}
                             </span>
-                            <span className="rounded-full bg-white/[0.08] px-3 py-1.5 text-sm font-semibold text-white">
+                            <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-xs font-semibold text-white sm:px-3 sm:py-1.5 sm:text-sm">
                               {option.percent}%
                             </span>
                           </div>
