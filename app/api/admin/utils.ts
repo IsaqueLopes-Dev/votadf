@@ -9,6 +9,18 @@ type AdminApiUser = {
   last_sign_in_at?: string;
 };
 
+type PublicUserRecord = {
+  id: string;
+  email?: string | null;
+  username?: string | null;
+  cpf?: string | null;
+  birth_date?: string | null;
+  avatar_url?: string | null;
+  role?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 const getSupabaseUrl = () =>
   process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 
@@ -163,6 +175,83 @@ export const listAllAuthUsers = async (
   }
 
   return users;
+};
+
+const PUBLIC_USER_SELECT_VARIANTS = [
+  'id, email, username, cpf, birth_date, avatar_url, role, created_at, updated_at',
+  'id, email, username, cpf, birth_date, avatar_url, role',
+  'id, email, username, cpf, birth_date, role',
+  'id, email, username, role',
+  'id, email, username',
+  'id',
+] as const;
+
+const isMissingColumnError = (message: string) => {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('column') &&
+    (normalized.includes('does not exist') || normalized.includes('could not find'))
+  );
+};
+
+const isMissingProfilesSchemaError = (message: string) => {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('profiles') &&
+    (
+      normalized.includes('does not exist') ||
+      normalized.includes('could not find') ||
+      normalized.includes('schema cache') ||
+      normalized.includes('column')
+    )
+  );
+};
+
+const readPublicUserRecords = async (
+  supabaseAdmin: ReturnType<typeof getAdminSupabase>,
+  table: 'profiles' | 'users',
+  userIds: string[]
+) => {
+  const targetIds = userIds.filter(Boolean);
+
+  for (const select of PUBLIC_USER_SELECT_VARIANTS) {
+    let query = supabaseAdmin.from(table).select(select);
+
+    if (targetIds.length) {
+      query = query.in('id', targetIds);
+    }
+
+    const { data, error } = await query;
+
+    if (!error) {
+      return (data || []) as unknown as PublicUserRecord[];
+    }
+
+    const message = String(error.message || '');
+
+    if (table === 'profiles') {
+      if (!isMissingProfilesSchemaError(message)) {
+        throw new Error(message);
+      }
+    } else if (!isMissingColumnError(message)) {
+      throw new Error(message);
+    }
+  }
+
+  return [] as PublicUserRecord[];
+};
+
+export const listKnownPublicUsers = async (
+  supabaseAdmin: ReturnType<typeof getAdminSupabase>,
+  userIds: string[]
+) => {
+  const profileRecords = await readPublicUserRecords(supabaseAdmin, 'profiles', userIds);
+
+  if (profileRecords.length > 0) {
+    return profileRecords;
+  }
+
+  return readPublicUserRecords(supabaseAdmin, 'users', userIds);
 };
 
 export const toNumber = (value: unknown) => {

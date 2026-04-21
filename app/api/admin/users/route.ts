@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import {
   ensureAdminRequest,
   getUserDisplayName,
+  listKnownPublicUsers,
   listAllAuthUsers,
   toNumber,
   toStringArray,
@@ -15,44 +16,41 @@ export async function GET(request: Request) {
   }
 
   try {
-    const users = await listAllAuthUsers(supabaseAdmin);
-    const userIds = users.map((user) => user.id);
-    const profileRolesResult = userIds.length
-      ? await supabaseAdmin.from('profiles').select('id, role').in('id', userIds)
-      : { data: [], error: null };
-    const legacyRolesResult =
-      profileRolesResult.error && userIds.length
-        ? await supabaseAdmin.from('users').select('id, role').in('id', userIds)
-        : { data: [], error: null };
+    const authUsers = await listAllAuthUsers(supabaseAdmin);
+    const authUsersById = new Map(authUsers.map((user) => [user.id, user]));
+    const publicUsers = await listKnownPublicUsers(supabaseAdmin, authUsers.map((user) => user.id));
+    const publicUserById = new Map(publicUsers.map((user) => [String(user.id), user]));
+    const allUserIds = new Set([
+      ...authUsers.map((user) => user.id),
+      ...publicUsers.map((user) => String(user.id)),
+    ]);
 
-    if (profileRolesResult.error && legacyRolesResult.error) {
-      throw new Error(legacyRolesResult.error.message);
-    }
-
-    const roles = profileRolesResult.error ? legacyRolesResult.data : profileRolesResult.data;
-
-    const roleByUserId = new Map(
-      (roles || []).map((row) => [String(row.id), String(row.role || 'user')])
-    );
-
-    const mappedUsers = users
-      .map((user) => {
-        const metadata = (user.user_metadata || {}) as Record<string, unknown>;
+    const mappedUsers = Array.from(allUserIds)
+      .map((userId) => {
+        const authUser = authUsersById.get(userId);
+        const publicUser = publicUserById.get(userId);
+        const metadata = ((authUser?.user_metadata || {}) as Record<string, unknown>);
+        const email = authUser?.email || String(publicUser?.email || '');
+        const username = String(metadata.username || publicUser?.username || '');
+        const cpf = String(metadata.cpf || publicUser?.cpf || '');
+        const birthDate = String(metadata.birth_date || publicUser?.birth_date || '');
+        const avatarUrl = String(metadata.avatar_url || publicUser?.avatar_url || '');
+        const role = String(publicUser?.role || 'user');
 
         return {
-          id: user.id,
-          email: user.email || '',
-          displayName: getUserDisplayName(metadata, user.email),
-          username: String(metadata.username || ''),
-          role: roleByUserId.get(user.id) || 'user',
-          cpf: String(metadata.cpf || ''),
-          birthDate: String(metadata.birth_date || ''),
-          avatarUrl: String(metadata.avatar_url || ''),
+          id: userId,
+          email,
+          displayName: username || getUserDisplayName(metadata, email),
+          username,
+          role,
+          cpf,
+          birthDate,
+          avatarUrl,
           balance: toNumber(metadata.balance ?? metadata.saldo),
           transactionCount: toStringArray(metadata.credited_pix_payment_ids).length,
           lastPixCreditAt: String(metadata.last_pix_credit_at || ''),
-          createdAt: user.created_at || '',
-          lastSignInAt: user.last_sign_in_at || '',
+          createdAt: authUser?.created_at || String(publicUser?.created_at || publicUser?.updated_at || ''),
+          lastSignInAt: authUser?.last_sign_in_at || '',
         };
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
