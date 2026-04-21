@@ -5,12 +5,12 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import CategoryCarousel from './category-carousel';
 import CategoryIcon from './category-icon';
+import { formatBitcoinRoundTime, getBitcoinRoundSnapshot } from '../utils/bitcoin-round';
 import {
   buildVotingOptionStats,
   getCategoryLabel,
   getDisplayedOdd,
   getParsedOptions,
-  getVotingPrimaryImage,
   getVotingStatus,
   parsePollMetadata,
   type BetCountsMap,
@@ -57,7 +57,7 @@ export default function PublicVotingBoard({
   useEffect(() => {
     const interval = window.setInterval(() => {
       setNowTimestamp(Date.now());
-    }, 30000);
+    }, 1000);
 
     return () => window.clearInterval(interval);
   }, []);
@@ -116,9 +116,10 @@ export default function PublicVotingBoard({
             const metadata = parsePollMetadata(votacao.descricao);
             const status = getVotingStatus(votacao, nowTimestamp);
             const optionStats = buildVotingOptionStats(votacao, betCounts).slice(0, 3);
-            const avatarImage = getVotingPrimaryImage(votacao);
-            const fallbackInitial = getParsedOptions(votacao)[0]?.label?.slice(0, 1).toUpperCase() || '?';
-
+            const bitcoinRound =
+              metadata.tipo === 'bitcoin-direcao'
+                ? getBitcoinRoundSnapshot(votacao.id, votacao.created_at, nowTimestamp)
+                : null;
             return (
               <Link
                 key={votacao.id}
@@ -134,34 +135,36 @@ export default function PublicVotingBoard({
                   >
                     <CategoryIcon category={metadata.categoria || 'todos'} className="h-4.5 w-4.5" />
                   </span>
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${
-                      status.tone === 'closed'
-                        ? 'bg-slate-700 text-slate-100 shadow-[0_10px_24px_-12px_rgba(51,65,85,0.95)]'
-                        : status.label === 'Em aberto'
-                          ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-12px_rgba(5,150,105,0.9)]'
-                          : 'bg-amber-400 text-[#2b1600] shadow-[0_10px_24px_-12px_rgba(251,191,36,0.95)]'
-                    }`}
-                  >
-                    {!status.isClosed && (
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${
+                        status.tone === 'closed'
+                          ? 'bg-slate-700 text-slate-100 shadow-[0_10px_24px_-12px_rgba(51,65,85,0.95)]'
+                          : status.label === 'Em aberto'
+                            ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-12px_rgba(5,150,105,0.9)]'
+                            : 'bg-amber-400 text-[#2b1600] shadow-[0_10px_24px_-12px_rgba(251,191,36,0.95)]'
+                      }`}
+                    >
+                      {!status.isClosed && (
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
+                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                        </span>
+                      )}
+                      {status.label}
+                    </span>
+                    {bitcoinRound && (
+                      <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-100 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]">
+                        <span className="uppercase tracking-[0.16em] text-cyan-200/80">Tempo</span>
+                        <span className="text-sm font-black tabular-nums text-white">
+                          {formatBitcoinRoundTime(bitcoinRound.timeLeft)}
+                        </span>
                       </span>
                     )}
-                    {status.label}
-                  </span>
+                  </div>
                 </div>
 
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-inner shadow-black/30">
-                    {avatarImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatarImage} alt={votacao.titulo} className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-bold text-white">{fallbackInitial}</span>
-                    )}
-                  </div>
+                <div className="mb-4">
                   <h3 className="text-sm font-semibold leading-6 text-white [display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {votacao.titulo}
                   </h3>

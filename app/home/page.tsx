@@ -7,6 +7,7 @@ import CategoryCarousel from '../components/category-carousel';
 import CategoryIcon from '../components/category-icon';
 import BottomNavigation from '../../components/bottom-navigation';
 import UiverseLoader from '../components/uiverse-loader';
+import { formatBitcoinRoundTime, getBitcoinRoundSnapshot } from '../utils/bitcoin-round';
 import { getSupabaseClient } from '../utils/supabaseClient';
 
 const META_PREFIX = '__meta__:';
@@ -20,7 +21,7 @@ const CATEGORY_OPTIONS = [
   { value: 'criptomoedas', label: 'Criptomoedas' },
 ] as const;
 
-type PollType = 'opcoes-livres' | 'enquete-candidatos';
+type PollType = 'opcoes-livres' | 'enquete-candidatos' | 'bitcoin-direcao';
 type PollCategory = 'politica' | 'entretenimento' | 'esportes' | 'financeiro' | 'celebridades' | 'criptomoedas' | '';
 type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
@@ -156,7 +157,12 @@ const parsePollMetadata = (descricao: string | null | undefined) => {
         bettingClosesAt?: string;
       };
       return {
-        tipo: parsed.tipo === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres',
+        tipo:
+          parsed.tipo === 'enquete-candidatos'
+            ? 'enquete-candidatos'
+            : parsed.tipo === 'bitcoin-direcao'
+              ? 'bitcoin-direcao'
+              : 'opcoes-livres',
         categoria: normalizePollCategory(parsed.categoria),
         statusAbertoLabel:
           parsed.statusAbertoLabel === 'em-aberto' || parsed.openStatusLabel === 'em-aberto'
@@ -1670,7 +1676,7 @@ function UsuariosPageContent() {
   useEffect(() => {
     const interval = window.setInterval(() => {
       setNowTimestamp(Date.now());
-    }, 30000);
+    }, 1000);
 
     return () => window.clearInterval(interval);
   }, []);
@@ -2770,6 +2776,10 @@ function UsuariosPageContent() {
                   const metadata = parsePollMetadata(votacao.descricao);
                   const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
                   const isBetClosed = votacao.ativa === false || (Number.isFinite(closeAtMs) && closeAtMs <= Date.now());
+                  const bitcoinRound =
+                    metadata.tipo === 'bitcoin-direcao'
+                      ? getBitcoinRoundSnapshot(votacao.id, votacao.created_at, nowTimestamp)
+                      : null;
                   const parsedOptions = Array.isArray(votacao.opcoes)
                     ? votacao.opcoes.map((opcao) => parsePollOption(opcao)).filter((option) => option.label || option.odds)
                     : [];
@@ -2779,7 +2789,6 @@ function UsuariosPageContent() {
                     return baseVotes + realVotes;
                   });
                   const totalVotes = votes.reduce((acc, current) => acc + current, 0);
-                  const coverImage = parsedOptions.find((option) => option.imageUrl)?.imageUrl || '';
                   const footerStatus = isBetClosed
                     ? 'Mercado encerrado'
                     : Number.isFinite(closeAtMs)
@@ -2810,36 +2819,36 @@ function UsuariosPageContent() {
                         >
                           <CategoryIcon category={metadata.categoria || 'todos'} className="h-4.5 w-4.5" />
                         </span>
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${
-                            isBetClosed
-                              ? 'bg-slate-700 text-slate-100 shadow-[0_10px_24px_-12px_rgba(51,65,85,0.95)]'
-                              : openStatusLabel === 'Em aberto'
-                                ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-12px_rgba(5,150,105,0.9)]'
-                                : 'bg-amber-400 text-[#2b1600] shadow-[0_10px_24px_-12px_rgba(251,191,36,0.95)]'
-                          }`}
-                        >
-                          {!isBetClosed && (
-                            <span className="relative flex h-2.5 w-2.5">
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
-                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-                            </span>
-                          )}
-                          {isBetClosed ? 'Encerrado' : openStatusLabel}
-                        </span>
-                      </div>
-
-                      <div className="mb-4 flex items-center gap-3">
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-inner shadow-black/30">
-                          {coverImage ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={coverImage} alt={votacao.titulo} className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-bold text-white">
-                              {parsedOptions[0]?.label?.slice(0, 1).toUpperCase() || '?'}
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${
+                              isBetClosed
+                                ? 'bg-slate-700 text-slate-100 shadow-[0_10px_24px_-12px_rgba(51,65,85,0.95)]'
+                                : openStatusLabel === 'Em aberto'
+                                  ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-12px_rgba(5,150,105,0.9)]'
+                                  : 'bg-amber-400 text-[#2b1600] shadow-[0_10px_24px_-12px_rgba(251,191,36,0.95)]'
+                            }`}
+                          >
+                            {!isBetClosed && (
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
+                                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+                              </span>
+                            )}
+                            {isBetClosed ? 'Encerrado' : openStatusLabel}
+                          </span>
+                          {bitcoinRound && (
+                            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-100 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]">
+                              <span className="uppercase tracking-[0.16em] text-cyan-200/80">Tempo</span>
+                              <span className="text-sm font-black tabular-nums text-white">
+                                {formatBitcoinRoundTime(bitcoinRound.timeLeft)}
+                              </span>
                             </span>
                           )}
                         </div>
+                      </div>
+
+                      <div className="mb-4">
                         <h3 className="text-sm font-semibold leading-6 text-white [display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                           {votacao.titulo}
                         </h3>

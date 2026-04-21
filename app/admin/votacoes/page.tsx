@@ -714,7 +714,7 @@ export default function AdminVotacoesPage() {
                     {isSportsCategory
                       ? 'Modelo esportivo com três resultados fixos.'
                       : isBitcoinMarket
-                        ? 'Mercado Bitcoin com duas direcoes fixas e liquidacao automatica.'
+                        ? 'Mercado Bitcoin com duas direções fixas e liquidação automática.'
                         : 'Cadastre pelo menos duas opções e envie as imagens diretamente do seu computador.'}
                   </p>
                 </div>
