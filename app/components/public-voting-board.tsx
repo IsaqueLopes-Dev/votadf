@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import CategoryCarousel from './category-carousel';
+import CategoryIcon from './category-icon';
 import {
   buildVotingOptionStats,
   getCategoryLabel,
@@ -126,8 +127,12 @@ export default function PublicVotingBoard({
                 className="group flex h-full min-h-[280px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,31,0.98)_0%,rgba(11,14,20,0.98)_100%)] p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.9)] transition duration-200 hover:-translate-y-1 hover:border-cyan-400/35 hover:shadow-[0_30px_80px_-42px_rgba(6,182,212,0.4)]"
               >
                 <div className="mb-4 flex items-start justify-between gap-3">
-                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300">
-                    {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                  <span
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-300"
+                    title={getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                    aria-label={getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                  >
+                    <CategoryIcon category={metadata.categoria || 'todos'} className="h-4.5 w-4.5" />
                   </span>
                   <span
                     className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${

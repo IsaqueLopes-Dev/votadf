@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 10;
 
 const PUBLIC_CACHE_HEADER = 'public, max-age=10, s-maxage=10, stale-while-revalidate=20';
+const PUBLIC_QUERY_TIMEOUT_MS = 5000;
 
 export async function GET() {
   try {
@@ -19,10 +20,21 @@ export async function GET() {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase
+    const query = supabase
       .from('votacoes')
       .select('id, titulo, descricao, opcoes, ativa, created_at')
       .order('created_at', { ascending: false });
+    const { data, error } = await Promise.race([
+      query,
+      new Promise<{ data: null; error: Error }>((resolve) => {
+        setTimeout(() => {
+          resolve({
+            data: null,
+            error: new Error('Timed out while loading public voting markets.'),
+          });
+        }, PUBLIC_QUERY_TIMEOUT_MS);
+      }),
+    ]);
 
     if (error) {
       return NextResponse.json(

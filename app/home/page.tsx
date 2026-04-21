@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import CategoryCarousel from '../components/category-carousel';
+import CategoryIcon from '../components/category-icon';
 import BottomNavigation from '../../components/bottom-navigation';
 import UiverseLoader from '../components/uiverse-loader';
 import { getSupabaseClient } from '../utils/supabaseClient';
@@ -786,6 +787,15 @@ function UsuariosPageContent() {
 
   const supabase = useMemo(() => getSupabaseClient(), []);
 
+  const applyUserMetadataProfile = (user: User) => {
+    setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
+    setCpf(user.user_metadata?.cpf || '');
+    setCpfConfirmation(user.user_metadata?.cpf || '');
+    setBirthDate(user.user_metadata?.birth_date || '');
+    setAvatarUrl(user.user_metadata?.avatar_url || '');
+    setUserRole(null);
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -799,37 +809,35 @@ function UsuariosPageContent() {
           } = await supabase.auth.getSession();
 
           if (session?.access_token) {
-            const response = await fetch('/api/profile/me', {
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-              },
-            });
+            try {
+              const response = await fetch('/api/profile/me', {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              });
 
-            if (response.ok) {
-              const payload = (await response.json()) as { profile?: UserProfile };
-              const profile = payload.profile;
+              if (response.ok) {
+                const payload = (await response.json()) as { profile?: UserProfile };
+                const profile = payload.profile;
 
-              if (profile) {
-                setUsername(profile.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
-                setCpf(profile.cpf || '');
-                setCpfConfirmation(profile.cpf || '');
-                setBirthDate(profile.birth_date || '');
-                setAvatarUrl(profile.avatar_url || '');
-                setUserRole(profile.role || null);
+                if (profile) {
+                  setUsername(profile.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
+                  setCpf(profile.cpf || '');
+                  setCpfConfirmation(profile.cpf || '');
+                  setBirthDate(profile.birth_date || '');
+                  setAvatarUrl(profile.avatar_url || '');
+                  setUserRole(profile.role || null);
+                } else {
+                  applyUserMetadataProfile(user);
+                }
+              } else {
+                applyUserMetadataProfile(user);
               }
-            } else {
-              setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
-              setCpf(user.user_metadata?.cpf || '');
-              setCpfConfirmation(user.user_metadata?.cpf || '');
-              setBirthDate(user.user_metadata?.birth_date || '');
-              setAvatarUrl(user.user_metadata?.avatar_url || '');
+            } catch {
+              applyUserMetadataProfile(user);
             }
           } else {
-            setUsername(user.user_metadata?.username || (user.email ? `@${user.email.split('@')[0]}` : '') || '');
-            setCpf(user.user_metadata?.cpf || '');
-            setCpfConfirmation(user.user_metadata?.cpf || '');
-            setBirthDate(user.user_metadata?.birth_date || '');
-            setAvatarUrl(user.user_metadata?.avatar_url || '');
+            applyUserMetadataProfile(user);
           }
         }
         await Promise.all([loadVotacoesAtivas(), loadBetCounts()]);
@@ -2769,8 +2777,12 @@ function UsuariosPageContent() {
                       className="group flex h-full min-h-[280px] flex-col rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,31,0.98)_0%,rgba(11,14,20,0.98)_100%)] p-4 text-left shadow-[0_24px_60px_-40px_rgba(15,23,42,0.9)] transition duration-200 hover:-translate-y-1 hover:border-cyan-400/35 hover:shadow-[0_30px_80px_-42px_rgba(6,182,212,0.4)]"
                     >
                       <div className="mb-4 flex items-start justify-between gap-3">
-                        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300">
-                          {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                        <span
+                          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-300"
+                          title={getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                          aria-label={getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                        >
+                          <CategoryIcon category={metadata.categoria || 'todos'} className="h-4.5 w-4.5" />
                         </span>
                         <span
                           className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${

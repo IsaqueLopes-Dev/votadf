@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../utils/supabaseClient';
+import CategoryIcon from './category-icon';
 import {
   buildVotingOptionStats,
   getCategoryLabel,
@@ -337,8 +338,12 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
               <div className="flex flex-col justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-300">
-                      {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                    <span
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-zinc-300"
+                      title={getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                      aria-label={getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
+                    >
+                      <CategoryIcon category={metadata.categoria || 'todos'} className="h-4.5 w-4.5" />
                     </span>
                     <span
                       className={`rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${
