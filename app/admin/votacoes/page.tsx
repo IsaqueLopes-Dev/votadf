@@ -607,7 +607,7 @@ export default function AdminVotacoesPage() {
                       Opções livres
                     </option>
                     <option value="bitcoin-direcao" className="text-slate-900">
-                      Bitcoin - Direcao
+                      Bitcoin - Direção
                     </option>
                   </select>
                 </div>
@@ -949,7 +949,7 @@ export default function AdminVotacoesPage() {
                           {item.pollType === 'enquete-candidatos'
                             ? 'Enquete com candidatos'
                             : item.pollType === 'bitcoin-direcao'
-                              ? 'Bitcoin - Direcao'
+                              ? 'Bitcoin - Direção'
                               : 'Opções livres'}
                         </span>
                         <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">

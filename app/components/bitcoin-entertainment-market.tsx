@@ -52,6 +52,29 @@ const BETTING_CLOSES_AT_SECONDS = 60;
 const ROUND_RESET_DELAY_SECONDS = 10;
 const GRAPH_POINT_COUNT = 28;
 const DEFAULT_ODD = 1.8;
+const MIN_ODD = 1.08;
+const HOUSE_MARGIN = 0.12;
+const HOUSE_LIQUIDITY = 300;
+
+type BitcoinPoolSide = {
+  amount: number;
+  potentialReturn: number;
+  bets: number;
+};
+
+type BitcoinPoolSnapshot = {
+  sides: {
+    Sobe: BitcoinPoolSide;
+    Desce: BitcoinPoolSide;
+  };
+};
+
+const createEmptyPoolSnapshot = (): BitcoinPoolSnapshot => ({
+  sides: {
+    Sobe: { amount: 0, potentialReturn: 0, bets: 0 },
+    Desce: { amount: 0, potentialReturn: 0, bets: 0 },
+  },
+});
 
 const createRoundId = () =>
   `btc-round-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -152,6 +175,7 @@ export default function BitcoinEntertainmentMarket({
   const [betAmount, setBetAmount] = useState('');
   const [betMessage, setBetMessage] = useState<string | null>(null);
   const [round, setRound] = useState<BitcoinRoundState>(() => createInitialRoundState());
+  const [poolSnapshot, setPoolSnapshot] = useState<BitcoinPoolSnapshot>(() => createEmptyPoolSnapshot());
   const settlingRoundsRef = useRef<Set<string>>(new Set());
 
   const options = useMemo(() => {
@@ -216,6 +240,109 @@ export default function BitcoinEntertainmentMarket({
   const currentRoundBet =
     userRoundBets.find((bet) => bet.roundId === round.roundId && (bet.status || 'aguardando') === 'aguardando') ||
     null;
+  const quotedAmount = Number(betAmount.replace(',', '.'));
+
+  const adjustedPoolSnapshot = useMemo(() => {
+    const snapshot = {
+      sides: {
+        Sobe: { ...poolSnapshot.sides.Sobe },
+        Desce: { ...poolSnapshot.sides.Desce },
+      },
+    };
+
+    if (!currentRoundBet) {
+      return snapshot;
+    }
+
+    const side = currentRoundBet.candidato === 'Sobe' ? snapshot.sides.Sobe : snapshot.sides.Desce;
+    side.amount = Math.max(0, Math.round((side.amount - (Number(currentRoundBet.amount) || 0)) * 100) / 100);
+    side.potentialReturn = Math.max(
+      0,
+      Math.round((side.potentialReturn - (Number(currentRoundBet.potentialReturn) || 0)) * 100) / 100
+    );
+    side.bets = Math.max(0, side.bets - 1);
+
+    return snapshot;
+  }, [currentRoundBet, poolSnapshot]);
+
+  const getDynamicOdd = useMemo(() => {
+    return (direction: BitcoinDirection) => {
+      const sidePool = adjustedPoolSnapshot.sides[direction].amount + HOUSE_LIQUIDITY;
+      const oppositeDirection = direction === 'Sobe' ? 'Desce' : 'Sobe';
+      const oppositePool = adjustedPoolSnapshot.sides[oppositeDirection].amount + HOUSE_LIQUIDITY;
+      const totalPool = sidePool + oppositePool;
+      const configuredOdd = options[direction].odd;
+      const rawOdd = (totalPool * (1 - HOUSE_MARGIN)) / Math.max(1, sidePool);
+
+      return Number(
+        Math.min(Math.max(rawOdd, MIN_ODD), Math.max(configuredOdd, DEFAULT_ODD)).toFixed(2)
+      );
+    };
+  }, [adjustedPoolSnapshot, options]);
+
+  const liveOdds = useMemo(
+    () => ({
+      Sobe: getDynamicOdd('Sobe'),
+      Desce: getDynamicOdd('Desce'),
+    }),
+    [getDynamicOdd]
+  );
+
+  const estimatedPotentialReturn =
+    Number.isFinite(quotedAmount) && quotedAmount > 0 && currentRoundBet
+      ? Math.round(quotedAmount * liveOdds[currentRoundBet.candidato as BitcoinDirection] * 100) / 100
+      : Number.isFinite(quotedAmount) && quotedAmount > 0
+        ? Math.round(quotedAmount * Math.max(liveOdds.Sobe, liveOdds.Desce) * 100) / 100
+        : 0;
+
+  useEffect(() => {
+    const loadPoolSnapshot = async () => {
+      try {
+        const response = await fetch(
+          `/api/votacoes/bitcoin-pools?votacaoId=${encodeURIComponent(votacao.id)}&roundId=${encodeURIComponent(round.roundId)}`,
+          { method: 'GET', cache: 'no-store' }
+        );
+
+        const payload = (await response.json()) as {
+          sides?: {
+            sobe?: BitcoinPoolSide;
+            desce?: BitcoinPoolSide;
+          };
+        };
+
+        if (!response.ok || !payload.sides) {
+          setPoolSnapshot(createEmptyPoolSnapshot());
+          return;
+        }
+
+        setPoolSnapshot({
+          sides: {
+            Sobe: {
+              amount: Number(payload.sides.sobe?.amount || 0),
+              potentialReturn: Number(payload.sides.sobe?.potentialReturn || 0),
+              bets: Number(payload.sides.sobe?.bets || 0),
+            },
+            Desce: {
+              amount: Number(payload.sides.desce?.amount || 0),
+              potentialReturn: Number(payload.sides.desce?.potentialReturn || 0),
+              bets: Number(payload.sides.desce?.bets || 0),
+            },
+          },
+        });
+      } catch {
+        setPoolSnapshot(createEmptyPoolSnapshot());
+      }
+    };
+
+    void loadPoolSnapshot();
+    const intervalId = window.setInterval(() => {
+      void loadPoolSnapshot();
+    }, 4000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [round.roundId, votacao.id]);
 
   useEffect(() => {
     router.prefetch('/home');
@@ -491,16 +618,16 @@ export default function BitcoinEntertainmentMarket({
     setBetMessage(null);
 
     try {
-      const option = options[direction];
+      const quotedOdd = getDynamicOdd(direction);
       const nextBalance = Math.round((adjustedAvailableBalance - amount) * 100) / 100;
       const nextBet: BitcoinBetItem = {
         id: existingRoundBet?.id || crypto.randomUUID(),
         votacaoId: votacao.id,
         votacaoTitulo: votacao.titulo,
         candidato: direction,
-        odd: option.odd,
+        odd: quotedOdd,
         amount,
-        potentialReturn: Math.round(amount * option.odd * 100) / 100,
+        potentialReturn: Math.round(amount * quotedOdd * 100) / 100,
         createdAt: new Date().toISOString(),
         roundId: round.roundId,
         marketType: 'bitcoin-direction',
@@ -529,10 +656,37 @@ export default function BitcoinEntertainmentMarket({
         setUser(data.user);
       }
 
+      setPoolSnapshot((current) => {
+        const nextSnapshot = {
+          sides: {
+            Sobe: { ...current.sides.Sobe },
+            Desce: { ...current.sides.Desce },
+          },
+        };
+
+        if (existingRoundBet) {
+          const previousSide =
+            existingRoundBet.candidato === 'Sobe' ? nextSnapshot.sides.Sobe : nextSnapshot.sides.Desce;
+          previousSide.amount = Math.max(0, previousSide.amount - (Number(existingRoundBet.amount) || 0));
+          previousSide.potentialReturn = Math.max(
+            0,
+            previousSide.potentialReturn - (Number(existingRoundBet.potentialReturn) || 0)
+          );
+          previousSide.bets = Math.max(0, previousSide.bets - 1);
+        }
+
+        const nextSide = direction === 'Sobe' ? nextSnapshot.sides.Sobe : nextSnapshot.sides.Desce;
+        nextSide.amount = Math.round((nextSide.amount + amount) * 100) / 100;
+        nextSide.potentialReturn = Math.round((nextSide.potentialReturn + nextBet.potentialReturn) * 100) / 100;
+        nextSide.bets += 1;
+
+        return nextSnapshot;
+      });
+
       setBetMessage(
         existingRoundBet
-          ? `Escolha atualizada para ${direction}.`
-          : `Aposta registrada em ${direction}.`
+          ? `Escolha atualizada para ${direction} com odd ${quotedOdd.toFixed(2)}x.`
+          : `Aposta registrada em ${direction} com odd ${quotedOdd.toFixed(2)}x.`
       );
     } catch (error) {
       setBetMessage(
@@ -653,7 +807,7 @@ export default function BitcoinEntertainmentMarket({
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {(['Sobe', 'Desce'] as BitcoinDirection[]).map((direction) => {
-                  const option = options[direction];
+                  const liveOdd = liveOdds[direction];
                   const isSelected = currentRoundBet?.candidato === direction;
                   const isBusy = placingBet === direction;
 
@@ -675,9 +829,16 @@ export default function BitcoinEntertainmentMarket({
                           <p className="mt-1 text-xs text-zinc-300">
                             {isSelected ? 'Sua escolha atual nesta rodada' : 'Aposte na direcao final'}
                           </p>
+                          <p className="mt-2 text-[11px] text-zinc-400">
+                            Volume: {' '}
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(adjustedPoolSnapshot.sides[direction].amount)}
+                          </p>
                         </div>
                         <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white">
-                          {option.odd.toFixed(2)}x
+                          {liveOdd.toFixed(2)}x
                         </span>
                       </div>
                     </button>
@@ -688,7 +849,7 @@ export default function BitcoinEntertainmentMarket({
               <div className="mt-5 rounded-[24px] border border-white/10 bg-[#0f172a] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <label className="text-sm font-semibold text-white">Valor da aposta</label>
-                  <span className="text-xs text-zinc-500">Retorno = valor x odd</span>
+                  <span className="text-xs text-zinc-500">Odds variam conforme o volume apostado</span>
                 </div>
                 <div className="mt-3 flex items-center rounded-[18px] border border-white/10 bg-black/20 px-4 py-3">
                   <span className="text-sm font-bold text-cyan-300 sm:text-base">R$</span>
@@ -702,6 +863,16 @@ export default function BitcoinEntertainmentMarket({
                     disabled={!isBettingOpen || placingBet !== null}
                     className="w-full border-0 bg-transparent px-3 text-base font-semibold text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:text-slate-500 sm:text-lg"
                   />
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Odd Sobe</p>
+                    <p className="mt-2 text-lg font-semibold text-white">{liveOdds.Sobe.toFixed(2)}x</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-[0.16em] text-zinc-500">Odd Desce</p>
+                    <p className="mt-2 text-lg font-semibold text-white">{liveOdds.Desce.toFixed(2)}x</p>
+                  </div>
                 </div>
               </div>
 
@@ -748,6 +919,15 @@ export default function BitcoinEntertainmentMarket({
                   <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Apostas</p>
                   <p className="mt-2 text-lg font-semibold text-white">
                     {isBettingOpen ? 'Liberadas' : 'Bloqueadas'}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Volume da rodada</p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {new Intl.NumberFormat('pt-BR', {
+                      style: 'currency',
+                      currency: 'BRL',
+                    }).format(adjustedPoolSnapshot.sides.Sobe.amount + adjustedPoolSnapshot.sides.Desce.amount)}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4">
@@ -798,6 +978,9 @@ export default function BitcoinEntertainmentMarket({
                       style: 'currency',
                       currency: 'BRL',
                     }).format(currentRoundBet.potentialReturn)}
+                  </p>
+                  <p className="mt-1 text-xs text-cyan-100/75">
+                    Odd travada {currentRoundBet.odd.toFixed(2)}x no momento da entrada
                   </p>
                 </div>
               ) : (
