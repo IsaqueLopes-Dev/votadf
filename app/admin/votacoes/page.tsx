@@ -39,6 +39,7 @@ type VotingItem = {
   isActive: boolean;
   createdAt: string;
   options: VotingOption[];
+  bitcoinTitleImageUrl?: string;
 };
 
 type VotacoesResponse = {
@@ -111,6 +112,9 @@ const createInitialForm = () => ({
   closesAt: '',
   result: '',
   isActive: true,
+  bitcoinTitleImageUrl: '',
+  bitcoinTitleImageFile: null as File | null,
+  bitcoinTitleImagePreview: '',
   options: [emptyOption(), emptyOption()],
 });
 
@@ -151,6 +155,24 @@ const uploadVotingOptionImage = async (userId: string, option: VotingOption, ind
     throw new Error(
       `Erro ao enviar imagem da opção ${index + 1}: ${error.message}. Verifique se o bucket avatars permite upload para usuários autenticados.`
     );
+  }
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+  return data.publicUrl;
+};
+
+const uploadVotingAsset = async (userId: string, file: File, fileNamePrefix: string) => {
+  const originalName = file.name || `${fileNamePrefix}.jpg`;
+  const cleanName = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+  const filePath = `votacoes/${userId}/${Date.now()}-${fileNamePrefix}-${cleanName}`;
+
+  const { error } = await supabase.storage.from('avatars').upload(filePath, file, {
+    upsert: true,
+    contentType: file.type || 'image/jpeg',
+  });
+
+  if (error) {
+    throw new Error(`Erro ao enviar imagem: ${error.message}.`);
   }
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -232,8 +254,9 @@ export default function AdminVotacoesPage() {
   useEffect(() => {
     return () => {
       releaseFormPreviews(form.options);
+      releasePreview(form.bitcoinTitleImagePreview);
     };
-  }, [form.options, releaseFormPreviews]);
+  }, [form.bitcoinTitleImagePreview, form.options, releaseFormPreviews]);
 
   const filteredVotacoes = useMemo(() => {
     if (filter === 'active') return votacoes.filter((item) => item.isActive);
@@ -260,28 +283,37 @@ export default function AdminVotacoesPage() {
 
   const resetForm = useCallback(() => {
     releaseFormPreviews(form.options);
+    releasePreview(form.bitcoinTitleImagePreview);
     setForm(createInitialForm());
     setEditingId(null);
     setFeedbackMessage('');
-  }, [form.options, releaseFormPreviews]);
+  }, [form.bitcoinTitleImagePreview, form.options, releaseFormPreviews]);
 
   const handleCategoryChange = (category: PollCategory) => {
     setForm((current) => {
       if (category === 'esportes') {
+        releasePreview(current.bitcoinTitleImagePreview);
         return {
           ...current,
           category,
           pollType: 'opcoes-livres',
           result: SPORTS_OPTION_LABELS.includes(current.result as (typeof SPORTS_OPTION_LABELS)[number]) ? current.result : '',
+          bitcoinTitleImageUrl: '',
+          bitcoinTitleImageFile: null,
+          bitcoinTitleImagePreview: '',
           options: buildSportsOptions(current.options),
         };
       }
 
       if (current.pollType === 'bitcoin-direcao' && category !== 'criptomoedas') {
+        releasePreview(current.bitcoinTitleImagePreview);
         return {
           ...current,
           category,
           pollType: 'opcoes-livres',
+          bitcoinTitleImageUrl: '',
+          bitcoinTitleImageFile: null,
+          bitcoinTitleImagePreview: '',
           options: current.options.length ? current.options : [emptyOption(), emptyOption()],
         };
       }
@@ -306,8 +338,12 @@ export default function AdminVotacoesPage() {
         };
       }
 
+      releasePreview(current.bitcoinTitleImagePreview);
       return {
         ...current,
+        bitcoinTitleImageUrl: '',
+        bitcoinTitleImageFile: null,
+        bitcoinTitleImagePreview: '',
         pollType,
         options:
           current.pollType === 'bitcoin-direcao'
@@ -364,6 +400,31 @@ export default function AdminVotacoesPage() {
     }));
   };
 
+  const handleBitcoinTitleImageChange = (file: File | null) => {
+    setForm((current) => {
+      releasePreview(current.bitcoinTitleImagePreview);
+      const nextPreview = file ? URL.createObjectURL(file) : current.bitcoinTitleImageUrl;
+
+      return {
+        ...current,
+        bitcoinTitleImageFile: file,
+        bitcoinTitleImagePreview: nextPreview,
+      };
+    });
+  };
+
+  const clearBitcoinTitleImage = () => {
+    setForm((current) => {
+      releasePreview(current.bitcoinTitleImagePreview);
+      return {
+        ...current,
+        bitcoinTitleImageUrl: '',
+        bitcoinTitleImageFile: null,
+        bitcoinTitleImagePreview: '',
+      };
+    });
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -379,6 +440,13 @@ export default function AdminVotacoesPage() {
       if (!user?.id || !session?.access_token) {
         throw new Error('Sessão administrativa não encontrada.');
       }
+
+      const uploadedBitcoinTitleImageUrl =
+        form.pollType === 'bitcoin-direcao'
+          ? form.bitcoinTitleImageFile
+            ? await uploadVotingAsset(user.id, form.bitcoinTitleImageFile, 'bitcoin-title')
+            : form.bitcoinTitleImageUrl
+          : '';
 
       const uploadedOptions = await Promise.all(
         form.options.map(async (option, index) => {
@@ -404,6 +472,7 @@ export default function AdminVotacoesPage() {
           ...form,
           pollType: form.category === 'esportes' ? 'opcoes-livres' : form.pollType,
           result: form.pollType === 'bitcoin-direcao' ? '' : form.result,
+          bitcoinTitleImageUrl: uploadedBitcoinTitleImageUrl,
           options: uploadedOptions,
         }),
       });
@@ -696,6 +765,65 @@ export default function AdminVotacoesPage() {
                 </div>
               </div>
 
+              {isBitcoinMarket && (
+                <div className="rounded-[24px] border border-amber-400/15 bg-amber-500/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-white">Logo ao lado do título do Bitcoin</p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Essa imagem aparece ao lado do título no painel admin e pode ser usada em outras áreas do mercado Bitcoin.
+                      </p>
+                    </div>
+                    {(form.bitcoinTitleImagePreview || form.bitcoinTitleImageUrl) && (
+                      <button
+                        type="button"
+                        onClick={clearBitcoinTitleImage}
+                        className="rounded-full border border-white/10 px-3 py-1 text-[11px] font-semibold text-slate-300 transition hover:bg-white/5"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-black/20 px-4 py-5 text-center transition hover:bg-white/5">
+                    {form.bitcoinTitleImagePreview || form.bitcoinTitleImageUrl ? (
+                      <div className="flex w-full flex-col items-center gap-3">
+                        <div className="relative h-20 w-20 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
+                          <Image
+                            src={form.bitcoinTitleImagePreview || form.bitcoinTitleImageUrl}
+                            alt="Logo do título do Bitcoin"
+                            fill
+                            sizes="80px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        <span className="text-xs font-medium text-slate-300">
+                          {form.bitcoinTitleImageFile ? form.bitcoinTitleImageFile.name : 'Imagem atual do título'}
+                        </span>
+                        <span className="text-[11px] text-slate-500">Clique para substituir</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="rounded-full border border-white/10 bg-white/5 p-3 text-amber-200">
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 16V4m0 0 4 4m-4-4-4 4M4 16.5v1.25A2.25 2.25 0 0 0 6.25 20h11.5A2.25 2.25 0 0 0 20 17.75V16.5" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium text-slate-200">Selecionar logo do Bitcoin</span>
+                        <span className="text-[11px] text-slate-500">PNG, JPG ou WEBP</span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => handleBitcoinTitleImageChange(event.target.files?.[0] || null)}
+                    />
+                  </label>
+                </div>
+              )}
+
               <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
                 <input
                   type="checkbox"
@@ -956,7 +1084,21 @@ export default function AdminVotacoesPage() {
                           {item.openStatusLabel === 'em-aberto' ? 'Em aberto' : 'Ao vivo'}
                         </span>
                       </div>
-                      <h3 className="mt-3 text-lg font-semibold text-white">{item.title}</h3>
+                      <div className="mt-3 flex items-center gap-2">
+                        {item.pollType === 'bitcoin-direcao' ? (
+                          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/25 bg-amber-500/10">
+                            <Image
+                              src={item.bitcoinTitleImageUrl || '/bitcoin.png'}
+                              alt="Bitcoin"
+                              width={18}
+                              height={18}
+                              className="h-[18px] w-[18px]"
+                              unoptimized
+                            />
+                          </span>
+                        ) : null}
+                        <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                      </div>
                       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{item.description}</p>
                       <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-400">
                         <span>Criada em {formatDateTime(item.createdAt)}</span>
@@ -985,6 +1127,9 @@ export default function AdminVotacoesPage() {
                             closesAt: item.closesAt ? item.closesAt.slice(0, 16) : '',
                             result: item.pollType === 'bitcoin-direcao' ? '' : item.result,
                             isActive: item.isActive,
+                            bitcoinTitleImageUrl: item.bitcoinTitleImageUrl || '',
+                            bitcoinTitleImageFile: null,
+                            bitcoinTitleImagePreview: item.bitcoinTitleImageUrl || '',
                             options:
                               item.pollType === 'bitcoin-direcao'
                                 ? buildBitcoinOptions(loadedOptions)

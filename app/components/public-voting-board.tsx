@@ -106,8 +106,8 @@ export default function PublicVotingBoard({
         <div className="text-cyan-200 text-center py-8 rounded-xl bg-cyan-900/30 border border-cyan-700">
           <p>
             {selectedCategory === 'todos'
-              ? 'Nenhuma votação disponível no momento. Volte em breve!'
-              : `Nenhuma votação encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
+              ? 'Nenhuma votaÃ§Ã£o disponÃ­vel no momento. Volte em breve!'
+              : `Nenhuma votaÃ§Ã£o encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
           </p>
         </div>
       ) : (
@@ -154,11 +154,8 @@ export default function PublicVotingBoard({
                       {status.label}
                     </span>
                     {bitcoinRound && (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-100 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]">
-                        <span className="uppercase tracking-[0.16em] text-cyan-200/80">Tempo</span>
-                        <span className="text-sm font-black tabular-nums text-white">
-                          {formatBitcoinRoundTime(bitcoinRound.timeLeft)}
-                        </span>
+                      <span className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm font-black tabular-nums text-white shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]">
+                        {formatBitcoinRoundTime(bitcoinRound.timeLeft)}
                       </span>
                     )}
                   </div>
@@ -169,33 +166,44 @@ export default function PublicVotingBoard({
                     {votacao.titulo}
                   </h3>
                 </div>
-
                 <div className="flex-1 space-y-2.5">
                   {optionStats.length > 0 ? (
                     optionStats.map((option, index) => {
                       const optionInitial = option.label.slice(0, 1).toUpperCase() || '?';
 
+                      const isBitcoinDirection = metadata.tipo === 'bitcoin-direcao';
+                      const normalizedLabel = option.label.trim().toLowerCase();
+                      const optionToneClass = isBitcoinDirection
+                        ? normalizedLabel.includes('sobe')
+                          ? 'border-emerald-400/20 bg-emerald-500/10'
+                          : normalizedLabel.includes('desce')
+                            ? 'border-rose-400/20 bg-rose-500/10'
+                            : 'border-white/8 bg-white/[0.03]'
+                        : 'border-white/8 bg-white/[0.03]';
+
                       return (
                         <div
                           key={`${votacao.id}-${option.label || index}`}
-                          className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
+                          className={`rounded-2xl border px-3 py-3 ${optionToneClass}`}
                         >
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
-                                {option.imageUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img
-                                    src={option.imageUrl}
-                                    alt={option.label || `Opção ${index + 1}`}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <span className="text-xs font-semibold text-white">{optionInitial}</span>
-                                )}
-                              </div>
+                              {metadata.tipo !== 'bitcoin-direcao' ? (
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
+                                  {option.imageUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={option.imageUrl}
+                                      alt={option.label || `Opção ${index + 1}`}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-xs font-semibold text-white">{optionInitial}</span>
+                                  )}
+                                </div>
+                              ) : null}
                               <span className="truncate text-sm font-medium text-zinc-100">
-                                {option.label || `Opção ${index + 1}`}
+                                {option.label || `OpÃ§Ã£o ${index + 1}`}
                               </span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
@@ -207,18 +215,20 @@ export default function PublicVotingBoard({
                               </span>
                             </div>
                           </div>
-                          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
-                              style={{ width: `${option.percent}%` }}
-                            />
-                          </div>
+                          {metadata.tipo !== 'bitcoin-direcao' ? (
+                            <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
+                                style={{ width: `${option.percent}%` }}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       );
                     })
                   ) : (
                     <p className="rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-xs text-zinc-400">
-                      Nenhuma opção disponível para esta votação no momento.
+                      Nenhuma opÃ§Ã£o disponÃ­vel para esta votaÃ§Ã£o no momento.
                     </p>
                   )}
                 </div>
@@ -237,3 +247,4 @@ export default function PublicVotingBoard({
     </>
   );
 }
+

@@ -12,9 +12,10 @@ import {
   type BitcoinDirection,
 } from '../utils/bitcoin-round';
 import {
-  calculateBitcoinDynamicOdd,
+  calculateBitcoinDynamicOdds,
   createEmptyPoolSnapshot,
   extractBitcoinAccountSnapshotFromMetadata,
+  getBitcoinRoundConfiguredOdds,
   subtractBetFromPoolSnapshot,
   type BitcoinAccountSnapshot,
   type BitcoinBetItem,
@@ -53,30 +54,37 @@ type ChartSample = {
 
 const getResultHistoryStorageKey = (votacaoId: string) => `bitcoin-result-history:${votacaoId}`;
 
-const CHART_WIDTH = 100;
+const CHART_WIDTH = 160;
 const CHART_HEIGHT = 100;
 const CHART_PADDING = {
   top: 8,
-  right: 13,
+  right: 18,
   bottom: 14,
-  left: 4,
+  left: 6,
 };
+const BITCOIN_PRICE_BASELINE = 374626.13;
+const BITCOIN_PRICE_PER_POINT = 210;
+const BITCOIN_PRICE_MAX_STEP_PER_SECOND = 48;
+const BITCOIN_PRICE_MIN_SIGNIFICANT_STEP = 12;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 const easeOutCubic = (value: number) => 1 - Math.pow(1 - value, 3);
-
-const formatChartValue = (value: number) =>
-  new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 
 const formatCurrencyValue = (value: number) =>
   new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   }).format(value);
+
+const formatBitcoinPriceValue = (value: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
+const convertChartValueToBitcoinPrice = (value: number) =>
+  BITCOIN_PRICE_BASELINE + (value - 100) * BITCOIN_PRICE_PER_POINT;
 
 const getChartPoints = (
   committedSamples: ChartSample[],
@@ -165,11 +173,13 @@ export default function BitcoinEntertainmentMarket({
   const [betAmount, setBetAmount] = useState('');
   const [betMessage, setBetMessage] = useState<string | null>(null);
   const [selectedDirection, setSelectedDirection] = useState<BitcoinDirection | null>(null);
+  const [isCompactChart, setIsCompactChart] = useState(false);
   const [poolSnapshot, setPoolSnapshot] = useState<BitcoinPoolSnapshot>(() => createEmptyPoolSnapshot());
   const [resultHistory, setResultHistory] = useState<BitcoinResultHistoryItem[]>([]);
   const [chartSamples, setChartSamples] = useState<ChartSample[]>([]);
   const [liveCurrentPrice, setLiveCurrentPrice] = useState<number | null>(null);
   const [liveTargetPrice, setLiveTargetPrice] = useState<number | null>(null);
+  const [displayedBitcoinPrice, setDisplayedBitcoinPrice] = useState(BITCOIN_PRICE_BASELINE);
   const [chartMotionProgress, setChartMotionProgress] = useState(0);
   const settlingRoundsRef = useRef<Set<string>>(new Set());
   const chartSamplesRef = useRef<ChartSample[]>([]);
@@ -178,6 +188,7 @@ export default function BitcoinEntertainmentMarket({
   const liveTargetPriceRef = useRef<number | null>(null);
   const liveVelocityRef = useRef(0);
   const targetVelocityRef = useRef(0);
+  const displayedBitcoinPriceRef = useRef(BITCOIN_PRICE_BASELINE);
   const currentDirectionRef = useRef<BitcoinDirection>('Sobe');
   const chartMotionProgressRef = useRef(0);
   const lastFrameTimeRef = useRef<number | null>(null);
@@ -296,7 +307,7 @@ export default function BitcoinEntertainmentMarket({
     const verticalPadding = baseRange * 0.18;
     const scaledMin = minValue - verticalPadding;
     const scaledMax = maxValue + verticalPadding;
-    const steps = 4;
+    const steps = isCompactChart ? 2 : 4;
     const drawableHeight = CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
 
     return Array.from({ length: steps + 1 }, (_, index) => {
@@ -306,45 +317,35 @@ export default function BitcoinEntertainmentMarket({
 
       return {
         y,
-        value: formatChartValue(value),
+        value: formatBitcoinPriceValue(convertChartValueToBitcoinPrice(value)),
       };
     });
-  }, [renderedPoints]);
+  }, [isCompactChart, renderedPoints]);
   const chartTimeLabels = useMemo(() => {
     const totalWindow = Math.max(1, round.points.length - 1);
+    const labelRatios = isCompactChart ? [0, 0.5, 1] : [0, 0.33, 0.66, 1];
 
-    return [0, 0.33, 0.66, 1].map((ratio) => {
+    return labelRatios.map((ratio) => {
       const elapsedOffset = Math.round((1 - ratio) * totalWindow);
       return {
         x: CHART_PADDING.left + ratio * (CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right),
         label: formatBitcoinRoundTime(round.timeLeft + elapsedOffset),
       };
     });
-  }, [round.points.length, round.timeLeft]);
+  }, [isCompactChart, round.points.length, round.timeLeft]);
 
   const adjustedPoolSnapshot = useMemo(() => {
     return subtractBetFromPoolSnapshot(poolSnapshot, currentRoundBet);
   }, [currentRoundBet, poolSnapshot]);
-
-  const getDynamicOdd = useMemo(() => {
-    return (direction: BitcoinDirection) => {
-      return calculateBitcoinDynamicOdd(
-        adjustedPoolSnapshot,
-        direction,
-        options[direction].odd,
-        DEFAULT_ODD
-      );
-    };
-  }, [adjustedPoolSnapshot, options]);
-
-  const liveOdds = useMemo(
-    () => ({
-      Sobe: getDynamicOdd('Sobe'),
-      Desce: getDynamicOdd('Desce'),
-    }),
-    [getDynamicOdd]
+  const roundConfiguredOdds = useMemo(
+    () => getBitcoinRoundConfiguredOdds(round.roundId, { Sobe: options.Sobe.odd, Desce: options.Desce.odd }, DEFAULT_ODD),
+    [options.Desce.odd, options.Sobe.odd, round.roundId]
   );
 
+  const liveOdds = useMemo(
+    () => calculateBitcoinDynamicOdds(adjustedPoolSnapshot, roundConfiguredOdds, DEFAULT_ODD),
+    [adjustedPoolSnapshot, roundConfiguredOdds]
+  );
   const estimatedPotentialReturn =
     Number.isFinite(quotedAmount) && quotedAmount > 0 && selectedDirection
       ? Math.round(quotedAmount * liveOdds[selectedDirection] * 100) / 100
@@ -372,6 +373,37 @@ export default function BitcoinEntertainmentMarket({
       height: pillHeight,
     };
   }, [latestChartPoint, liveOdds, quotedAmount, selectedDirection]);
+  const chartPriceLabel = useMemo(() => {
+    if (!latestChartPoint) {
+      return null;
+    }
+
+    const currentPrice = displayedBitcoinPrice;
+    const priceLabel = formatBitcoinPriceValue(currentPrice);
+    const pillWidth = Math.max(24, priceLabel.length * 2.85 + 10);
+    const pillHeight = 8.2;
+    const offsetX = latestChartPoint.x < CHART_WIDTH * 0.7 ? 4.4 : -(pillWidth + 4.4);
+    const offsetY = clamp(
+      latestChartPoint.y - pillHeight / 2,
+      CHART_PADDING.top + 7.5,
+      CHART_HEIGHT - CHART_PADDING.bottom - pillHeight - 1
+    );
+
+    return {
+      label: priceLabel,
+      rawValue: currentPrice,
+      x: clamp(
+        latestChartPoint.x + offsetX,
+        CHART_PADDING.left + 1,
+        CHART_WIDTH - CHART_PADDING.right - pillWidth
+      ),
+      y: offsetY,
+      width: pillWidth,
+      height: pillHeight,
+      guideY: latestChartPoint.y,
+      guideX2: latestChartPoint.x - 1.1,
+    };
+  }, [displayedBitcoinPrice, latestChartPoint]);
   const roundOutcomeOverlay = useMemo(() => {
     if (!round.result) {
       return null;
@@ -397,6 +429,22 @@ export default function BitcoinEntertainmentMarket({
   }, [currentRoundAnyBet, round.result]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 639px)');
+    const syncCompactChart = () => setIsCompactChart(mediaQuery.matches);
+
+    syncCompactChart();
+    mediaQuery.addEventListener('change', syncCompactChart);
+
+    return () => {
+      mediaQuery.removeEventListener('change', syncCompactChart);
+    };
+  }, []);
+
+  useEffect(() => {
     currentDirectionRef.current = currentDirection;
   }, [currentDirection]);
 
@@ -415,6 +463,8 @@ export default function BitcoinEntertainmentMarket({
       chartSamplesRef.current = [];
       setLiveCurrentPrice(null);
       setLiveTargetPrice(null);
+      displayedBitcoinPriceRef.current = BITCOIN_PRICE_BASELINE;
+      setDisplayedBitcoinPrice(BITCOIN_PRICE_BASELINE);
       liveCurrentPriceRef.current = null;
       liveTargetPriceRef.current = null;
       liveVelocityRef.current = 0;
@@ -438,6 +488,8 @@ export default function BitcoinEntertainmentMarket({
       lastObservedPointRef.current = latestValue;
       liveCurrentPriceRef.current = latestValue;
       liveTargetPriceRef.current = latestValue;
+      displayedBitcoinPriceRef.current =
+        latestValue != null ? convertChartValueToBitcoinPrice(latestValue) : BITCOIN_PRICE_BASELINE;
       liveVelocityRef.current = currentDirectionRef.current === 'Desce' ? -0.42 : 0.42;
       targetVelocityRef.current = liveVelocityRef.current;
       chartMotionProgressRef.current = 0;
@@ -445,6 +497,7 @@ export default function BitcoinEntertainmentMarket({
       setChartSamples(initialCommittedSamples);
       setLiveCurrentPrice(latestValue);
       setLiveTargetPrice(latestValue);
+      setDisplayedBitcoinPrice(displayedBitcoinPriceRef.current);
       setChartMotionProgress(0);
       return;
     }
@@ -502,6 +555,28 @@ export default function BitcoinEntertainmentMarket({
 
         liveCurrentPriceRef.current = nextPrice;
         setLiveCurrentPrice(nextPrice);
+
+        const nextDisplayedTarget = convertChartValueToBitcoinPrice(nextPrice);
+        const displayedPrice = displayedBitcoinPriceRef.current;
+        const maxStep = BITCOIN_PRICE_MAX_STEP_PER_SECOND * (deltaMs / 1000);
+        const rawDelta = nextDisplayedTarget - displayedPrice;
+        const easedDelta = rawDelta * 0.012;
+        const boundedDelta =
+          Math.abs(rawDelta) <= maxStep
+            ? rawDelta
+            : Math.sign(rawDelta) * Math.max(Math.abs(easedDelta), maxStep * 0.45);
+        const significantDelta =
+          Math.abs(rawDelta) < BITCOIN_PRICE_MIN_SIGNIFICANT_STEP
+            ? 0
+            : Math.sign(boundedDelta) *
+              Math.max(Math.abs(boundedDelta), BITCOIN_PRICE_MIN_SIGNIFICANT_STEP * (deltaMs / 1000));
+        const nextDisplayedPrice =
+          Math.abs(rawDelta) < BITCOIN_PRICE_MIN_SIGNIFICANT_STEP
+            ? displayedPrice
+            : displayedPrice + significantDelta;
+
+        displayedBitcoinPriceRef.current = nextDisplayedPrice;
+        setDisplayedBitcoinPrice(nextDisplayedPrice);
       }
 
       const nextProgress = chartMotionProgressRef.current + deltaMs / 1000;
@@ -890,35 +965,46 @@ export default function BitcoinEntertainmentMarket({
                 {votacao.titulo}
               </h1>
 
-              <div className="mt-6 rounded-[30px] border border-white/10 bg-[#0b1220] p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.9)] sm:p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="mt-6 rounded-[24px] border border-white/10 bg-[#0b1220] p-3.5 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.9)] sm:rounded-[30px] sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-300/80 sm:text-[11px] sm:tracking-[0.3em]">
                       Gráfico da rodada
                     </p>
-                    <p className="mt-2 text-sm text-zinc-400">
-                      Direção atual: <span className={currentDirection === 'Sobe' ? 'text-emerald-300' : 'text-rose-300'}>{currentDirection}</span>
+                    <p className="mt-2 flex items-center gap-2 text-[13px] font-medium text-slate-200 sm:text-[15px]">
+                      <span className="text-slate-400">Direção atual</span>
+                      <span
+                        className={`inline-flex min-w-6 items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold sm:text-sm ${
+                          currentDirection === 'Sobe'
+                            ? 'bg-emerald-500/14 text-emerald-300'
+                            : 'bg-rose-500/14 text-rose-300'
+                        }`}
+                        aria-label={currentDirection === 'Sobe' ? 'Positivo' : 'Negativo'}
+                        title={currentDirection === 'Sobe' ? 'Positivo' : 'Negativo'}
+                      >
+                        {currentDirection === 'Sobe' ? '▲' : '▼'}
+                      </span>
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                  <div className="text-left sm:text-right">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:text-xs sm:tracking-[0.24em]">
                       Tempo restante
                     </p>
-                    <p className="mt-2 text-2xl font-black tabular-nums text-white">{formatBitcoinRoundTime(round.timeLeft)}</p>
+                    <p className="mt-1 text-xl font-black tabular-nums text-white sm:mt-2 sm:text-2xl">{formatBitcoinRoundTime(round.timeLeft)}</p>
                   </div>
                 </div>
 
-                <div className="relative mt-5 overflow-hidden rounded-[26px] border border-emerald-300/10 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.12),transparent_24%),linear-gradient(180deg,#06110d_0%,#08110f_35%,#05080d_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_20px_45px_-30px_rgba(16,185,129,0.4)] sm:p-4">
+                <div className="relative mt-4 overflow-hidden rounded-[20px] border border-emerald-300/10 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.12),transparent_24%),linear-gradient(180deg,#06110d_0%,#08110f_35%,#05080d_100%)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_20px_45px_-30px_rgba(16,185,129,0.4)] sm:mt-5 sm:rounded-[26px] sm:p-4">
                   <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(148,163,184,0.03)_0%,rgba(15,23,42,0)_18%,rgba(15,23,42,0.2)_100%)]" />
                   {roundOutcomeOverlay && (
                     <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-4">
                       <div
-                        className={`min-w-[180px] rounded-[24px] border px-6 py-5 text-center shadow-[0_24px_80px_-35px_rgba(15,23,42,0.85)] backdrop-blur-md ${roundOutcomeOverlay.className}`}
+                        className={`min-w-[150px] rounded-[20px] border px-4 py-4 text-center shadow-[0_24px_80px_-35px_rgba(15,23,42,0.85)] backdrop-blur-md sm:min-w-[180px] sm:rounded-[24px] sm:px-6 sm:py-5 ${roundOutcomeOverlay.className}`}
                       >
-                        <p className="text-3xl font-black uppercase tracking-[0.12em] sm:text-4xl">
+                        <p className="text-2xl font-black uppercase tracking-[0.12em] sm:text-4xl">
                           {roundOutcomeOverlay.label}
                         </p>
-                        <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
+                        <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-80 sm:text-xs sm:tracking-[0.2em]">
                           {roundOutcomeOverlay.detail}
                         </p>
                       </div>
@@ -926,8 +1012,8 @@ export default function BitcoinEntertainmentMarket({
                   )}
                   <svg
                     viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-                    className="relative z-[1] h-56 w-full sm:h-72"
-                    preserveAspectRatio="none"
+                    className="relative z-[1] block h-auto w-full aspect-[1.28/1] sm:aspect-[1.7/1]"
+                    preserveAspectRatio="xMidYMid meet"
                   >
                     <defs>
                       <linearGradient id="bitcoin-chart-line-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -994,6 +1080,18 @@ export default function BitcoinEntertainmentMarket({
 
                     {areaPath ? <path d={areaPath} fill="url(#bitcoin-chart-area-gradient)" /> : null}
 
+                    {chartPriceLabel ? (
+                      <line
+                        x1={CHART_PADDING.left}
+                        x2={chartPriceLabel.guideX2}
+                        y1={chartPriceLabel.guideY}
+                        y2={chartPriceLabel.guideY}
+                        stroke="rgba(240, 171, 252, 0.34)"
+                        strokeWidth="0.34"
+                        strokeDasharray="1.5 1.8"
+                      />
+                    ) : null}
+
                     {graphPath ? (
                       <>
                         <path
@@ -1042,6 +1140,31 @@ export default function BitcoinEntertainmentMarket({
                       </g>
                     ) : null}
 
+                    {chartPriceLabel ? (
+                      <g className="pointer-events-none">
+                        <rect
+                          x={chartPriceLabel.x}
+                          y={chartPriceLabel.y}
+                          rx="5"
+                          ry="5"
+                          width={chartPriceLabel.width}
+                          height={chartPriceLabel.height}
+                          fill="rgba(2, 6, 23, 0.92)"
+                          stroke={isChartFalling ? 'rgba(248, 113, 113, 0.42)' : 'rgba(74, 222, 128, 0.42)'}
+                          strokeWidth="0.36"
+                        />
+                        <text
+                          x={chartPriceLabel.x + 4}
+                          y={chartPriceLabel.y + 5.05}
+                          fontSize="3.05"
+                          fontWeight="700"
+                          fill={isChartFalling ? '#fecaca' : '#dcfce7'}
+                        >
+                          {chartPriceLabel.label}
+                        </text>
+                      </g>
+                    ) : null}
+
                     {latestChartPoint ? (
                       <g filter="url(#bitcoin-chart-point-glow)">
                         <circle
@@ -1064,13 +1187,7 @@ export default function BitcoinEntertainmentMarket({
                 </div>
               </div>
 
-              {!isBettingOpen && round.result == null && (
-                <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-100">
-                  Apostas encerradas. Aguardando resultado...
-                </div>
-              )}
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid gap-2.5 sm:mt-6 sm:grid-cols-2 sm:gap-3">
                 {(['Sobe', 'Desce'] as BitcoinDirection[]).map((direction) => {
                   const liveOdd = liveOdds[direction];
                   const isSelected = selectedDirection === direction;
@@ -1089,7 +1206,7 @@ export default function BitcoinEntertainmentMarket({
                         setBetMessage(null);
                       }}
                       disabled={!isBettingOpen || isBusy}
-                      className={`rounded-[24px] border px-4 py-4 text-left transition ${
+                      className={`rounded-[20px] border px-3.5 py-3.5 text-left transition sm:rounded-[24px] sm:px-4 sm:py-4 ${
                         direction === 'Sobe'
                           ? 'border-emerald-400/20 bg-emerald-500/10 hover:bg-emerald-500/15'
                           : 'border-rose-400/20 bg-rose-500/10 hover:bg-rose-500/15'
@@ -1097,19 +1214,9 @@ export default function BitcoinEntertainmentMarket({
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-base font-semibold text-white">{direction}</p>
-                          <p className="mt-1 text-xs text-zinc-300">
-                            {isSelected ? 'Sua escolha atual nesta rodada' : 'Aposte na direção final'}
-                          </p>
-                          <p className="mt-2 text-[11px] text-zinc-400">
-                            Volume: {' '}
-                            {new Intl.NumberFormat('pt-BR', {
-                              style: 'currency',
-                              currency: 'BRL',
-                            }).format(adjustedPoolSnapshot.sides[direction].amount)}
-                          </p>
+                          <p className="text-[15px] font-semibold text-white sm:text-base">{direction}</p>
                         </div>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white">
+                        <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[13px] font-bold text-white sm:px-3 sm:text-sm">
                           {liveOdd.toFixed(2)}x
                         </span>
                       </div>
@@ -1119,19 +1226,19 @@ export default function BitcoinEntertainmentMarket({
               </div>
 
               {selectedDirection && (
-                <div className="mt-5 rounded-[24px] border border-cyan-400/20 bg-[#0f172a] p-4 shadow-[0_18px_40px_-28px_rgba(6,182,212,0.35)]">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="mt-5 rounded-[20px] border border-cyan-400/20 bg-[#0f172a] p-3.5 shadow-[0_18px_40px_-28px_rgba(6,182,212,0.35)] sm:rounded-[24px] sm:p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                     <div>
                       <label className="text-sm font-semibold text-white">Valor da aposta</label>
-                      <p className="mt-1 text-xs text-zinc-500">
+                      <p className="mt-1 text-[11px] text-zinc-500 sm:text-xs">
                         Escolha selecionada: {selectedDirection} com odd {liveOdds[selectedDirection].toFixed(2)}x
                       </p>
                     </div>
-                    <span className="rounded-full bg-cyan-500/12 px-3 py-1 text-sm font-bold text-cyan-200">
+                    <span className="w-fit rounded-full bg-cyan-500/12 px-3 py-1 text-sm font-bold text-cyan-200">
                       {liveOdds[selectedDirection].toFixed(2)}x
                     </span>
                   </div>
-                  <div className="mt-3 flex items-center rounded-[18px] border border-white/10 bg-black/20 px-4 py-3">
+                  <div className="mt-3 flex items-center rounded-[16px] border border-white/10 bg-black/20 px-3.5 py-3 sm:rounded-[18px] sm:px-4">
                     <span className="text-sm font-bold text-cyan-300 sm:text-base">R$</span>
                     <input
                       type="number"
@@ -1141,11 +1248,11 @@ export default function BitcoinEntertainmentMarket({
                       onChange={(event) => setBetAmount(event.target.value)}
                       placeholder="Ex: 50"
                       disabled={!isBettingOpen || placingBet !== null}
-                      className="w-full border-0 bg-transparent px-3 text-base font-semibold text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:text-slate-500 sm:text-lg"
+                      className="w-full border-0 bg-transparent px-2.5 text-[15px] font-semibold text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:text-slate-500 sm:px-3 sm:text-lg"
                     />
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-zinc-500">
+                  <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <p className="text-[11px] leading-4 text-zinc-500 sm:text-xs">
                       Retorno estimado:{' '}
                       <span className="font-semibold text-zinc-200">
                         {new Intl.NumberFormat('pt-BR', {
@@ -1158,7 +1265,7 @@ export default function BitcoinEntertainmentMarket({
                       type="button"
                       onClick={() => void placeBitcoinBet(selectedDirection)}
                       disabled={!isBettingOpen || placingBet !== null}
-                      className="rounded-full bg-[linear-gradient(135deg,#0891b2,#0f766e)] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="w-full rounded-full bg-[linear-gradient(135deg,#0891b2,#0f766e)] px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       {placingBet === selectedDirection ? 'Confirmando...' : 'Confirmar aposta'}
                     </button>
@@ -1176,7 +1283,7 @@ export default function BitcoinEntertainmentMarket({
 
           <section className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-[32px] border border-white/10 bg-[#0f131a] p-6">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">Resultados anteriores</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-cyan-300/80">Resultados anteriores</p>
               <h2 className="mt-2 text-xl font-semibold text-white">Histórico das últimas rodadas</h2>
               <div className="mt-4 space-y-3">
                 {resultHistory.length > 0 ? (
@@ -1218,3 +1325,6 @@ export default function BitcoinEntertainmentMarket({
     </>
   );
 }
+
+
+

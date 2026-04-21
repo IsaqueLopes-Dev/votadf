@@ -89,6 +89,7 @@ export const parsePollMetadata = (descricao: string | null | undefined) => {
         openStatusLabel?: OpenStatusLabel;
         encerramentoAposta?: string;
         bettingClosesAt?: string;
+        bitcoinTitleImageUrl?: string;
       };
 
       return {
@@ -104,6 +105,7 @@ export const parsePollMetadata = (descricao: string | null | undefined) => {
             ? 'em-aberto'
             : 'ao-vivo',
         encerramentoAposta: String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim(),
+        bitcoinTitleImageUrl: String(parsed.bitcoinTitleImageUrl || '').trim(),
         descricaoLimpa: cleanDescription,
       };
     } catch {
@@ -112,6 +114,7 @@ export const parsePollMetadata = (descricao: string | null | undefined) => {
         categoria: '' as PollCategory,
         statusAbertoLabel: 'ao-vivo' as OpenStatusLabel,
         encerramentoAposta: '',
+        bitcoinTitleImageUrl: '',
         descricaoLimpa: cleanDescription,
       };
     }
@@ -123,6 +126,7 @@ export const parsePollMetadata = (descricao: string | null | undefined) => {
       categoria: '' as PollCategory,
       statusAbertoLabel: 'ao-vivo' as OpenStatusLabel,
       encerramentoAposta: '',
+      bitcoinTitleImageUrl: '',
       descricaoLimpa: rawDescription.replace('__tipo__:enquete-candidatos\n', ''),
     };
   }
@@ -132,6 +136,7 @@ export const parsePollMetadata = (descricao: string | null | undefined) => {
     categoria: '' as PollCategory,
     statusAbertoLabel: 'ao-vivo' as OpenStatusLabel,
     encerramentoAposta: '',
+    bitcoinTitleImageUrl: '',
     descricaoLimpa: rawDescription,
   };
 };

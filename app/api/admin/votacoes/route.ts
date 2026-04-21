@@ -33,6 +33,7 @@ type VotingPayload = {
   closesAt?: unknown;
   isActive?: unknown;
   result?: unknown;
+  bitcoinTitleImageUrl?: unknown;
   options?: unknown;
 };
 
@@ -76,6 +77,7 @@ const buildDescricao = ({
   openStatusLabel,
   closesAt,
   result,
+  bitcoinTitleImageUrl,
 }: {
   description: string;
   category: PollCategory;
@@ -83,6 +85,7 @@ const buildDescricao = ({
   openStatusLabel: OpenStatusLabel;
   closesAt: string;
   result: string;
+  bitcoinTitleImageUrl: string;
 }) => {
   const metadata: Record<string, string> = {
     tipo: pollType,
@@ -98,6 +101,10 @@ const buildDescricao = ({
     metadata.resultadoVencedor = result;
   }
 
+  if (bitcoinTitleImageUrl) {
+    metadata.bitcoinTitleImageUrl = bitcoinTitleImageUrl;
+  }
+
   return `${META_PREFIX}${JSON.stringify(metadata)}\n${description}`;
 };
 
@@ -108,6 +115,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
   let openStatusLabel: OpenStatusLabel = 'ao-vivo';
   let closesAt = '';
   let result = '';
+  let bitcoinTitleImageUrl = '';
   let cleanDescription = rawDescription;
 
   if (rawDescription.startsWith(META_PREFIX)) {
@@ -122,6 +130,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
       openStatusLabel = normalizeOpenStatusLabel(parsed.statusAbertoLabel || parsed.openStatusLabel);
       closesAt = String(parsed.encerramentoAposta || parsed.bettingClosesAt || '').trim();
       result = String(parsed.resultadoVencedor || parsed.resultado || parsed.winner || '').trim();
+      bitcoinTitleImageUrl = String(parsed.bitcoinTitleImageUrl || '').trim();
     } catch {
       category = '';
     }
@@ -156,6 +165,7 @@ const parseVotingRow = (row: Record<string, unknown>) => {
     openStatusLabel,
     closesAt,
     result,
+    bitcoinTitleImageUrl,
     isActive: Boolean(row.ativa),
     createdAt: String(row.created_at || ''),
     options,
@@ -177,6 +187,7 @@ const validatePayload = (payload: VotingPayload) => {
   const closesAt = String(payload.closesAt || '').trim();
   const isActive = payload.isActive === false ? false : true;
   const result = String(payload.result || '').trim();
+  const bitcoinTitleImageUrl = String(payload.bitcoinTitleImageUrl || '').trim();
   const rawOptions = Array.isArray(payload.options) ? payload.options : [];
   const options = rawOptions.map((option) => toOptionRecord((option || {}) as VotingOptionInput)).filter((option) => option.label);
 
@@ -263,6 +274,7 @@ const validatePayload = (payload: VotingPayload) => {
       closesAt,
       isActive,
       result: normalizedResult,
+      bitcoinTitleImageUrl,
       serializedOptions,
       descricao: buildDescricao({
         description,
@@ -271,6 +283,7 @@ const validatePayload = (payload: VotingPayload) => {
         openStatusLabel,
         closesAt,
         result: normalizedResult,
+        bitcoinTitleImageUrl,
       }),
     },
   };

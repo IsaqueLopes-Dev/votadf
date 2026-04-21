@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedUnifiedProfileContext } from '../../profile/utils';
 import { DEFAULT_ODD, getBitcoinRoundSnapshot, type BitcoinDirection } from '../../../utils/bitcoin-round';
 import {
-  calculateBitcoinDynamicOdd,
+  calculateBitcoinDynamicOdds,
   createEmptyPoolSnapshot,
   extractBitcoinAccountSnapshotFromMetadata,
+  getBitcoinRoundConfiguredOdds,
   subtractBetFromPoolSnapshot,
   type BitcoinBetItem,
   type BitcoinPoolSnapshot,
@@ -218,9 +219,10 @@ export async function POST(request: Request) {
   }
 
   const configuredOdds = buildVotingOptions(voting.opcoes);
+  const roundConfiguredOdds = getBitcoinRoundConfiguredOdds(round.roundId, configuredOdds, DEFAULT_ODD);
   const currentPool = await buildPoolSnapshot(adminSupabase, voting.id, round.roundId);
   const adjustedPool = subtractBetFromPoolSnapshot(currentPool, existingRoundBet);
-  const acceptedOdd = calculateBitcoinDynamicOdd(adjustedPool, direction, configuredOdds[direction], DEFAULT_ODD);
+  const acceptedOdd = calculateBitcoinDynamicOdds(adjustedPool, roundConfiguredOdds, DEFAULT_ODD)[direction];
   const nextBet: BitcoinBetItem = {
     id: existingRoundBet?.id || crypto.randomUUID(),
     votacaoId: voting.id,

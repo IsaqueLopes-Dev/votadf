@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,7 +13,7 @@ import { getSupabaseClient } from '../utils/supabaseClient';
 const META_PREFIX = '__meta__:';
 const CATEGORY_OPTIONS = [
   { value: 'todos', label: 'Todos' },
-  { value: 'politica', label: 'Política' },
+  { value: 'politica', label: 'PolÃ­tica' },
   { value: 'entretenimento', label: 'Entretenimento' },
   { value: 'esportes', label: 'Esportes' },
   { value: 'financeiro', label: 'Financeiro' },
@@ -255,7 +255,7 @@ const getDisplayedOdd = (value: string) => {
 };
 
 const getCardDescription = (value: string) =>
-  value.replace(/^faça sua votação!\s*/i, '').replace(/^faca sua votacao!\s*/i, '').trim();
+  value.replace(/^faÃ§a sua votaÃ§Ã£o!\s*/i, '').replace(/^faca sua votacao!\s*/i, '').trim();
 
 const getCategoryLabel = (categoria: string) => {
   return CATEGORY_OPTIONS.find((option) => option.value === categoria)?.label || 'Sem categoria';
@@ -367,7 +367,7 @@ function UsuariosPageContent() {
     };
   }, [pendingAvatarPreview]);
 
-  // Carrega user e role após login
+  // Carrega user e role apÃ³s login
   useEffect(() => {
     const fetchUserAndRole = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -497,14 +497,14 @@ function UsuariosPageContent() {
       const payload = (await response.json()) as { votacoes?: VotingRecord[]; error?: string };
 
       if (!response.ok) {
-        setVotacoesError(payload.error || 'Não foi possível carregar as votações ativas.');
+        setVotacoesError(payload.error || 'NÃ£o foi possÃ­vel carregar as votaÃ§Ãµes ativas.');
         return;
       }
 
       setVotacoesAtivas(Array.isArray(payload.votacoes) ? payload.votacoes : []);
       setVotacoesError(null);
     } catch {
-      setVotacoesError('Não foi possível carregar as votações ativas.');
+      setVotacoesError('NÃ£o foi possÃ­vel carregar as votaÃ§Ãµes ativas.');
     }
   };
 
@@ -530,14 +530,14 @@ function UsuariosPageContent() {
       const payload = (await response.json()) as { history?: BetHistoryItem[]; error?: string };
 
       if (!response.ok) {
-        setBetHistoryError(payload.error || 'Não foi possível carregar histórico de apostas.');
+        setBetHistoryError(payload.error || 'NÃ£o foi possÃ­vel carregar histÃ³rico de apostas.');
         return;
       }
 
       setBetHistory(Array.isArray(payload.history) ? payload.history : []);
       setBetHistoryError(null);
     } catch {
-      setBetHistoryError('Não foi possível carregar histórico de apostas.');
+      setBetHistoryError('NÃ£o foi possÃ­vel carregar histÃ³rico de apostas.');
     }
   };
 
@@ -563,14 +563,14 @@ function UsuariosPageContent() {
       const payload = (await response.json()) as { history?: FinancialHistoryItem[]; error?: string };
 
       if (!response.ok) {
-        setFinancialHistoryError(payload.error || 'Não foi possível carregar histórico financeiro.');
+        setFinancialHistoryError(payload.error || 'NÃ£o foi possÃ­vel carregar histÃ³rico financeiro.');
         return;
       }
 
       setFinancialHistory(Array.isArray(payload.history) ? payload.history : []);
       setFinancialHistoryError(null);
     } catch {
-      setFinancialHistoryError('Não foi possível carregar histórico financeiro.');
+      setFinancialHistoryError('NÃ£o foi possÃ­vel carregar histÃ³rico financeiro.');
     }
   };
 
@@ -609,14 +609,14 @@ function UsuariosPageContent() {
       const payload = (await response.json()) as { messages?: ChatMessageItem[]; error?: string };
 
       if (!response.ok) {
-        setChatError(payload.error || 'Não foi possível carregar o chat ao vivo.');
+        setChatError(payload.error || 'NÃ£o foi possÃ­vel carregar o chat ao vivo.');
         return;
       }
 
       setChatMessages(Array.isArray(payload.messages) ? payload.messages : []);
       setChatError(null);
     } catch {
-      setChatError('Não foi possível carregar o chat ao vivo.');
+      setChatError('NÃ£o foi possÃ­vel carregar o chat ao vivo.');
     } finally {
       if (showLoader) {
         setLoadingChat(false);
@@ -646,7 +646,7 @@ function UsuariosPageContent() {
       if (!response.ok) {
         setCommentStatusByVotingId((current) => ({
           ...current,
-          [votacaoId]: payload.error || 'Não foi possível carregar os comentários.',
+          [votacaoId]: payload.error || 'NÃ£o foi possÃ­vel carregar os comentÃ¡rios.',
         }));
         return;
       }
@@ -659,7 +659,7 @@ function UsuariosPageContent() {
     } catch {
       setCommentStatusByVotingId((current) => ({
         ...current,
-        [votacaoId]: 'Não foi possível carregar os comentários.',
+        [votacaoId]: 'NÃ£o foi possÃ­vel carregar os comentÃ¡rios.',
       }));
     } finally {
       setLoadingCommentsByVotingId((current) => ({ ...current, [votacaoId]: false }));
@@ -711,7 +711,7 @@ function UsuariosPageContent() {
           return next;
         });
       } catch {
-        // Mantém o contador em zero se o preload falhar.
+        // MantÃ©m o contador em zero se o preload falhar.
       }
     };
 
@@ -740,7 +740,7 @@ function UsuariosPageContent() {
     }
 
     if (!message) {
-      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Digite um comentário.' }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Digite um comentÃ¡rio.' }));
       return;
     }
 
@@ -750,11 +750,11 @@ function UsuariosPageContent() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Sessão inválida. Faça login novamente.' }));
+        setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'SessÃ£o invÃ¡lida. FaÃ§a login novamente.' }));
         return;
       }
 
-      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Enviando comentário...' }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Enviando comentÃ¡rio...' }));
 
       const response = await fetch('/api/votacoes/comments', {
         method: 'POST',
@@ -772,7 +772,7 @@ function UsuariosPageContent() {
       if (!response.ok || !nextComment) {
         setCommentStatusByVotingId((current) => ({
           ...current,
-          [votacaoId]: payload.error || 'Não foi possível publicar o comentário.',
+          [votacaoId]: payload.error || 'NÃ£o foi possÃ­vel publicar o comentÃ¡rio.',
         }));
         return;
       }
@@ -782,11 +782,11 @@ function UsuariosPageContent() {
         [votacaoId]: [...(current[votacaoId] || []), nextComment],
       }));
       setCommentDraftByVotingId((current) => ({ ...current, [votacaoId]: '' }));
-      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'Comentário publicado.' }));
+      setCommentStatusByVotingId((current) => ({ ...current, [votacaoId]: 'ComentÃ¡rio publicado.' }));
     } catch {
       setCommentStatusByVotingId((current) => ({
         ...current,
-        [votacaoId]: 'Não foi possível publicar o comentário.',
+        [votacaoId]: 'NÃ£o foi possÃ­vel publicar o comentÃ¡rio.',
       }));
     }
   };
@@ -857,7 +857,7 @@ function UsuariosPageContent() {
           resetPixState();
         }
       } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
+        console.error('Erro ao verificar autenticaÃ§Ã£o:', error);
       } finally {
         setLoading(false);
       }
@@ -871,19 +871,19 @@ function UsuariosPageContent() {
   };
 
   const openBetModal = (votacao: VotingRecord, option: PollOption) => {
-    // Não exige mais CPF/data de nascimento para apostar
+    // NÃ£o exige mais CPF/data de nascimento para apostar
 
     const metadata = parsePollMetadata(votacao.descricao);
     const closeAtMs = metadata.encerramentoAposta ? new Date(metadata.encerramentoAposta).getTime() : NaN;
     const isBetClosed = Number.isFinite(closeAtMs) && closeAtMs <= Date.now();
     if (isBetClosed) {
-      alert('O prazo para apostar nesta votação já foi encerrado.');
+      alert('O prazo para apostar nesta votaÃ§Ã£o jÃ¡ foi encerrado.');
       return;
     }
 
     const odd = Number(option.odds);
     if (option.odds === '' || !Number.isFinite(odd) || odd <= 0) {
-      alert('Esta opção ainda não possui odd configurada.');
+      alert('Esta opÃ§Ã£o ainda nÃ£o possui odd configurada.');
       return;
     }
 
@@ -903,7 +903,7 @@ function UsuariosPageContent() {
 
     const amount = Number(betAmount.replace(',', '.'));
     if (!Number.isFinite(amount) || amount <= 0) {
-      setBetFeedback('Digite um valor válido para apostar.');
+      setBetFeedback('Digite um valor vÃ¡lido para apostar.');
       return;
     }
 
@@ -990,7 +990,7 @@ function UsuariosPageContent() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        setPixStatusMessage('Sessão expirada. Faça login novamente.');
+        setPixStatusMessage('SessÃ£o expirada. FaÃ§a login novamente.');
         return;
       }
 
@@ -1014,7 +1014,7 @@ function UsuariosPageContent() {
         const fallbackMessage =
           rawText.trim() && !rawText.trim().startsWith('<')
             ? rawText.trim()
-            : `Não foi possível gerar o PIX. (${response.status})`;
+            : `NÃ£o foi possÃ­vel gerar o PIX. (${response.status})`;
 
         setPixStatusMessage(payload?.error || fallbackMessage);
         return;
@@ -1028,7 +1028,7 @@ function UsuariosPageContent() {
       setPixPaymentId(String(payload.paymentId));
       setPixQrCode(payload.qrCode || null);
       setPixQrBase64(payload.qrCodeBase64 || null);
-      setPixStatusMessage('PIX gerado. Aguarde a confirmação do pagamento.');
+      setPixStatusMessage('PIX gerado. Aguarde a confirmaÃ§Ã£o do pagamento.');
     } catch (createPixError: unknown) {
       setPixStatusMessage(getErrorMessage(createPixError, 'Erro ao gerar PIX.'));
     } finally {
@@ -1040,12 +1040,12 @@ function UsuariosPageContent() {
     const amountToWithdraw = Number(withdrawAmount.replace(',', '.'));
 
     if (!Number.isFinite(amountToWithdraw) || amountToWithdraw <= 0) {
-      setWithdrawStatusMessage('Digite um valor válido para sacar.');
+      setWithdrawStatusMessage('Digite um valor vÃ¡lido para sacar.');
       return;
     }
 
     if (amountToWithdraw < MIN_WITHDRAWAL) {
-      setWithdrawStatusMessage(`Valor mínimo para saque é R$ ${MIN_WITHDRAWAL}.`);
+      setWithdrawStatusMessage(`Valor mÃ­nimo para saque Ã© R$ ${MIN_WITHDRAWAL}.`);
       return;
     }
 
@@ -1056,7 +1056,7 @@ function UsuariosPageContent() {
 
     const cpfValue = String(cpf || user?.user_metadata?.cpf || '').trim();
     if (!cpfValue) {
-      setWithdrawStatusMessage('CPF não cadastrado. Atualize seu perfil antes de sacar.');
+      setWithdrawStatusMessage('CPF nÃ£o cadastrado. Atualize seu perfil antes de sacar.');
       return;
     }
 
@@ -1069,7 +1069,7 @@ function UsuariosPageContent() {
       } = await supabase.auth.getSession();
 
       if (!session?.access_token) {
-        setWithdrawStatusMessage('Sessão expirada. Faça login novamente.');
+        setWithdrawStatusMessage('SessÃ£o expirada. FaÃ§a login novamente.');
         return;
       }
 
@@ -1085,11 +1085,11 @@ function UsuariosPageContent() {
       const payload = (await response.json()) as { message?: string; error?: string };
 
       if (!response.ok) {
-        setWithdrawStatusMessage(payload.error || 'Não foi possível solicitar saque.');
+        setWithdrawStatusMessage(payload.error || 'NÃ£o foi possÃ­vel solicitar saque.');
         return;
       }
 
-      setWithdrawStatusMessage(payload.message || 'Solicitação enviada com sucesso.');
+      setWithdrawStatusMessage(payload.message || 'SolicitaÃ§Ã£o enviada com sucesso.');
       await refreshAuthenticatedUser();
       await loadFinancialHistory();
       setTimeout(() => {
@@ -1131,7 +1131,7 @@ function UsuariosPageContent() {
 
       if (!session?.access_token) {
         setChatMessages((prev) => prev.filter((item) => item.id !== temporaryMessageId));
-        setChatError('Sessão expirada. Faça login novamente.');
+        setChatError('SessÃ£o expirada. FaÃ§a login novamente.');
         return;
       }
 
@@ -1148,14 +1148,14 @@ function UsuariosPageContent() {
 
       if (!response.ok) {
         setChatMessages((prev) => prev.filter((item) => item.id !== temporaryMessageId));
-        setChatError(payload.error || 'Não foi possível enviar a mensagem.');
+        setChatError(payload.error || 'NÃ£o foi possÃ­vel enviar a mensagem.');
         return;
       }
 
       setChatMessages((prev) => prev.map((item) => (item.id === temporaryMessageId ? (payload.message as ChatMessageItem) : item)));
     } catch {
       setChatMessages((prev) => prev.filter((item) => item.id !== temporaryMessageId));
-      setChatError('Não foi possível enviar a mensagem.');
+      setChatError('NÃ£o foi possÃ­vel enviar a mensagem.');
     } finally {
       setSendingChatMessage(false);
     }
@@ -1202,7 +1202,7 @@ function UsuariosPageContent() {
           }, 1200);
         }
       } catch {
-        // Ignora falhas transitórias de polling
+        // Ignora falhas transitÃ³rias de polling
       }
     };
 
@@ -1518,22 +1518,22 @@ function UsuariosPageContent() {
       const nextBirthDate = identityLocked ? currentLockedBirthDate : birthDate;
 
       if (!isValidUsername(normalizedUsername)) {
-        alert('Nome de usuário inválido. Use @ no início e não use espaços.');
+        alert('Nome de usuÃ¡rio invÃ¡lido. Use @ no inÃ­cio e nÃ£o use espaÃ§os.');
         return;
       }
 
       if (!identityLocked && !isValidCpf(cpf)) {
-        alert('CPF inválido.');
+        alert('CPF invÃ¡lido.');
         return;
       }
 
       if (!identityLocked && !birthDate) {
-        alert('Data de nascimento obrigatória.');
+        alert('Data de nascimento obrigatÃ³ria.');
         return;
       }
 
       if (!identityLocked && cpfDigits(cpf) !== cpfDigits(cpfConfirmation)) {
-        alert('Os CPFs informados não são iguais.');
+        alert('Os CPFs informados nÃ£o sÃ£o iguais.');
         return;
       }
 
@@ -1544,7 +1544,7 @@ function UsuariosPageContent() {
           (currentLockedBirthDate && birthDate && birthDate !== currentLockedBirthDate)
         )
       ) {
-        alert('CPF e data de nascimento já confirmados. Somente o admin pode alterar esses dados.');
+        alert('CPF e data de nascimento jÃ¡ confirmados. Somente o admin pode alterar esses dados.');
         return;
       }
 
@@ -1554,7 +1554,7 @@ function UsuariosPageContent() {
 
       const isAvailable = await checkUsernameAvailability(normalizedUsername);
       if (!isAvailable) {
-        alert('Esse nome de usuário já está em uso.');
+        alert('Esse nome de usuÃ¡rio jÃ¡ estÃ¡ em uso.');
         return;
       }
 
@@ -1617,13 +1617,13 @@ function UsuariosPageContent() {
           : {
               tone: 'success',
               title: 'Perfil atualizado',
-              message: 'Você ainda pode revisar CPF e data de nascimento antes de confirmar o bloqueio.',
+              message: 'VocÃª ainda pode revisar CPF e data de nascimento antes de confirmar o bloqueio.',
             }
       );
     } catch (profileError: unknown) {
       setProfileNotice({
         tone: 'error',
-        title: 'Não foi possível salvar',
+        title: 'NÃ£o foi possÃ­vel salvar',
         message: getErrorMessage(profileError, 'Erro desconhecido.'),
       });
     } finally {
@@ -1761,7 +1761,7 @@ function UsuariosPageContent() {
             />
             <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1}}>
               <span className="text-xl sm:text-2xl font-bold text-white shrink-0 tracking-tight" style={{fontFamily: 'inherit', marginBottom: -8, letterSpacing: 0}}>Votaai</span>
-              <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{marginTop: 0, fontFamily: 'inherit', textAlign: 'center'}}>Previsão</span>
+              <span className="text-xs sm:text-sm font-medium text-cyan-200" style={{marginTop: 0, fontFamily: 'inherit', textAlign: 'center'}}>PrevisÃ£o</span>
             </div>
           </div>
           <div className="relative flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:flex-nowrap sm:gap-3 min-w-0">
@@ -1802,15 +1802,15 @@ function UsuariosPageContent() {
                   <div className="overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-slate-950 via-blue-950 to-blue-900 shadow-[0_28px_60px_-24px_rgba(2,6,23,0.9)]">
                     <div className="border-b border-white/10 bg-gradient-to-r from-cyan-500/12 via-transparent to-blue-500/10 px-5 pb-5 pt-5">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/90">Painel financeiro</p>
-                      <p className="mt-2 text-xs text-blue-100/75">Saldo disponível</p>
+                      <p className="mt-2 text-xs text-blue-100/75">Saldo disponÃ­vel</p>
                       <p className="mt-1 text-3xl font-extrabold tracking-tight text-white">{formattedUserBalance}</p>
                     </div>
 
                     <div className="px-5 py-4">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300/80">CPF para saque</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{cpf || user?.user_metadata?.cpf || 'Não definido'}</p>
-                        <p className="mt-1 text-xs leading-5 text-blue-100/65">O valor solicitado será enviado para o CPF cadastrado na sua conta.</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{cpf || user?.user_metadata?.cpf || 'NÃ£o definido'}</p>
+                        <p className="mt-1 text-xs leading-5 text-blue-100/65">O valor solicitado serÃ¡ enviado para o CPF cadastrado na sua conta.</p>
                       </div>
 
                       <div className="mt-4 flex flex-col gap-2.5">
@@ -1846,14 +1846,14 @@ function UsuariosPageContent() {
                       }}
                         className="w-full rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-5 py-3 text-sm font-bold text-cyan-100 shadow-[0_14px_28px_-22px_rgba(34,211,238,0.7)] transition hover:bg-cyan-400/15 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                       >
-                        Ver histórico financeiro
+                        Ver histÃ³rico financeiro
                       </button>
                       </div>
                     </div>
                   </div>
                 </div>
             )}
-            {/* Botão Depositar */}
+            {/* BotÃ£o Depositar */}
             <button
               type="button"
               onClick={() => {
@@ -1882,8 +1882,8 @@ function UsuariosPageContent() {
                 void loadBetHistory();
               }}
               className="relative flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white/40 bg-blue-500 text-white shadow-sm transition hover:border-white/80"
-              title="Histórico de apostas"
-              aria-label="Histórico de apostas"
+              title="HistÃ³rico de apostas"
+              aria-label="HistÃ³rico de apostas"
             >
               <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 6.5A2.5 2.5 0 017 4h10a2.5 2.5 0 012.5 2.5v11A2.5 2.5 0 0117 20H7a2.5 2.5 0 01-2.5-2.5v-11z" />
@@ -1918,13 +1918,13 @@ function UsuariosPageContent() {
               >
                 <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-3 pb-3 pt-3 text-white sm:px-6 sm:pb-5 sm:pt-6">
                   <div>
-                    <h3 className="mt-0.5 text-sm font-bold sm:mt-1 sm:text-lg">Histórico de apostas</h3>
+                    <h3 className="mt-0.5 text-sm font-bold sm:mt-1 sm:text-lg">HistÃ³rico de apostas</h3>
                   </div>
                   <button
                     type="button"
                     onClick={() => setBetHistoryOpen(false)}
                     className="rounded-full border border-white/30 p-2 text-white transition hover:bg-white/15"
-                    aria-label="Fechar histórico"
+                    aria-label="Fechar histÃ³rico"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -1963,7 +1963,7 @@ function UsuariosPageContent() {
                           </div>
 
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-t border-cyan-900 pt-4 mt-2">
-                            <span className="text-xs text-cyan-400">Cotação <span className="font-bold text-cyan-200">{bet.odd.toFixed(2)}x</span></span>
+                            <span className="text-xs text-cyan-400">CotaÃ§Ã£o <span className="font-bold text-cyan-200">{bet.odd.toFixed(2)}x</span></span>
                             <span
                               className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-bold shadow-lg tracking-tight ${
                                 bet.status === 'ganhou'
@@ -1980,9 +1980,9 @@ function UsuariosPageContent() {
                                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                               )}
                               {bet.status === 'ganhou'
-                                ? 'Você ganhou'
+                                ? 'VocÃª ganhou'
                                 : bet.status === 'perdeu'
-                                  ? 'Você perdeu'
+                                  ? 'VocÃª perdeu'
                                   : (<><span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-200" />Aguardando resultado</>)}
                             </span>
                           </div>
@@ -1991,7 +1991,7 @@ function UsuariosPageContent() {
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-cyan-900 bg-gradient-to-br from-slate-900 to-blue-900 p-4 text-center text-xs text-cyan-200 sm:p-6 sm:text-sm">
-                      Você ainda não fez apostas.
+                      VocÃª ainda nÃ£o fez apostas.
                     </div>
                   )}
                 </div>
@@ -2004,14 +2004,14 @@ function UsuariosPageContent() {
               >
                 <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-6 pb-5 pt-6 text-white">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Área financeira</p>
-                    <h3 className="mt-1 text-lg font-bold">Histórico de depósitos e saques</h3>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cyan-100">Ãrea financeira</p>
+                    <h3 className="mt-1 text-lg font-bold">HistÃ³rico de depÃ³sitos e saques</h3>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFinancialHistoryOpen(false)}
                     className="rounded-full border border-white/30 p-2 text-white transition hover:bg-white/15"
-                    aria-label="Fechar histórico financeiro"
+                    aria-label="Fechar histÃ³rico financeiro"
                   >
                     <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -2033,7 +2033,7 @@ function UsuariosPageContent() {
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <p className="text-sm font-semibold text-cyan-200">
-                                {item.tipo === 'deposito' ? 'Depósito PIX' : 'Solicitação de saque'}
+                                {item.tipo === 'deposito' ? 'DepÃ³sito PIX' : 'SolicitaÃ§Ã£o de saque'}
                               </p>
                               <p className="mt-1 text-xs text-blue-200">{new Date(item.createdAt).toLocaleString('pt-BR')}</p>
                             </div>
@@ -2072,7 +2072,7 @@ function UsuariosPageContent() {
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-cyan-900 bg-gradient-to-br from-slate-900 to-blue-900 p-6 text-center text-sm text-cyan-200">
-                      Você ainda não possui histórico de depósitos ou saques.
+                      VocÃª ainda nÃ£o possui histÃ³rico de depÃ³sitos ou saques.
                     </div>
                   )}
                 </div>
@@ -2087,7 +2087,7 @@ function UsuariosPageContent() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-semibold text-white sm:text-base">Perfil da conta</h3>
-                      <p className="mt-0.5 text-[11px] text-cyan-200 sm:mt-1 sm:text-xs">Atualize seus dados de exibição.</p>
+                      <p className="mt-0.5 text-[11px] text-cyan-200 sm:mt-1 sm:text-xs">Atualize seus dados de exibiÃ§Ã£o.</p>
                     </div>
                     <button
                       type="button"
@@ -2153,9 +2153,9 @@ function UsuariosPageContent() {
                   <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
                     <p className="text-[11px] uppercase tracking-wide text-zinc-500">Email</p>
                     <p className="mt-1 break-all text-xs font-medium text-white sm:text-sm">{user?.email}</p>
-                    {/* Botão admin removido */}
+                    {/* BotÃ£o admin removido */}
 
-                    {/* Exibição do id removida */}
+                    {/* ExibiÃ§Ã£o do id removida */}
                   </div>
 
                   {pendingAvatarPreview && (
@@ -2219,7 +2219,7 @@ function UsuariosPageContent() {
 
                   <div className="rounded-2xl border border-white/10 bg-[#11151b] p-3 sm:p-4">
                     <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-zinc-300 sm:text-sm">
-                      Nome de usuário
+                      Nome de usuÃ¡rio
                     </label>
                     <input
                       id="profile-username"
@@ -2228,7 +2228,7 @@ function UsuariosPageContent() {
                       onChange={(e) => setUsername(normalizeUsername(e.target.value))}
                       minLength={3}
                       required
-                      placeholder="Nome de usuário (@seunome)"
+                      placeholder="Nome de usuÃ¡rio (@seunome)"
                       className="w-full rounded-xl border border-white/10 bg-[#0f1115] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:bg-[#0f1115] disabled:text-zinc-500"
                     />
                   </div>
@@ -2292,7 +2292,7 @@ function UsuariosPageContent() {
                         className="mt-0.5 h-4 w-4 rounded border-white/20 bg-[#0f1115] text-amber-400 focus:ring-amber-400"
                       />
                       <span>
-                        Confirmo que meu CPF e minha data de nascimento estão corretos. Depois disso, esses dados serão bloqueados e só o admin poderá alterar.
+                        Confirmo que meu CPF e minha data de nascimento estÃ£o corretos. Depois disso, esses dados serÃ£o bloqueados e sÃ³ o admin poderÃ¡ alterar.
                       </span>
                     </label>
                   ) : (
@@ -2341,7 +2341,7 @@ function UsuariosPageContent() {
             className="mx-auto max-w-md overflow-hidden rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.16),transparent_34%),linear-gradient(160deg,#020617_0%,#082f49_46%,#0f172a_100%)] shadow-[0_32px_90px_-30px_rgba(2,6,23,0.95)]"
             style={{ fontFamily: 'var(--font-poppins), sans-serif' }}
           >
-            {/* Cabeçalho */}
+            {/* CabeÃ§alho */}
             <div className="relative overflow-hidden border-b border-white/10 bg-[linear-gradient(135deg,rgba(8,47,73,0.96)_0%,rgba(8,145,178,0.86)_52%,rgba(30,64,175,0.92)_100%)] px-6 pb-10 pt-6 text-center">
               <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_68%)]" />
               <div className="mb-1 flex items-center justify-start">
@@ -2362,17 +2362,17 @@ function UsuariosPageContent() {
                 </svg>
               </div>
               <p className="relative z-10 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100/75">Adicionar saldo</p>
-              <h2 className="relative z-10 mt-2 text-3xl font-bold text-white">Depósito via PIX</h2>
-              <p className="relative z-10 mt-2 text-sm leading-6 text-cyan-50/85">Adicione saldo com confirmação rápida, código instantâneo e liberação automática após o pagamento.</p>
+              <h2 className="relative z-10 mt-2 text-3xl font-bold text-white">DepÃ³sito via PIX</h2>
+              <p className="relative z-10 mt-2 text-sm leading-6 text-cyan-50/85">Adicione saldo com confirmaÃ§Ã£o rÃ¡pida, cÃ³digo instantÃ¢neo e liberaÃ§Ã£o automÃ¡tica apÃ³s o pagamento.</p>
             </div>
 
-            {/* Conteúdo */}
+            {/* ConteÃºdo */}
             <div className="-mt-5 rounded-t-[30px] border-t border-white/10 bg-[linear-gradient(180deg,rgba(2,6,23,0.94)_0%,rgba(15,23,42,0.98)_100%)] px-5 pb-6 pt-6 sm:px-7 sm:pb-8">
 
               {/* Card valor */}
               <div className="mb-5 overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
                 <div className="border-b border-white/8 px-4 py-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Valor do depósito</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Valor do depÃ³sito</p>
                 </div>
 
                 <div className="flex items-end gap-2 px-4 py-5">
@@ -2414,9 +2414,9 @@ function UsuariosPageContent() {
                   <p className="text-sm text-amber-200">Informe um valor minimo de <strong>R$ 10,00</strong>.</p>
                 </div>
               )}
-              {/* Botão principal */}
+              {/* BotÃ£o principal */}
               <div className="mb-4 rounded-[24px] border border-cyan-400/12 bg-cyan-400/[0.04] p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo do depósito</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo do depÃ³sito</p>
                 <div className="mt-3 flex items-center justify-between text-sm text-blue-100/80">
                   <span>Forma de pagamento</span>
                   <span className="font-semibold text-white">PIX</span>
@@ -2449,9 +2449,9 @@ function UsuariosPageContent() {
               )}
 
               <p className="mt-5 text-center text-xs leading-5 text-cyan-100/70">
-                O depósito será creditado assim que o pagamento for confirmado pela instituição bancária.
+                O depÃ³sito serÃ¡ creditado assim que o pagamento for confirmado pela instituiÃ§Ã£o bancÃ¡ria.
               </p>
-              <p className="mt-3 text-center text-sm text-blue-100/80">Logado como {displayName}. Escolha uma votação para apostar.</p>
+              <p className="mt-3 text-center text-sm text-blue-100/80">Logado como {displayName}. Escolha uma votaÃ§Ã£o para apostar.</p>
             </div>
           </div>
 
@@ -2472,7 +2472,7 @@ function UsuariosPageContent() {
                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  {/* Ícone PIX */}
+                  {/* Ãcone PIX */}
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/15">
                     <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M12 2L2 7V17L12 22L22 17V7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
@@ -2480,10 +2480,10 @@ function UsuariosPageContent() {
                     </svg>
                   </div>
                   <p className="text-xl font-bold text-white">Pague com PIX</p>
-                  <p className="mt-1 text-sm text-blue-100">Escaneie o QR Code ou copie o código para concluir o pagamento</p>
+                  <p className="mt-1 text-sm text-blue-100">Escaneie o QR Code ou copie o cÃ³digo para concluir o pagamento</p>
                 </div>
 
-                {/* Conteúdo */}
+                {/* ConteÃºdo */}
                 <div className="px-6 pb-6">
                   {pixQrBase64 && (
                     <div className="-mt-6 flex justify-center">
@@ -2501,7 +2501,7 @@ function UsuariosPageContent() {
                   {pixQrCode && (
                     <div className={pixQrBase64 ? 'mt-5' : 'mt-6'}>
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        {pixQrBase64 ? 'Ou copie o código abaixo' : 'Copie o código PIX'}
+                        {pixQrBase64 ? 'Ou copie o cÃ³digo abaixo' : 'Copie o cÃ³digo PIX'}
                       </p>
                       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 break-all font-mono text-xs leading-relaxed text-slate-600">
                         {pixQrCode}
@@ -2510,11 +2510,11 @@ function UsuariosPageContent() {
                         type="button"
                         onClick={async () => {
                           await navigator.clipboard.writeText(pixQrCode);
-                          setPixStatusMessage('Código PIX copiado!');
+                          setPixStatusMessage('CÃ³digo PIX copiado!');
                         }}
                         className="mt-3 w-full rounded-2xl bg-[linear-gradient(135deg,#2563eb_0%,#0891b2_100%)] py-3 text-sm font-semibold text-white transition hover:brightness-110 active:scale-95"
                       >
-                        Copiar código PIX
+                        Copiar cÃ³digo PIX
                       </button>
                     </div>
                   )}
@@ -2528,10 +2528,10 @@ function UsuariosPageContent() {
                     </div>
                   )}
 
-                  {/* Rodapé aguardando */}
+                  {/* RodapÃ© aguardando */}
                   <div className="mt-4 flex items-center justify-center gap-2 text-slate-400">
                     <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-blue-400" />
-                    <p className="text-xs">Aguardando confirmação do pagamento...</p>
+                    <p className="text-xs">Aguardando confirmaÃ§Ã£o do pagamento...</p>
                   </div>
                 </div>
               </div>
@@ -2570,7 +2570,7 @@ function UsuariosPageContent() {
                     </svg>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100/75">Área financeira</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-100/75">Ãrea financeira</p>
                     <h2 className="mt-2 text-3xl font-bold tracking-tight text-white">Solicitar saque</h2>
                     <p className="mt-2 max-w-xs text-sm leading-6 text-blue-100/85">
                       Informe o valor desejado e confirme para receber no CPF cadastrado.
@@ -2584,22 +2584,22 @@ function UsuariosPageContent() {
                 <div className="mb-4 rounded-[26px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo disponível</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo disponÃ­vel</p>
                       <p className="mt-2 text-3xl font-bold tracking-tight text-white">{formattedUserBalance}</p>
                     </div>
                     <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/10 px-3 py-2 text-right">
                       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-200/75">Status</p>
-                      <p className="mt-1 text-xs font-semibold text-emerald-100">Disponível para saque</p>
+                      <p className="mt-1 text-xs font-semibold text-emerald-100">DisponÃ­vel para saque</p>
                     </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 rounded-[22px] border border-white/8 bg-black/20 p-3 text-sm text-blue-100/75">
                     <div className="flex items-center justify-between gap-3">
                       <span>CPF para recebimento</span>
-                      <span className="font-semibold text-white">{cpf || user?.user_metadata?.cpf || 'Não definido'}</span>
+                      <span className="font-semibold text-white">{cpf || user?.user_metadata?.cpf || 'NÃ£o definido'}</span>
                     </div>
                     <p className="text-xs leading-5 text-slate-400">
-                      O valor aprovado será enviado para o CPF cadastrado na conta.
+                      O valor aprovado serÃ¡ enviado para o CPF cadastrado na conta.
                     </p>
                   </div>
                 </div>
@@ -2608,7 +2608,7 @@ function UsuariosPageContent() {
                   <svg className="h-4 w-4 shrink-0 text-amber-300" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
                   </svg>
-                  <p className="text-sm text-amber-200">Valor mínimo para saque: <strong>R$ 50</strong></p>
+                  <p className="text-sm text-amber-200">Valor mÃ­nimo para saque: <strong>R$ 50</strong></p>
                 </div>
 
                 <div className="mb-4 overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
@@ -2630,7 +2630,7 @@ function UsuariosPageContent() {
                       />
                     </div>
                     <p className="mt-3 text-xs leading-5 text-slate-400">
-                      Digite o valor que deseja retirar. A solicitação ficará pendente até aprovação.
+                      Digite o valor que deseja retirar. A solicitaÃ§Ã£o ficarÃ¡ pendente atÃ© aprovaÃ§Ã£o.
                     </p>
                   </div>
                 </div>
@@ -2644,17 +2644,17 @@ function UsuariosPageContent() {
                 <div className="mb-5 rounded-[26px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.9)] backdrop-blur-sm">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo da solicitação</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300/80">Resumo da solicitaÃ§Ã£o</p>
                       <p className="mt-1 text-xs text-slate-400">Confira os dados antes de confirmar.</p>
                     </div>
                     <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-blue-100/80">
-                      Revisão final
+                      RevisÃ£o final
                     </div>
                   </div>
 
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
-                      <span>Saldo disponível</span>
+                      <span>Saldo disponÃ­vel</span>
                       <span className="font-semibold text-white">{formattedUserBalance}</span>
                     </div>
                     <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
@@ -2666,14 +2666,14 @@ function UsuariosPageContent() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
-                      <span>Valor mínimo</span>
+                      <span>Valor mÃ­nimo</span>
                       <span className="font-semibold text-white">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(MIN_WITHDRAWAL)}
                       </span>
                     </div>
                     <div className="h-px bg-white/8" />
                     <div className="flex items-center justify-between gap-3 text-sm text-blue-100/75">
-                      <span>Saldo após solicitação</span>
+                      <span>Saldo apÃ³s solicitaÃ§Ã£o</span>
                       <span className="font-semibold text-cyan-200">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
                           Math.max(userBalance - (Number.isFinite(parsedWithdrawAmount) ? parsedWithdrawAmount : 0), 0)
@@ -2689,11 +2689,11 @@ function UsuariosPageContent() {
                   disabled={requestingWithdraw}
                   className="w-full rounded-[22px] bg-[linear-gradient(135deg,#22d3ee_0%,#2563eb_58%,#1d4ed8_100%)] py-4 text-base font-bold text-white shadow-[0_24px_40px_-22px_rgba(37,99,235,0.75)] transition hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
                 >
-                  {requestingWithdraw ? 'Enviando solicitação...' : 'Confirmar solicitação de saque'}
+                  {requestingWithdraw ? 'Enviando solicitaÃ§Ã£o...' : 'Confirmar solicitaÃ§Ã£o de saque'}
                 </button>
 
                 <p className="mt-4 text-center text-xs leading-5 text-slate-400">
-                  A aprovação é feita com base nos dados da conta e o pagamento segue para o CPF cadastrado.
+                  A aprovaÃ§Ã£o Ã© feita com base nos dados da conta e o pagamento segue para o CPF cadastrado.
                 </p>
               </div>
             </div>
@@ -2838,11 +2838,8 @@ function UsuariosPageContent() {
                             {isBetClosed ? 'Encerrado' : openStatusLabel}
                           </span>
                           {bitcoinRound && (
-                            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-100 shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]">
-                              <span className="uppercase tracking-[0.16em] text-cyan-200/80">Tempo</span>
-                              <span className="text-sm font-black tabular-nums text-white">
-                                {formatBitcoinRoundTime(bitcoinRound.timeLeft)}
-                              </span>
+                            <span className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-sm font-black tabular-nums text-white shadow-[0_10px_24px_-12px_rgba(6,182,212,0.45)]">
+                              {formatBitcoinRoundTime(bitcoinRound.timeLeft)}
                             </span>
                           )}
                         </div>
@@ -2858,30 +2855,42 @@ function UsuariosPageContent() {
                       {parsedOptions.length > 0 ? (
                         <div className="space-y-2.5">
                           {parsedOptions.slice(0, 3).map((parsedOption, idx) => {
-                            const percent = totalVotes > 0 ? Math.max(1, Math.round((votes[idx] / totalVotes) * 100)) : 0;
                             const optionInitial = parsedOption.label.slice(0, 1).toUpperCase() || '?';
+                            const percent = totalVotes > 0 ? Math.max(1, Math.round((votes[idx] / totalVotes) * 100)) : 0;
+
+                            const isBitcoinDirection = metadata.tipo === 'bitcoin-direcao';
+                            const normalizedLabel = parsedOption.label.trim().toLowerCase();
+                            const optionToneClass = isBitcoinDirection
+                              ? normalizedLabel.includes('sobe')
+                                ? 'border-emerald-400/20 bg-emerald-500/10'
+                                : normalizedLabel.includes('desce')
+                                  ? 'border-rose-400/20 bg-rose-500/10'
+                                  : 'border-white/8 bg-white/[0.03]'
+                              : 'border-white/8 bg-white/[0.03]';
 
                             return (
                               <div
                                 key={`${votacao.id}-${parsedOption.label || idx}`}
-                                className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3"
+                                className={`rounded-2xl border px-3 py-3 ${optionToneClass}`}
                               >
                                 <div className="flex items-center justify-between gap-3">
                                   <div className="flex min-w-0 items-center gap-3">
-                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
-                                      {parsedOption.imageUrl ? (
-                                        // eslint-disable-next-line @next/next/no-img-element
-                                        <img
-                                          src={parsedOption.imageUrl}
-                                          alt={parsedOption.label || `Opção ${idx + 1}`}
-                                          className="h-full w-full object-cover"
-                                        />
-                                      ) : (
-                                        <span className="text-xs font-semibold text-white">{optionInitial}</span>
-                                      )}
-                                    </div>
+                                    {metadata.tipo !== 'bitcoin-direcao' ? (
+                                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1f28]">
+                                        {parsedOption.imageUrl ? (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img
+                                            src={parsedOption.imageUrl}
+                                            alt={parsedOption.label || `Opção ${idx + 1}`}
+                                            className="h-full w-full object-cover"
+                                          />
+                                        ) : (
+                                          <span className="text-xs font-semibold text-white">{optionInitial}</span>
+                                        )}
+                                      </div>
+                                    ) : null}
                                     <span className="truncate text-sm font-medium text-zinc-100">
-                                      {parsedOption.label || `Opção ${idx + 1}`}
+                                      {parsedOption.label || `OpÃ§Ã£o ${idx + 1}`}
                                     </span>
                                   </div>
                                   <div className="flex shrink-0 items-center gap-2">
@@ -2893,19 +2902,20 @@ function UsuariosPageContent() {
                                     </span>
                                   </div>
                                 </div>
-                                <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
-                                  <div
-                                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
-                                    style={{ width: `${percent}%` }}
-                                  />
-                                </div>
+                                {metadata.tipo !== 'bitcoin-direcao' ? (
+                                  <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-black/30">
+                                    <div
+                                      className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-500 to-emerald-400"
+                                      style={{ width: `${percent}%` }}
+                                    />
+                                  </div>
+                                ) : null}
                               </div>
                             );
                           })}
                         </div>
                       ) : (
                         <p className="rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-xs text-zinc-400">
-                          Nenhuma opção disponível para esta votação no momento.
                         </p>
                       )}
                       </div>
@@ -2925,8 +2935,8 @@ function UsuariosPageContent() {
               <div className="rounded-xl border border-cyan-700 bg-cyan-900/30 p-8 text-center">
                 <p className="text-cyan-200">
                   {selectedCategory === 'todos'
-                    ? 'Nenhuma votação disponível no momento. Volte em breve!'
-                    : `Nenhuma votação encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
+                    ? 'Nenhuma votaÃ§Ã£o disponÃ­vel no momento. Volte em breve!'
+                    : `Nenhuma votaÃ§Ã£o encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
                 </p>
               </div>
             )}
@@ -2948,7 +2958,7 @@ function UsuariosPageContent() {
                     Voltar
                   </button>
                   <p className="mt-2 text-lg font-semibold leading-tight text-white sm:mt-3 sm:text-[1.65rem]">{betModal.votacaoTitulo}</p>
-                  <p className="mt-2 max-w-md text-sm leading-6 text-blue-50/90">Revise os dados antes de confirmar sua posição.</p>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-blue-50/90">Revise os dados antes de confirmar sua posiÃ§Ã£o.</p>
                 </div>
 
                 <div className="max-h-[58vh] overflow-y-auto bg-[linear-gradient(180deg,#eff5fc_0%,#ffffff_18%,#f7fbff_100%)] p-3.5 sm:max-h-[56vh] sm:p-4">
@@ -3048,5 +3058,6 @@ export default function UsuariosPage() {
     </Suspense>
   );
 }
+
 
 
