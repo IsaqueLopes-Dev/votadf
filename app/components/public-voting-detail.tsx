@@ -539,8 +539,10 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
 
       {betModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/86 p-4 backdrop-blur-md">
-          <div className="flex w-full max-w-[30rem] flex-col overflow-hidden rounded-[32px] border border-white/10 bg-[#08111f] shadow-[0_32px_100px_rgba(2,6,23,0.72)]">
-            <div className="bg-[linear-gradient(145deg,#07111f_0%,#0f1f3d_42%,#0a84b7_100%)] px-6 pb-5 pt-5 text-white">
+          <div className="flex w-full max-w-[24.5rem] flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#08111f] shadow-[0_32px_100px_rgba(2,6,23,0.72)] ring-1 ring-white/6 sm:max-w-[28rem] sm:rounded-[32px]">
+            <div className="relative overflow-hidden bg-[linear-gradient(145deg,#07111f_0%,#0f1f3d_42%,#0a84b7_100%)] px-5 pb-4 pt-4 text-white sm:px-6 sm:pb-5 sm:pt-5">
+              <div className="absolute -right-8 top-3 h-24 w-24 rounded-full bg-cyan-300/12 blur-2xl" />
+              <div className="absolute left-8 top-0 h-16 w-16 rounded-full bg-white/8 blur-2xl" />
               <button
                 type="button"
                 onClick={() => {
@@ -548,54 +550,67 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
                   setBetAmount('');
                   setBetFeedback(null);
                 }}
-                className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-50 transition hover:bg-white/15"
+                className="relative z-10 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-50 transition hover:bg-white/15"
               >
+                <span aria-hidden>←</span>
                 Voltar
               </button>
-              <p className="mt-3 text-[1.65rem] font-semibold leading-tight text-white">{betModal.votacaoTitulo}</p>
+              <p className="relative z-10 mt-2 text-lg font-semibold leading-tight text-white sm:mt-3 sm:text-[1.65rem]">{betModal.votacaoTitulo}</p>
               <p className="mt-2 text-sm text-blue-50/85">Revise os dados antes de confirmar sua posição.</p>
             </div>
 
-            <div className="max-h-[70vh] overflow-y-auto bg-[linear-gradient(180deg,#eff5fc_0%,#ffffff_18%,#f7fbff_100%)] p-4">
-              <div className="-mt-10 rounded-[28px] border border-white/90 bg-white p-4 shadow-[0_26px_60px_-34px_rgba(15,23,42,0.45)]">
-                <div className="mt-2.5 flex items-center gap-3">
-                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50 shadow-sm">
+            <div className="max-h-[58vh] overflow-y-auto bg-[linear-gradient(180deg,#06101d_0%,#081423_18%,#0a1627_100%)] p-3.5 sm:max-h-[56vh] sm:p-4">
+              <div className="-mt-8 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.98)_0%,rgba(10,18,32,0.98)_100%)] p-3.5 shadow-[0_26px_60px_-34px_rgba(15,23,42,0.7)] sm:-mt-10 sm:rounded-[28px] sm:p-4">
+                <div className="mt-1 flex items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-white/10 bg-[#111827] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] sm:h-16 sm:w-16 sm:rounded-[20px]">
                     {betModal.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={betModal.imageUrl} alt={betModal.candidato} className="h-full w-full object-cover" />
                     ) : (
-                      <span className="text-lg font-bold text-cyan-700">{betModal.candidato.slice(0, 1).toUpperCase()}</span>
+                      <span className="text-base font-bold text-cyan-300 sm:text-lg">{betModal.candidato.slice(0, 1).toUpperCase()}</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Escolha confirmada</p>
-                    <p className="mt-1 text-lg font-semibold leading-tight text-slate-950">{betModal.candidato}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/70">Escolha confirmada</p>
+                    <p className="mt-1 text-base font-semibold leading-tight text-white sm:text-lg">{betModal.candidato}</p>
+                    <p className="mt-1 text-xs text-slate-500">Sua posição será registrada com a odd atual.</p>
                   </div>
                 </div>
-                <div className="mt-3 inline-flex rounded-[18px] border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-sm font-extrabold tabular-nums text-emerald-800">
+                <div className="mt-3 inline-flex rounded-[16px] border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-extrabold tabular-nums text-cyan-200 shadow-sm sm:rounded-[18px] sm:px-3.5 sm:py-1.5 sm:text-sm">
                   {betModal.odd.toFixed(2)}x
                 </div>
               </div>
 
-              <label className="mt-5 block text-sm font-semibold text-slate-800">Valor da aposta</label>
-              <div className="mt-2.5 flex items-center rounded-[20px] border border-slate-200 bg-slate-50 px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-                <span className="text-base font-bold text-cyan-700">R$</span>
-                <input
-                  type="number"
-                  min="1"
-                  step="0.01"
-                  value={betAmount}
-                  onChange={(event) => setBetAmount(event.target.value)}
-                  placeholder={user ? 'Ex: 25' : 'Entre para apostar'}
-                  disabled={!user && !loadingUser}
-                  className="w-full border-0 bg-transparent px-3 text-lg font-semibold text-slate-950 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
-                />
+              <div className="mt-4 rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94)_0%,rgba(10,18,32,0.94)_100%)] p-3.5 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.5)] sm:mt-5 sm:p-4">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label className="text-sm font-semibold text-white">Valor da aposta</label>
+                  <span className="rounded-full bg-white/8 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-100/75">Em BRL</span>
+                </div>
+                <div className="flex items-center rounded-[18px] border border-white/10 bg-black/20 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] focus-within:border-cyan-400/40 focus-within:bg-black/25 focus-within:ring-4 focus-within:ring-cyan-500/10 sm:py-3.5">
+                  <span className="text-sm font-bold text-cyan-300 sm:text-base">R$</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={betAmount}
+                    onChange={(event) => setBetAmount(event.target.value)}
+                    placeholder={user ? 'Ex: 25' : 'Entre para apostar'}
+                    disabled={!user && !loadingUser}
+                    className="w-full border-0 bg-transparent px-3 text-base font-semibold text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:text-slate-500 sm:text-lg"
+                  />
+                </div>
               </div>
 
-              <div className="mt-4 rounded-[24px] border border-slate-200 bg-[#f8fbff] p-4 text-sm shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)]">
-                <div className="rounded-[18px] border border-cyan-200 bg-cyan-50 px-3.5 py-3 shadow-sm">
-                  <span>Retorno estimado</span>
-                  <span className="mt-1.5 block text-lg font-bold tabular-nums text-cyan-900">
+              <div className="mt-4 grid grid-cols-2 gap-2.5 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94)_0%,rgba(10,18,32,0.94)_100%)] p-3 text-sm shadow-[0_18px_40px_-28px_rgba(15,23,42,0.5)] sm:p-4">
+                <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-3 py-3 shadow-sm">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">Odd atual</span>
+                  <span className="mt-1.5 block text-base font-bold tabular-nums text-white sm:text-lg">
+                    {betModal.odd.toFixed(2)}x
+                  </span>
+                </div>
+                <div className="rounded-[18px] border border-cyan-400/20 bg-cyan-400/10 px-3 py-3 shadow-sm">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Retorno estimado</span>
+                  <span className="mt-1.5 block text-base font-bold tabular-nums text-cyan-100 sm:text-lg">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(potentialReturn)}
                   </span>
                 </div>
@@ -604,14 +619,16 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
               {betFeedback && (
                 <p
                   className={`mt-4 rounded-[18px] px-4 py-2.5 text-sm font-medium ${
-                    betFeedback.includes('sucesso') ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                    betFeedback.includes('sucesso')
+                      ? 'border border-emerald-400/20 bg-emerald-500/10 text-emerald-200'
+                      : 'border border-rose-400/20 bg-rose-500/10 text-rose-200'
                   }`}
                 >
                   {betFeedback}
                 </p>
               )}
 
-              <div className="mt-5 flex gap-3">
+              <div className="mt-4 flex gap-3 sm:mt-5">
                 <button
                   type="button"
                   onClick={() => {
@@ -619,7 +636,7 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
                     setBetAmount('');
                     setBetFeedback(null);
                   }}
-                  className="flex-1 rounded-full border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                  className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/10"
                 >
                   Cancelar
                 </button>
@@ -629,7 +646,7 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
                   disabled={placingBet || loadingUser}
                   className="flex-1 rounded-full bg-[linear-gradient(135deg,#0f172a_0%,#0f5ae0_42%,#0ea5a4_100%)] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_35px_-20px_rgba(14,116,144,0.8)] transition hover:brightness-105 disabled:opacity-60"
                 >
-                  {user ? (placingBet ? 'Enviando...' : 'Confirmar aposta') : 'Entrar'}
+                  {user ? (placingBet ? 'Enviando...' : 'Confirmar') : 'Entrar'}
                 </button>
               </div>
             </div>

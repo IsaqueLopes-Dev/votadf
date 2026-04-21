@@ -800,14 +800,13 @@ function UsuariosPageContent() {
     const checkAuth = async () => {
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        setUser(user);
-        if (user) {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
+          data: { session },
+        } = await supabase.auth.getSession();
+        const user = session?.user ?? null;
 
+        setUser(user);
+
+        if (user) {
           if (session?.access_token) {
             try {
               const response = await fetch('/api/profile/me', {
@@ -840,8 +839,8 @@ function UsuariosPageContent() {
             applyUserMetadataProfile(user);
           }
         }
-        await Promise.all([loadVotacoesAtivas(), loadBetCounts()]);
         setLoading(false);
+        void Promise.allSettled([loadVotacoesAtivas(), loadBetCounts()]);
 
         void loadBetHistory();
         void loadChatMessages(true);
@@ -1675,14 +1674,6 @@ function UsuariosPageContent() {
 
     return () => window.clearInterval(interval);
   }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#111111]">
-        <UiverseLoader label="Carregando..." />
-      </div>
-    );
-  }
 
   // Estilo de fundo igual ao login
   const loginBgStyle = {
@@ -2707,9 +2698,7 @@ function UsuariosPageContent() {
             <div>
               <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Mercados ativos</h2>
               <p className="mt-4 text-sm leading-7 text-cyan-200 sm:text-base">
-                Sua área logada agora usa a mesma leitura compacta da vitrine pública.
-                <br />
-                A home mostra o essencial e a página do mercado concentra os detalhes completos.
+                Acompanhe os mercados em aberto, compare as principais opções e acesse os detalhes completos de cada votação.
               </p>
             </div>
           </section>
@@ -2738,7 +2727,44 @@ function UsuariosPageContent() {
               </div>
             )}
 
-            {filteredVotacoes.length > 0 ? (
+            {loading && filteredVotacoes.length === 0 && !votacoesError ? (
+              <div className="grid grid-cols-1 items-stretch gap-4 pb-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 lg:pb-12">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={`market-loading-${index}`}
+                    className="min-h-[280px] rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,31,0.98)_0%,rgba(11,14,20,0.98)_100%)] p-4 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.9)]"
+                  >
+                    <div className="mb-4 flex items-start justify-between gap-3">
+                      <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+                      <div className="h-7 w-24 animate-pulse rounded-full bg-white/10" />
+                    </div>
+
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="h-14 w-14 animate-pulse rounded-2xl bg-white/10" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="h-4 w-11/12 animate-pulse rounded-full bg-white/10" />
+                        <div className="h-4 w-7/12 animate-pulse rounded-full bg-white/10" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }).map((__, optionIndex) => (
+                        <div key={`market-loading-option-${optionIndex}`} className="rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="h-9 w-9 animate-pulse rounded-full bg-white/10" />
+                              <div className="h-4 w-28 animate-pulse rounded-full bg-white/10" />
+                            </div>
+                            <div className="h-6 w-14 animate-pulse rounded-full bg-white/10" />
+                          </div>
+                          <div className="mt-2.5 h-1.5 animate-pulse rounded-full bg-white/10" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : filteredVotacoes.length > 0 ? (
               <div className="grid grid-cols-1 items-stretch gap-4 pb-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 lg:pb-12">
                 {filteredVotacoes.map((votacao) => {
                   const metadata = parsePollMetadata(votacao.descricao);
