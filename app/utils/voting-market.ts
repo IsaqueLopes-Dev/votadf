@@ -11,7 +11,7 @@ export const CATEGORY_OPTIONS = [
 ] as const;
 
 export type CategoryValue = (typeof CATEGORY_OPTIONS)[number]['value'];
-export type PollType = 'opcoes-livres' | 'enquete-candidatos';
+export type PollType = 'opcoes-livres' | 'enquete-candidatos' | 'bitcoin-direcao';
 export type PollCategory =
   | 'politica'
   | 'entretenimento'
@@ -92,7 +92,12 @@ export const parsePollMetadata = (descricao: string | null | undefined) => {
       };
 
       return {
-        tipo: parsed.tipo === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres',
+        tipo:
+          parsed.tipo === 'enquete-candidatos'
+            ? 'enquete-candidatos'
+            : parsed.tipo === 'bitcoin-direcao'
+              ? 'bitcoin-direcao'
+              : 'opcoes-livres',
         categoria: normalizePollCategory(parsed.categoria),
         statusAbertoLabel:
           parsed.statusAbertoLabel === 'em-aberto' || parsed.openStatusLabel === 'em-aberto'

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseClient } from '../utils/supabaseClient';
+import BitcoinEntertainmentMarket from './bitcoin-entertainment-market';
 import CategoryIcon from './category-icon';
 import {
   buildVotingOptionStats,
@@ -65,6 +66,7 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseClient(), []);
   const metadata = parsePollMetadata(votacao.descricao);
+  const isBitcoinEntertainmentMarket = metadata.tipo === 'bitcoin-direcao';
   const status = getVotingStatus(votacao);
   const optionStats = useMemo(() => buildVotingOptionStats(votacao, betCounts), [betCounts, votacao]);
   const userPositions = useMemo(() => {
@@ -317,6 +319,10 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
     'As odds exibidas são as odds disponíveis no momento da escolha.',
     'Depois do encerramento do mercado, novas posições ficam bloqueadas.',
   ];
+
+  if (isBitcoinEntertainmentMarket) {
+    return <BitcoinEntertainmentMarket votacao={votacao} />;
+  }
 
   return (
     <>

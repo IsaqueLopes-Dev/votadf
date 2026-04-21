@@ -3,6 +3,7 @@ import { ensureAdminRequest } from '../utils';
 
 const META_PREFIX = '__meta__:';
 const SPORTS_OPTION_LABELS = ['CASA', 'X', 'FORA'] as const;
+const BITCOIN_OPTION_LABELS = ['Sobe', 'Desce'] as const;
 
 type PollCategory =
   | 'politica'
@@ -13,7 +14,7 @@ type PollCategory =
   | 'criptomoedas'
   | '';
 
-type PollType = 'opcoes-livres' | 'enquete-candidatos';
+type PollType = 'opcoes-livres' | 'enquete-candidatos' | 'bitcoin-direcao';
 type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
 type VotingOptionInput = {
@@ -50,8 +51,11 @@ const normalizeCategory = (value: unknown): PollCategory => {
   return '';
 };
 
-const normalizePollType = (value: unknown): PollType =>
-  value === 'enquete-candidatos' ? 'enquete-candidatos' : 'opcoes-livres';
+const normalizePollType = (value: unknown): PollType => {
+  if (value === 'enquete-candidatos') return 'enquete-candidatos';
+  if (value === 'bitcoin-direcao') return 'bitcoin-direcao';
+  return 'opcoes-livres';
+};
 
 const normalizeOpenStatusLabel = (value: unknown): OpenStatusLabel =>
   value === 'em-aberto' ? 'em-aberto' : 'ao-vivo';
@@ -162,7 +166,13 @@ const validatePayload = (payload: VotingPayload) => {
   const title = String(payload.title || '').trim();
   const description = String(payload.description || '').trim();
   const category = normalizeCategory(payload.category);
-  const pollType = category === 'esportes' ? 'opcoes-livres' : normalizePollType(payload.pollType);
+  const requestedPollType = normalizePollType(payload.pollType);
+  const pollType =
+    category === 'esportes'
+      ? 'opcoes-livres'
+      : requestedPollType === 'bitcoin-direcao'
+        ? 'bitcoin-direcao'
+        : requestedPollType;
   const openStatusLabel = normalizeOpenStatusLabel(payload.openStatusLabel);
   const closesAt = String(payload.closesAt || '').trim();
   const isActive = payload.isActive === false ? false : true;
@@ -203,14 +213,45 @@ const validatePayload = (payload: VotingPayload) => {
     }
   }
 
+  if (pollType === 'bitcoin-direcao') {
+    if (category !== 'criptomoedas') {
+      return { error: 'O mercado Bitcoin deve ser criado na categoria Criptomoedas.' };
+    }
+
+    if (options.length !== 2) {
+      return { error: 'O mercado Bitcoin exige exatamente duas opções: Sobe e Desce.' };
+    }
+
+    const labels = options.map((option) => option.label.trim().toLowerCase());
+    const hasValidStructure =
+      labels[0] === BITCOIN_OPTION_LABELS[0].toLowerCase() && labels[1] === BITCOIN_OPTION_LABELS[1].toLowerCase();
+
+    if (!hasValidStructure) {
+      return { error: 'O mercado Bitcoin exige as opções na ordem Sobe e Desce.' };
+    }
+
+    if (result) {
+      return { error: 'O resultado do mercado Bitcoin é calculado automaticamente ao fim da rodada.' };
+    }
+  }
+
   const serializedOptions = options.map((option) =>
     JSON.stringify({
-      label: category === 'esportes' ? option.label.toUpperCase() : option.label,
+      label:
+        category === 'esportes'
+          ? option.label.toUpperCase()
+          : pollType === 'bitcoin-direcao'
+            ? option.label.trim() === BITCOIN_OPTION_LABELS[0]
+              ? BITCOIN_OPTION_LABELS[0]
+              : BITCOIN_OPTION_LABELS[1]
+            : option.label,
       imageUrl: option.imageUrl,
       odds: option.odds,
       oddsNao: option.oddsNao,
     })
   );
+  const normalizedResult =
+    category === 'esportes' ? result.toUpperCase() : pollType === 'bitcoin-direcao' ? '' : result;
 
   return {
     data: {
@@ -221,7 +262,7 @@ const validatePayload = (payload: VotingPayload) => {
       openStatusLabel,
       closesAt,
       isActive,
-      result: category === 'esportes' ? result.toUpperCase() : result,
+      result: normalizedResult,
       serializedOptions,
       descricao: buildDescricao({
         description,
@@ -229,7 +270,7 @@ const validatePayload = (payload: VotingPayload) => {
         pollType,
         openStatusLabel,
         closesAt,
-        result: category === 'esportes' ? result.toUpperCase() : result,
+        result: normalizedResult,
       }),
     },
   };

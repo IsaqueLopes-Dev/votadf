@@ -15,7 +15,7 @@ type PollCategory =
   | 'celebridades'
   | 'criptomoedas';
 
-type PollType = 'opcoes-livres' | 'enquete-candidatos';
+type PollType = 'opcoes-livres' | 'enquete-candidatos' | 'bitcoin-direcao';
 type OpenStatusLabel = 'ao-vivo' | 'em-aberto';
 
 type VotingOption = {
@@ -47,6 +47,7 @@ type VotacoesResponse = {
 };
 
 const SPORTS_OPTION_LABELS = ['CASA', 'X', 'FORA'] as const;
+const BITCOIN_OPTION_LABELS = ['Sobe', 'Desce'] as const;
 
 const CATEGORY_OPTIONS: Array<{ value: PollCategory; label: string }> = [
   { value: 'politica', label: 'Política' },
@@ -77,6 +78,19 @@ const toEditableOption = (option?: Partial<VotingOption>): VotingOption => ({
 
 const buildSportsOptions = (existingOptions: VotingOption[] = []) =>
   SPORTS_OPTION_LABELS.map((label, index) => {
+    const current = existingOptions[index];
+    return {
+      label,
+      imageUrl: String(current?.imageUrl || ''),
+      odds: String(current?.odds || ''),
+      oddsNao: String(current?.oddsNao || ''),
+      imageFile: current?.imageFile || null,
+      imagePreview: String(current?.imagePreview || current?.imageUrl || ''),
+    };
+  });
+
+const buildBitcoinOptions = (existingOptions: VotingOption[] = []) =>
+  BITCOIN_OPTION_LABELS.map((label, index) => {
     const current = existingOptions[index];
     return {
       label,
@@ -156,6 +170,7 @@ export default function AdminVotacoesPage() {
   const [form, setForm] = useState(createInitialForm);
 
   const isSportsCategory = form.category === 'esportes';
+  const isBitcoinMarket = form.pollType === 'bitcoin-direcao';
 
   const releaseFormPreviews = useCallback((options: VotingOption[]) => {
     options.forEach((option) => releasePreview(option.imagePreview));
@@ -262,10 +277,44 @@ export default function AdminVotacoesPage() {
         };
       }
 
+      if (current.pollType === 'bitcoin-direcao' && category !== 'criptomoedas') {
+        return {
+          ...current,
+          category,
+          pollType: 'opcoes-livres',
+          options: current.options.length ? current.options : [emptyOption(), emptyOption()],
+        };
+      }
+
       return {
         ...current,
         category,
         options: current.options.length ? current.options : [emptyOption(), emptyOption()],
+      };
+    });
+  };
+
+  const handlePollTypeChange = (pollType: PollType) => {
+    setForm((current) => {
+      if (pollType === 'bitcoin-direcao') {
+        return {
+          ...current,
+          category: 'criptomoedas',
+          pollType,
+          result: '',
+          options: buildBitcoinOptions(current.options),
+        };
+      }
+
+      return {
+        ...current,
+        pollType,
+        options:
+          current.pollType === 'bitcoin-direcao'
+            ? [emptyOption(), emptyOption()]
+            : current.options.length
+              ? current.options
+              : [emptyOption(), emptyOption()],
       };
     });
   };
@@ -275,7 +324,7 @@ export default function AdminVotacoesPage() {
       ...current,
       options: current.options.map((option, optionIndex) => {
         if (optionIndex !== index) return option;
-        if (isSportsCategory && field === 'label') return option;
+        if ((isSportsCategory || isBitcoinMarket) && field === 'label') return option;
         return { ...option, [field]: value };
       }),
     }));
@@ -354,6 +403,7 @@ export default function AdminVotacoesPage() {
         body: JSON.stringify({
           ...form,
           pollType: form.category === 'esportes' ? 'opcoes-livres' : form.pollType,
+          result: form.pollType === 'bitcoin-direcao' ? '' : form.result,
           options: uploadedOptions,
         }),
       });
@@ -547,9 +597,7 @@ export default function AdminVotacoesPage() {
                   <select
                     value={isSportsCategory ? 'opcoes-livres' : form.pollType}
                     disabled={isSportsCategory}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, pollType: event.target.value as PollType }))
-                    }
+                    onChange={(event) => handlePollTypeChange(event.target.value as PollType)}
                     className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <option value="enquete-candidatos" className="text-slate-900">
@@ -557,6 +605,9 @@ export default function AdminVotacoesPage() {
                     </option>
                     <option value="opcoes-livres" className="text-slate-900">
                       Opções livres
+                    </option>
+                    <option value="bitcoin-direcao" className="text-slate-900">
+                      Bitcoin - Direcao
                     </option>
                   </select>
                 </div>
@@ -613,7 +664,13 @@ export default function AdminVotacoesPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-100">Resultado vencedor</label>
-                  {isSportsCategory ? (
+                  {isBitcoinMarket ? (
+                    <input
+                      value="Calculado automaticamente pela rodada"
+                      disabled
+                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-400 outline-none disabled:cursor-not-allowed disabled:opacity-80"
+                    />
+                  ) : isSportsCategory ? (
                     <select
                       value={form.result}
                       onChange={(event) => setForm((current) => ({ ...current, result: event.target.value }))}
@@ -656,11 +713,13 @@ export default function AdminVotacoesPage() {
                   <p className="mt-1 text-sm text-slate-400">
                     {isSportsCategory
                       ? 'Modelo esportivo com três resultados fixos.'
-                      : 'Cadastre pelo menos duas opções e envie as imagens diretamente do seu computador.'}
+                      : isBitcoinMarket
+                        ? 'Mercado Bitcoin com duas direcoes fixas e liquidacao automatica.'
+                        : 'Cadastre pelo menos duas opções e envie as imagens diretamente do seu computador.'}
                   </p>
                 </div>
 
-                {!isSportsCategory && (
+                {!isSportsCategory && !isBitcoinMarket && (
                   <button
                     type="button"
                     onClick={() =>
@@ -684,7 +743,7 @@ export default function AdminVotacoesPage() {
                     <div key={index} className="rounded-[24px] border border-white/10 bg-white/5 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-semibold text-white">Opção {index + 1}</p>
-                        {!isSportsCategory && form.options.length > 2 && (
+                        {!isSportsCategory && !isBitcoinMarket && form.options.length > 2 && (
                           <button
                             type="button"
                             onClick={() => {
@@ -709,7 +768,7 @@ export default function AdminVotacoesPage() {
                             </label>
                             <input
                               value={option.label}
-                              disabled={isSportsCategory}
+                              disabled={isSportsCategory || isBitcoinMarket}
                               onChange={(event) => handleOptionChange(index, 'label', event.target.value)}
                               className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed disabled:opacity-80"
                               placeholder="Nome da opção"
@@ -887,7 +946,11 @@ export default function AdminVotacoesPage() {
                           {CATEGORY_OPTIONS.find((option) => option.value === item.category)?.label || item.category}
                         </span>
                         <span className="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-300">
-                          {item.pollType === 'enquete-candidatos' ? 'Enquete com candidatos' : 'Opções livres'}
+                          {item.pollType === 'enquete-candidatos'
+                            ? 'Enquete com candidatos'
+                            : item.pollType === 'bitcoin-direcao'
+                              ? 'Bitcoin - Direcao'
+                              : 'Opções livres'}
                         </span>
                         <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-semibold text-red-300">
                           {item.openStatusLabel === 'em-aberto' ? 'Em aberto' : 'Ao vivo'}
@@ -920,9 +983,12 @@ export default function AdminVotacoesPage() {
                             pollType: item.category === 'esportes' ? 'opcoes-livres' : item.pollType,
                             openStatusLabel: item.openStatusLabel,
                             closesAt: item.closesAt ? item.closesAt.slice(0, 16) : '',
-                            result: item.result,
+                            result: item.pollType === 'bitcoin-direcao' ? '' : item.result,
                             isActive: item.isActive,
-                            options: loadedOptions,
+                            options:
+                              item.pollType === 'bitcoin-direcao'
+                                ? buildBitcoinOptions(loadedOptions)
+                                : loadedOptions,
                           });
                           window.scrollTo({ top: 0, behavior: 'smooth' });
                         }}
