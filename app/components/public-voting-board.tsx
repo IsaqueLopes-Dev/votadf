@@ -130,10 +130,12 @@ export default function PublicVotingBoard({
                     {getCategoryLabel(metadata.categoria || 'todos').replace('Todos', 'Sem categoria')}
                   </span>
                   <span
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold [font-family:var(--font-poppins),sans-serif] ${
                       status.tone === 'closed'
-                        ? 'bg-white/[0.05] text-zinc-400'
-                        : 'bg-red-600 text-white shadow-[0_10px_24px_-12px_rgba(220,38,38,0.9)]'
+                        ? 'bg-slate-700 text-slate-100 shadow-[0_10px_24px_-12px_rgba(51,65,85,0.95)]'
+                        : status.label === 'Em aberto'
+                          ? 'bg-emerald-600 text-white shadow-[0_10px_24px_-12px_rgba(5,150,105,0.9)]'
+                          : 'bg-amber-400 text-[#2b1600] shadow-[0_10px_24px_-12px_rgba(251,191,36,0.95)]'
                     }`}
                   >
                     {!status.isClosed && (
