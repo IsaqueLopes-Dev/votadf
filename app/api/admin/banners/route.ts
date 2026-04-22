@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ensureAdminRequest } from '../utils';
+import { ensureAdminRequest, getAdminSupabase } from '../utils';
 import {
   createEmptyHomeMarketsBannerConfig,
   HOME_MARKETS_BANNER_MANIFEST_PATH,
@@ -16,7 +16,7 @@ type BannerPayload = {
 };
 
 const readHomeMarketsBannerConfig = async (
-  supabaseAdmin: Awaited<ReturnType<typeof ensureAdminRequest>>['supabaseAdmin']
+  supabaseAdmin: ReturnType<typeof getAdminSupabase>
 ) => {
   const { data, error } = await supabaseAdmin.storage
     .from(SITE_BANNERS_BUCKET)
@@ -131,4 +131,3 @@ export async function PUT(request: Request) {
     );
   }
 }
-
