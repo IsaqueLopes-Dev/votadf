@@ -2728,10 +2728,10 @@ function UsuariosPageContent() {
           </>
         ) : (
           <div className="w-full">
-          <section className="mb-8 text-center text-white">
+          <section className="hidden">
             <div>
               <h2 className="text-3xl font-bold leading-tight sm:text-4xl">Mercados ativos</h2>
-              <p className="mt-4 text-sm leading-7 text-cyan-200 sm:text-base">
+              <p className="hidden">
                 Acompanhe os mercados em aberto, compare as principais opções e acesse os detalhes completos de cada votação.
               </p>
             </div>
