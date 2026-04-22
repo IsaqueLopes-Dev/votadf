@@ -154,11 +154,12 @@ const buildPoolSnapshot = async (
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  try {
   let payload: { votacaoId?: unknown; direction?: unknown; amount?: unknown };
   try {
     payload = (await request.json()) as { votacaoId?: unknown; direction?: unknown; amount?: unknown };
   } catch {
-    return NextResponse.json({ error: 'Payload invalido.' }, { status: 400 });
+    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
   }
 
   const votacaoId = String(payload.votacaoId || '').trim();
@@ -166,7 +167,7 @@ export async function POST(request: Request) {
   const amount = Number(payload.amount);
 
   if (!votacaoId || (direction !== 'Sobe' && direction !== 'Desce') || !Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: 'Informe votacaoId, direcao e valor validos.' }, { status: 400 });
+    return NextResponse.json({ error: 'Informe votacaoId, direção e valor válidos.' }, { status: 400 });
   }
 
   const context = await getAuthenticatedUnifiedProfileContext(request);
@@ -182,14 +183,14 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (votingError || !votacao) {
-    return NextResponse.json({ error: votingError?.message || 'Votacao nao encontrada.' }, { status: 404 });
+    return NextResponse.json({ error: votingError?.message || 'Votação não encontrada.' }, { status: 404 });
   }
 
   const voting = votacao as VotingRow;
   const metadata = parsePollMetadata(voting.descricao);
 
   if (metadata.tipo !== 'bitcoin-direcao') {
-    return NextResponse.json({ error: 'Este mercado nao aceita apostas Bitcoin.' }, { status: 400 });
+    return NextResponse.json({ error: 'Este mercado não aceita apostas Bitcoin.' }, { status: 400 });
   }
 
   if (voting.ativa === false) {
@@ -257,7 +258,7 @@ export async function POST(request: Request) {
 
   if (updateError || !updated.user) {
     return NextResponse.json(
-      { error: updateError?.message || 'Nao foi possivel registrar a aposta.' },
+      { error: updateError?.message || 'Não foi possível registrar a aposta.' },
       { status: 500 }
     );
   }
@@ -270,14 +271,26 @@ export async function POST(request: Request) {
   targetSide.potentialReturn = roundCurrency(targetSide.potentialReturn + nextBet.potentialReturn);
   targetSide.bets += 1;
 
-  return NextResponse.json({
-    message:
-      existingRoundBet != null
-        ? `Escolha atualizada para ${direction} com odd ${acceptedOdd.toFixed(2)}x.`
-        : `Aposta registrada em ${direction} com odd ${acceptedOdd.toFixed(2)}x.`,
-    roundId: round.roundId,
-    bet: nextBet,
-    account: refreshedAccount,
-    pool: nextPoolSnapshot,
-  });
+    return NextResponse.json({
+      message:
+        existingRoundBet != null
+          ? `Escolha atualizada para ${direction} com odd ${acceptedOdd.toFixed(2)}x.`
+          : `Aposta registrada em ${direction} com odd ${acceptedOdd.toFixed(2)}x.`,
+      roundId: round.roundId,
+      bet: nextBet,
+      account: refreshedAccount,
+      pool: nextPoolSnapshot,
+    });
+  } catch (error) {
+    console.error('Erro inesperado ao registrar aposta Bitcoin:', error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message || 'Não foi possível registrar a aposta Bitcoin.'
+            : 'Não foi possível registrar a aposta Bitcoin.',
+      },
+      { status: 500 }
+    );
+  }
 }
