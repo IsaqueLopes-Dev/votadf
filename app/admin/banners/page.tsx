@@ -37,6 +37,9 @@ const releasePreview = (value?: string) => {
   }
 };
 
+const hasSelectedAsset = (previewUrl: string, storedUrl: string, selectedFile: File | null) =>
+  Boolean(selectedFile || previewUrl || storedUrl);
+
 export default function AdminBannersPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -136,6 +139,20 @@ export default function AdminBannersPage() {
     releasePreview(mobilePreviewUrl);
     setMobileFile(file);
     setMobilePreviewUrl(file ? URL.createObjectURL(file) : mobileImageUrl);
+  };
+
+  const clearDesktopBanner = () => {
+    releasePreview(desktopPreviewUrl);
+    setDesktopFile(null);
+    setDesktopImageUrl('');
+    setDesktopPreviewUrl('');
+  };
+
+  const clearMobileBanner = () => {
+    releasePreview(mobilePreviewUrl);
+    setMobileFile(null);
+    setMobileImageUrl('');
+    setMobilePreviewUrl('');
   };
 
   const uploadAssetIfNeeded = async (
@@ -303,6 +320,16 @@ export default function AdminBannersPage() {
                 onChange={(event) => updateDesktopFile(event.target.files?.[0] || null)}
                 className="mt-4 block w-full text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:font-semibold file:text-slate-950 hover:file:bg-cyan-300"
               />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={clearDesktopBanner}
+                  disabled={!hasSelectedAsset(desktopPreviewUrl, desktopImageUrl, desktopFile)}
+                  className="rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Excluir banner desktop
+                </button>
+              </div>
               {desktopPreviewUrl ? (
                 <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
                   <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-3 py-2 text-[11px] font-medium text-slate-400">
@@ -338,6 +365,16 @@ export default function AdminBannersPage() {
                 onChange={(event) => updateMobileFile(event.target.files?.[0] || null)}
                 className="mt-4 block w-full text-sm text-slate-300 file:mr-4 file:rounded-full file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:font-semibold file:text-slate-950 hover:file:bg-cyan-300"
               />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={clearMobileBanner}
+                  disabled={!hasSelectedAsset(mobilePreviewUrl, mobileImageUrl, mobileFile)}
+                  className="rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Excluir banner mobile
+                </button>
+              </div>
               {mobilePreviewUrl ? (
                 <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
                   <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-3 py-2 text-[11px] font-medium text-slate-400">
