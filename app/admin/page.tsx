@@ -34,6 +34,7 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
 const adminSections = [
+  { href: '/admin/banners', title: 'Banners', description: 'Gerenciar o banner da home com versões desktop e mobile.' },
   { href: '/admin/votacoes', title: 'Votações', description: 'Criar, editar, ativar e excluir mercados.' },
   { href: '/admin/usuarios', title: 'Usuários', description: 'Ver saldo, ajustar saldo, redefinir senha e remover acesso.' },
   { href: '/admin/transacoes', title: 'Transações', description: 'Acompanhar créditos PIX e histórico financeiro.' },

@@ -10,7 +10,6 @@ import {
   buildVotingOptionStats,
   getCategoryLabel,
   getDisplayedOdd,
-  getParsedOptions,
   getVotingStatus,
   parsePollMetadata,
   type BetCountsMap,
@@ -106,8 +105,8 @@ export default function PublicVotingBoard({
         <div className="text-cyan-200 text-center py-8 rounded-xl bg-cyan-900/30 border border-cyan-700">
           <p>
             {selectedCategory === 'todos'
-              ? 'Nenhuma votaÃ§Ã£o disponÃ­vel no momento. Volte em breve!'
-              : `Nenhuma votaÃ§Ã£o encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
+              ? 'Nenhuma votação disponível no momento. Volte em breve!'
+              : `Nenhuma votação encontrada na categoria ${getCategoryLabel(selectedCategory)}.`}
           </p>
         </div>
       ) : (
@@ -162,9 +161,21 @@ export default function PublicVotingBoard({
                 </div>
 
                 <div className="mb-4">
-                  <h3 className="text-sm font-semibold leading-6 text-white [display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                    {votacao.titulo}
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    {metadata.bitcoinTitleImageUrl ? (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-amber-400/25 bg-amber-500/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={metadata.bitcoinTitleImageUrl}
+                          alt=""
+                          className="max-h-6 max-w-6 object-contain"
+                        />
+                      </div>
+                    ) : null}
+                    <h3 className="text-sm font-semibold leading-6 text-white [display:-webkit-box] overflow-hidden [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                      {votacao.titulo}
+                    </h3>
+                  </div>
                 </div>
                 <div className="flex-1 space-y-2.5">
                   {optionStats.length > 0 ? (
@@ -203,7 +214,7 @@ export default function PublicVotingBoard({
                                 </div>
                               ) : null}
                               <span className="truncate text-sm font-medium text-zinc-100">
-                                {option.label || `OpÃ§Ã£o ${index + 1}`}
+                                {option.label || `Opção ${index + 1}`}
                               </span>
                             </div>
                             <div className="flex shrink-0 items-center gap-2">
@@ -228,7 +239,7 @@ export default function PublicVotingBoard({
                     })
                   ) : (
                     <p className="rounded-2xl border border-white/10 bg-[#11151b] px-3 py-3 text-xs text-zinc-400">
-                      Nenhuma opÃ§Ã£o disponÃ­vel para esta votaÃ§Ã£o no momento.
+                      Nenhuma opção disponível para esta votação no momento.
                     </p>
                   )}
                 </div>
@@ -247,4 +258,3 @@ export default function PublicVotingBoard({
     </>
   );
 }
-

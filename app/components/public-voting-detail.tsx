@@ -332,7 +332,7 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
           onClick={handleBackHome}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/[0.08]"
         >
-          <span aria-hidden>←</span>
+          <span aria-hidden>{'<-'}</span>
           Voltar
         </button>
       </div>
@@ -363,7 +363,15 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
                       {status.isClosed ? 'Encerrado' : status.footerLabel}
                     </span>
                   </div>
-                  <h1 className="mt-4 text-3xl font-bold leading-tight text-white lg:text-4xl">{votacao.titulo}</h1>
+                  <div className="mt-4 flex items-center gap-3">
+                    {metadata.bitcoinTitleImageUrl ? (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.05]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={metadata.bitcoinTitleImageUrl} alt="" className="max-h-7 max-w-7 object-contain" />
+                      </div>
+                    ) : null}
+                    <h1 className="text-3xl font-bold leading-tight text-white lg:text-4xl">{votacao.titulo}</h1>
+                  </div>
 
                   <div className="mt-6 space-y-3">
                     {optionStats.map((option) => (
@@ -558,7 +566,7 @@ export default function PublicVotingDetail({ votacao }: PublicVotingDetailProps)
                 }}
                 className="relative z-10 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-50 transition hover:bg-white/15"
               >
-                <span aria-hidden>←</span>
+                <span aria-hidden>{'<-'}</span>
                 Voltar
               </button>
               <p className="relative z-10 mt-2 text-lg font-semibold leading-tight text-white sm:mt-3 sm:text-[1.65rem]">{betModal.votacaoTitulo}</p>
